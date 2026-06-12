@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B101D"/>
+      <stop offset="1" stop-color="#04060C"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="128" y1="120" x2="384" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C9EFF"/>
+      <stop offset="0.5" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#FB923C"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="6" y="6" width="500" height="500" rx="106" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2"/>
+  <!-- monogram A -->
+  <path d="M176 360 L240 156 L272 156 L336 360 L296 360 L283 316 L229 316 L216 360 Z M240 280 L272 280 L256 220 Z"
+        fill="url(#mark)"/>
+  <!-- orbit dot -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#mark)" stroke-opacity="0.22" stroke-width="6" stroke-dasharray="2 18" stroke-linecap="round"/>
+  <circle cx="392" cy="180" r="14" fill="#34D399"/>
+</svg>

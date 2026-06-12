@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Same-origin proxy to Yahoo Finance (no CORS, no API key).
+# Mirrors the Vite dev/preview proxy so live quotes work in production.
+[[redirects]]
+  from = "/yq/*"
+  to = "https://query1.finance.yahoo.com/:splat"
+  status = 200
+  force = true
+
+# SPA fallback — every route resolves to the app shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

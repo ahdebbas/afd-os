@@ -1,4 +1,294 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif; }
+/* =====================================================================
+   AFD OS — personal mission control
+   OLED black + per-module accents (finance blue / food green / fitness ember)
+   Bento panels, hairlines, mono micro-labels, restrained glow
+   ===================================================================== */
+
+:root {
+  /* paper variant (light) */
+  --bg: #F2F0E9;
+  --surface: #FCFBF8;
+  --surface-2: #F5F3EC;
+  --ink: #14161C;
+  --ink-2: rgba(20, 22, 28, 0.66);
+  --ink-3: rgba(20, 22, 28, 0.45);
+  --line: rgba(20, 22, 28, 0.10);
+  --track: rgba(20, 22, 28, 0.12);
+  --chip: rgba(20, 22, 28, 0.05);
+  --field: rgba(20, 22, 28, 0.04);
+  --acc-os: #2540C8;
+  --acc-fin: #1D4ED8;
+  --acc-food: #047857;
+  --acc-fit: #0891B2;
+  --up: #047857;
+  --down: #DC2626;
+  --warn: #B45309;
+  --ring: #2540C8;
+  --panel-shadow: 0 1px 2px rgba(20, 22, 28, 0.04), 0 10px 30px rgba(20, 22, 28, 0.06);
+  --glow-opacity: 0;
+}
+html.dark {
+  /* OLED mission control (default) */
+  --bg: #04060C;
+  --surface: #0B101D;
+  --surface-2: #0E1424;
+  --ink: #EDF1F7;
+  --ink-2: rgba(237, 241, 247, 0.64);
+  --ink-3: rgba(237, 241, 247, 0.40);
+  --line: rgba(237, 241, 247, 0.08);
+  --track: rgba(237, 241, 247, 0.10);
+  --chip: rgba(237, 241, 247, 0.05);
+  --field: rgba(0, 0, 0, 0.35);
+  --acc-os: #7C9EFF;
+  --acc-fin: #60A5FA;
+  --acc-food: #34D399;
+  --acc-fit: #22D3EE;
+  --up: #34D399;
+  --down: #F87171;
+  --warn: #FBBF24;
+  --ring: #7C9EFF;
+  --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 40px rgba(0, 0, 0, 0.5);
+  --glow-opacity: 1;
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Barlow", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+}
+
+.display { font-family: "Barlow Condensed", "Barlow", sans-serif; }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+/* ---------- Backdrop: blueprint dot grid + module glows ---------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image: radial-gradient(var(--track) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.5;
+  mask-image: linear-gradient(to bottom, black, transparent 75%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: -3;
+  pointer-events: none;
+  opacity: var(--glow-opacity);
+  background:
+    radial-gradient(34% 26% at 14% 0%, rgba(96, 165, 250, 0.16), transparent 70%),
+    radial-gradient(30% 24% at 88% 12%, rgba(52, 211, 153, 0.10), transparent 70%),
+    radial-gradient(30% 26% at 80% 96%, rgba(34, 211, 238, 0.08), transparent 70%);
+  filter: blur(70px);
+  animation: drift 36s ease-in-out infinite alternate;
+  transition: opacity 0.4s ease;
+}
+@keyframes drift {
+  from { transform: translate3d(-1.5%, -1%, 0); }
+  to   { transform: translate3d(1.5%, 2%, 0); }
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--surface);
+  background-image: linear-gradient(168deg, rgba(255, 255, 255, 0.05), transparent 34%);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--panel-shadow);
+  transition: background 0.3s ease, border-color 0.25s ease, transform 0.25s ease, box-shadow 0.3s ease;
+}
+.panel-2 { background: var(--surface-2); }
+
+/* interactive bento tile */
+.tile:hover { transform: translateY(-2px) scale(1.01); border-color: color-mix(in srgb, var(--acc) 35%, var(--line)); }
+.tile:active { transform: scale(0.98); }
+
+.t1 { color: var(--ink); }
+.t2 { color: var(--ink-2); }
+.t3 { color: var(--ink-3); }
+.chip { background: var(--chip); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.acc { color: var(--acc); }
+
+.hairline-t { border-top: 1px solid var(--line); }
+
+.field {
+  background: var(--field);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  transition: border-color 0.2s ease;
+}
+.field::placeholder { color: var(--ink-3); }
+.field:focus { border-color: var(--acc); }
+
+/* accent-tinted chip (uses current module accent) */
+.acc-chip {
+  color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 22%, transparent);
+}
+
+.backdrop {
+  background: rgba(2, 4, 10, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fade 0.25s ease both;
+}
+
+/* ---------- Dock ---------- */
+.dock {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--line);
+  box-shadow: var(--panel-shadow);
+}
+.dock-btn { position: relative; transition: color 0.25s ease, transform 0.15s ease; }
+.dock-btn:active { transform: scale(0.92); }
+.dock-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--acc);
+  box-shadow: 0 0 6px var(--acc);
+}
+.fab {
+  background: linear-gradient(140deg, var(--acc-food), color-mix(in srgb, var(--acc-food) 60%, #0a3));
+  color: #04130C;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc-food) 45%, transparent), 0 8px 24px color-mix(in srgb, var(--acc-food) 38%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.25s ease;
+}
+.fab:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc-food) 60%, transparent), 0 10px 30px color-mix(in srgb, var(--acc-food) 50%, transparent); }
+.fab:active { transform: scale(0.92); }
+
+/* ---------- Ambient: environment re-tints per active module ---------- */
+@property --ambient {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #7C9EFF;
+}
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  transition: --ambient 0.7s ease;
+  background:
+    radial-gradient(55% 36% at 50% -6%, color-mix(in srgb, var(--ambient) 20%, transparent), transparent 72%),
+    radial-gradient(40% 28% at 88% 104%, color-mix(in srgb, var(--ambient) 10%, transparent), transparent 70%);
+}
+
+/* ---------- Island header: morphs to announce OS events ---------- */
+.island { position: relative; transition: border-color 0.35s ease, box-shadow 0.35s ease; }
+.island-idle { transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.island-toast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(7px) scale(0.96);
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.island-live { border-color: color-mix(in srgb, var(--toast-acc, var(--acc-food)) 45%, var(--line)); box-shadow: 0 0 24px color-mix(in srgb, var(--toast-acc, var(--acc-food)) 25%, transparent), var(--panel-shadow); }
+.island-live .island-idle { opacity: 0; transform: scale(0.94) translateY(-5px); }
+.island-live .island-toast { opacity: 1; transform: none; }
+
+/* ---------- Module carousel ---------- */
+.carousel {
+  display: flex;
+  height: 100%;
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.carousel.dragging { transition: none; }
+.screen-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+.screen-scroll::-webkit-scrollbar { display: none; }
+
+/* ---------- Odometer digits ---------- */
+.odo { display: inline-flex; line-height: 1; }
+.odo-d { display: inline-block; height: 1em; overflow: hidden; }
+.odo-reel { display: flex; flex-direction: column; transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.odo-n { display: block; height: 1em; line-height: 1; }
+
+/* ---------- Dock with sliding indicator ---------- */
+.dock-track { position: relative; }
+.dock-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 25%, transparent);
+  transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1), background 0.3s ease, border-color 0.3s ease;
+  pointer-events: none;
+}
+
+/* ---------- History bars ---------- */
+.hbar { transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease; border-radius: 3px 3px 2px 2px; }
+
+/* ---------- PR flash (new peak weight) ---------- */
+@keyframes prFlash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 65%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+.pr-flash { animation: prFlash 1.1s ease-out; }
+
+/* ---------- Motion ---------- */
+.gauge-val { transition: stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+.seg-cell { background: var(--track); transition: background 0.4s ease, box-shadow 0.4s ease; }
+
+.boot > * { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.boot > *:nth-child(1) { animation-delay: 0ms; }
+.boot > *:nth-child(2) { animation-delay: 50ms; }
+.boot > *:nth-child(3) { animation-delay: 100ms; }
+.boot > *:nth-child(4) { animation-delay: 150ms; }
+.boot > *:nth-child(5) { animation-delay: 200ms; }
+.boot > *:nth-child(6) { animation-delay: 250ms; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fade { from { opacity: 0; } }
+.sheet-in { animation: sheet 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes sheet { from { transform: translate(-50%, 12%); opacity: 0.4; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+.press { transition: transform 0.15s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease; }
+.press:active { transform: scale(0.96); }
+@media (hover: hover) {
+  .press.chip:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+  .boot > *, .sheet-in, .backdrop { animation: none; }
+  .gauge-val, .seg-cell, .press, .tile, .panel, .odo-reel, .carousel, .dock-pill, .hbar, .ambient { transition: none; }
+}
