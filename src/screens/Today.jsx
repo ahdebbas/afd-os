@@ -1,18 +1,22 @@
 import { ArrowRight, Flame, Beef, Wheat, Droplets, TrendingUp, TrendingDown } from 'lucide-react'
 import { useFood } from '../store'
-import { FITNESS, FINANCE, TARGETS, usd } from '../data'
+import { FITNESS, FINANCE, TARGETS, usd, sarwaTotal, ETF_SYMBOL } from '../data'
 import { Gauge, SegBar, Label, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
+import { usePersistentState } from '../hooks'
 
 export default function Today({ goTo, openLog }) {
   const { totals, remaining, proteinLeft } = useFood()
   const q = useQuotes()
 
-  const { bodyComp, goal } = FITNESS
-  const toGoal = (bodyComp.fatPct - goal.fatPct).toFixed(1)
+  const { goal } = FITNESS
+  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const latestBody = [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)).at(-1) || { fatPct: 0 }
+  const toGoal = (latestBody.fatPct - goal.fatPct).toFixed(1)
   const msftPrice = q?.MSFT?.price ?? FINANCE.msft.price
   const msftChange = q?.MSFT ? q.MSFT.changePct : FINANCE.msft.dayChangePct
-  const total = FINANCE.msft.shares * msftPrice + FINANCE.sarwa.total
+  const etfLive = FINANCE.sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
+  const total = FINANCE.msft.shares * msftPrice + (etfLive ? sarwaTotal(FINANCE.sarwa, q) : FINANCE.sarwa.total) + FINANCE.property.value
   const msftUp = msftChange >= 0
 
   const macros = [
@@ -64,7 +68,7 @@ export default function Today({ goTo, openLog }) {
       <div className="grid grid-cols-2 gap-3.5">
         <button onClick={() => goTo('fitness')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fit)' }}>
           <Label className="mb-4">Body</Label>
-          <p className="display text-[40px] leading-none font-bold t1">{bodyComp.fatPct}<span className="text-[22px] t3">%</span></p>
+          <p className="display text-[40px] leading-none font-bold t1">{latestBody.fatPct}<span className="text-[22px] t3">%</span></p>
           <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-2">body fat</p>
           <p className="mono text-[10px] mt-3 acc flex items-center gap-1.5">
             <Flame size={11} strokeWidth={2.5} /> {toGoal}% to {goal.fatPct}% goal

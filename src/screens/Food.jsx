@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
-import { Gauge, SegBar, Label, Odometer } from '../ui'
+import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -86,9 +86,45 @@ function History({ logs }) {
   )
 }
 
+const todayKey = () => new Date().toISOString().slice(0, 10)
+
 export default function Food() {
-  const { presets, entries, totals, remaining, logs, addEntry, removeEntry, addPreset, removePreset } = useFood()
+  const { presets, logs, addEntry, removeEntry, addPreset, removePreset } = useFood()
+  const [date, setDate] = useState(todayKey())
+  const isToday = date === todayKey()
   const [showForm, setShowForm] = useState(false)
+
+  // Selected-day view, derived from the log. Editing (add/remove) only applies to today.
+  const entries = logs[date] || []
+  const totals = entries.reduce(
+    (a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + (e.protein || 0), carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0) }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+  const remaining = TARGETS.kcal - totals.kcal
+
+  const dayStatus = key => {
+    if (key === todayKey()) return 'today'
+    const day = logs[key]
+    if (!day || day.length === 0) return 'empty'
+    const k = day.reduce((a, e) => a + e.kcal, 0)
+    return k > 0 && k <= TARGETS.kcal ? 'win' : 'miss'
+  }
+
+  const dayLabel = isToday ? 'Today' : (() => {
+    const d = new Date(date + 'T00:00:00')
+    return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.getDate()}`
+  })()
+
+  // Comparative one-liner under the gauge: real number + the next action.
+  const insight = (() => {
+    if (totals.kcal === 0) return isToday ? 'Nothing logged yet — tap a preset to start' : 'No food logged this day'
+    if (remaining < 0) return `${Math.abs(remaining).toLocaleString()} kcal over target`
+    const pLeft = Math.max(0, Math.round(TARGETS.protein - totals.protein))
+    return pLeft > 0
+      ? `${remaining.toLocaleString()} kcal left · ${pLeft}g protein to go`
+      : `${remaining.toLocaleString()} kcal left · protein hit ✓`
+  })()
+
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState({ name: '', kcal: '', protein: '', carbs: '', fat: '', save: false })
 
@@ -115,10 +151,15 @@ export default function Food() {
 
   return (
     <div className="space-y-4" style={{ '--acc': 'var(--acc-food)' }}>
+      {/* Day selector */}
+      <section className="panel p-4">
+        <DayStrip value={date} onChange={setDate} status={dayStatus} />
+      </section>
+
       {/* Fuel gauge */}
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-2">
-          <Label>Fuel module</Label>
+          <Label>Fuel · {dayLabel}</Label>
           <span className="mono text-[10px] t3">{totals.kcal.toLocaleString()} / {TARGETS.kcal.toLocaleString()} kcal</span>
         </div>
         <div className="flex flex-col items-center">
@@ -127,6 +168,7 @@ export default function Food() {
             <Odometer value={Math.abs(remaining)} className={`display text-[58px] font-bold ${remaining < 0 ? 'down' : 't1'}`} />
             <span className="mono text-[10px] tracking-[0.22em] uppercase t3 mt-2">{remaining >= 0 ? 'kcal left' : 'kcal over'}</span>
           </Gauge>
+          <p className="mono text-[10px] t2 mt-3 text-center leading-relaxed">{insight}</p>
         </div>
         <div className="mt-2 space-y-4">
           {macros.map(({ Icon, label, val, target, color }) => (
@@ -144,7 +186,8 @@ export default function Food() {
         </div>
       </section>
 
-      {/* Quick add */}
+      {/* Quick add — only today is editable */}
+      {isToday && (
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-4">
           <Label>Presets · {presets.length}</Label>
@@ -204,12 +247,13 @@ export default function Food() {
           ))}
         </div>
       </section>
+      )}
 
       {/* Day log — timeline */}
       <section className="panel p-6">
-        <Label className="mb-4">Log · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Label>
+        <Label className="mb-4">Log · {dayLabel} · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Label>
         {entries.length === 0 ? (
-          <p className="text-sm t3 text-center py-5">Nothing logged yet — tap a preset or the + button</p>
+          <p className="text-sm t3 text-center py-5">{isToday ? 'Nothing logged yet — tap a preset or the + button' : 'No food logged this day'}</p>
         ) : (
           <div className="relative pl-4">
             <span className="absolute left-0 top-2 bottom-2 w-px" style={{ background: 'var(--line)' }} aria-hidden="true" />
@@ -225,10 +269,12 @@ export default function Food() {
                 </div>
                 <div className="flex items-center gap-2.5 flex-shrink-0">
                   <span className="mono text-[12px] font-semibold t1">{e.kcal}</span>
-                  <button onClick={() => removeEntry(e.uid)} aria-label={`Remove ${e.name}`}
-                    className="press t3 p-1.5 rounded-lg chip">
-                    <X size={13} strokeWidth={2.5} />
-                  </button>
+                  {isToday && (
+                    <button onClick={() => removeEntry(e.uid)} aria-label={`Remove ${e.name}`}
+                      className="press t3 p-1.5 rounded-lg chip">
+                      <X size={13} strokeWidth={2.5} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

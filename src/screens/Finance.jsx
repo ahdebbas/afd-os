@@ -1,10 +1,11 @@
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
-import { FINANCE, usd } from '../data'
+import { useState } from 'react'
+import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check } from 'lucide-react'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, sarwaTotal, usd } from '../data'
 import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
+import { usePersistentState } from '../hooks'
 
-const COLORS = ['var(--acc-food)', 'var(--acc-fin)', '#A78BFA', '#FBBF24']
-const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L' }
+const COLORS = ['var(--acc-food)', 'var(--acc-fin)', '#A78BFA', '#22D3EE', '#FBBF24', '#94A3B8']
 
 const SYNC = {
   loading: { text: 'Syncing…', color: 'var(--ink-3)' },
@@ -15,6 +16,8 @@ const SYNC = {
 }
 
 export default function Finance() {
+  const [FINANCE, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const [editMode, setEditMode] = useState(false)
   const { msft, sarwa } = FINANCE
   const q = useQuotes()
   const { status, syncedAt, refresh } = useQuotesMeta()
@@ -24,7 +27,10 @@ export default function Finance() {
   const dayChangePct = live ? live.changePct : msft.dayChangePct
   const priceDate = live ? 'live · today' : `as of ${msft.priceDate}`
   const msftValue = msft.shares * price
-  const total = msftValue + sarwa.total
+  // Any live ETF quote drives the Sarwa valuation; otherwise the recorded total.
+  const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
+  const sarwaValue = etfLive ? sarwaTotal(sarwa, q) : sarwa.total
+  const total = msftValue + sarwaValue + FINANCE.property.value
   const rangePct = Math.max(0, Math.min(100, (price - msft.low52) / (msft.high52 - msft.low52) * 100)).toFixed(1)
   const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
   const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
@@ -42,9 +48,10 @@ export default function Finance() {
           </span>
         </div>
         <Odometer value={total} format={usd} className="display text-[58px] font-bold tracking-tight t1" />
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">MSFT {usd(msftValue)}</span>
-          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA {usd(sarwa.total)}</span>
+          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA {usd(sarwaValue)}</span>
+          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">PROPERTY {usd(FINANCE.property.value)}</span>
         </div>
         <button onClick={refresh} disabled={status === 'loading'}
           className="press mt-3 inline-flex items-center gap-2 chip rounded-lg px-3 py-1.5 disabled:opacity-60"
@@ -61,12 +68,25 @@ export default function Finance() {
       {/* MSFT */}
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-3">
-          <Label>MSFT · {msft.shares} sh</Label>
-          <span className={`mono text-[10px] ${live ? 'acc' : 't3'}`}>{priceDate}</span>
+          <div className="flex items-center gap-2">
+            <Label>MSFT</Label>
+            {editMode ? (
+              <input value={msft.shares} onChange={e => setFinance({...FINANCE, msft: {...msft, shares: +e.target.value}})}
+                type="number" className="field w-16 px-1.5 py-0.5 rounded text-sm text-center" />
+            ) : (
+              <span className="mono text-[10px] t3 tracking-[0.1em] uppercase">· {msft.shares} sh</span>
+            )}
+          </div>
+          <button onClick={() => setEditMode(!editMode)} className="press chip rounded-md w-6 h-6 flex items-center justify-center">
+            {editMode ? <Check size={12} strokeWidth={2.5}/> : <Settings2 size={12} />}
+          </button>
         </div>
         <div className="flex items-baseline justify-between">
           <p className="display text-[36px] leading-none font-bold t1">{usd(msftValue)}</p>
-          <p className="mono text-[13px] t2">${price.toFixed(2)}</p>
+          <div className="text-right">
+            <p className="mono text-[13px] t2">${price.toFixed(2)}</p>
+            <p className={`mono text-[10px] ${live ? 'acc' : 't3'}`}>{priceDate}</p>
+          </div>
         </div>
 
         {/* 52-week instrument rail */}
@@ -92,24 +112,27 @@ export default function Finance() {
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-3">
           <Label>Sarwa · halal</Label>
-          <span className="mono text-[10px] t3">as of {sarwa.lastUpdated}</span>
+          <span className={`mono text-[10px] ${etfLive ? 'acc' : 't3'}`}>{etfLive ? 'live · today' : `as of ${sarwa.lastUpdated}`}</span>
         </div>
-        <p className="display text-[36px] leading-none font-bold t1">{usd(sarwa.total)}</p>
+        <p className="display text-[36px] leading-none font-bold t1">{usd(sarwaValue)}</p>
 
         <div className="mt-4 flex h-[6px] rounded-full overflow-hidden gap-[3px]" aria-hidden="true">
           {sarwa.holdings.map((h, i) => (
-            <div key={h.ticker} className="rounded-[2px]" style={{ width: `${h.alloc}%`, background: COLORS[i], boxShadow: `0 0 5px ${COLORS[i]}` }} />
+            <div key={h.ticker} className="rounded-[2px]" style={{ width: `${etfLive ? (holdingValue(h, q) / sarwaValue) * 100 : h.alloc}%`, background: COLORS[i], boxShadow: `0 0 5px ${COLORS[i]}` }} />
           ))}
         </div>
 
         <div className="mt-3">
-          {sarwa.holdings.map((h, i) => (
+          {sarwa.holdings.map((h, i) => {
+            const hv = holdingValue(h, q)
+            const alloc = etfLive ? (hv / sarwaValue) * 100 : h.alloc
+            return (
             <div key={h.ticker} className={`flex items-center justify-between py-3.5 ${i > 0 ? 'hairline-t' : ''}`}>
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-[2px] flex-shrink-0" style={{ background: COLORS[i] }} />
                 <div>
                   <span className="mono text-[12px] font-semibold t1">{h.ticker}</span>
-                  <span className="mono text-[10px] t3 ml-2">{h.alloc}%</span>
+                  <span className="mono text-[10px] t3 ml-2">{alloc.toFixed(1)}%</span>
                   {q?.[ETF_SYMBOL[h.ticker]] && (
                     <span className={`mono text-[10px] ml-2 ${q[ETF_SYMBOL[h.ticker]].changePct >= 0 ? 'up' : 'down'}`}>
                       ${q[ETF_SYMBOL[h.ticker]].price.toFixed(2)} {q[ETF_SYMBOL[h.ticker]].changePct >= 0 ? '+' : ''}{q[ETF_SYMBOL[h.ticker]].changePct.toFixed(1)}%
@@ -119,14 +142,28 @@ export default function Finance() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold t1">{usd(h.value)}</div>
-                <div className={`mono text-[10px] inline-flex items-center gap-1 ${h.perf >= 0 ? 'up' : 'down'}`}>
-                  {h.perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
-                  {h.perf >= 0 ? '+' : ''}{h.perf}%
-                </div>
+                <div className="text-sm font-bold t1">{usd(hv)}</div>
+                {h.units != null && (
+                  <div className={`mono text-[10px] inline-flex items-center gap-1 ${h.perf >= 0 ? 'up' : 'down'}`}>
+                    {h.perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
+                    {h.perf >= 0 ? '+' : ''}{h.perf}%
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )})}
+        </div>
+      </section>
+
+      {/* Real estate */}
+      <section className="panel p-6">
+        <div className="flex items-center justify-between mb-3">
+          <Label>Real estate</Label>
+          <span className="mono text-[10px] t3">{FINANCE.property.location}</span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <p className="display text-[36px] leading-none font-bold t1">{usd(FINANCE.property.value)}</p>
+          <p className="mono text-[12px] t2">{FINANCE.property.name}</p>
         </div>
       </section>
     </div>

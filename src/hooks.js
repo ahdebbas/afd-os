@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { queueCloudState } from './cloudSync'
 
 const reducedMotion = () =>
   typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -24,6 +25,7 @@ export function usePersistentState(key, fallback, validate) {
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(state))
+      queueCloudState(key, state)
     } catch { /* storage full or unavailable — keep in-memory value */ }
   }, [key, state])
 

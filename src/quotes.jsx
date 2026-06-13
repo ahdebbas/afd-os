@@ -6,7 +6,7 @@ import { useOs } from './os'
 //  - production:  proxied through Netlify (see netlify.toml `/yq/*` redirect)
 // Cached in localStorage; refetched at most once per calendar day, or on manual refresh.
 
-const SYMBOLS = ['MSFT', 'ISDW.L', 'ISDU.L', 'ISDE.L', 'IGLN.L']
+const SYMBOLS = ['MSFT', 'ISDW.L', 'ISDU.L', 'ISDE.L', 'IGLN.L', 'QQQ']
 const CACHE_KEY = 'afd-quotes'
 const todayKey = () => new Date().toISOString().slice(0, 10)
 

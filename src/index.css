@@ -14,7 +14,7 @@
   --surface-2: #F5F3EC;
   --ink: #14161C;
   --ink-2: rgba(20, 22, 28, 0.66);
-  --ink-3: rgba(20, 22, 28, 0.45);
+  --ink-3: rgba(20, 22, 28, 0.58);
   --line: rgba(20, 22, 28, 0.10);
   --track: rgba(20, 22, 28, 0.12);
   --chip: rgba(20, 22, 28, 0.05);
@@ -37,7 +37,7 @@ html.dark {
   --surface-2: #0E1424;
   --ink: #EDF1F7;
   --ink-2: rgba(237, 241, 247, 0.64);
-  --ink-3: rgba(237, 241, 247, 0.40);
+  --ink-3: rgba(237, 241, 247, 0.52);
   --line: rgba(237, 241, 247, 0.08);
   --track: rgba(237, 241, 247, 0.10);
   --chip: rgba(237, 241, 247, 0.05);
@@ -90,11 +90,11 @@ body::after {
   z-index: -3;
   pointer-events: none;
   opacity: var(--glow-opacity);
+  /* Use larger radial gradients instead of expensive blur filters */
   background:
-    radial-gradient(34% 26% at 14% 0%, rgba(96, 165, 250, 0.16), transparent 70%),
-    radial-gradient(30% 24% at 88% 12%, rgba(52, 211, 153, 0.10), transparent 70%),
-    radial-gradient(30% 26% at 80% 96%, rgba(34, 211, 238, 0.08), transparent 70%);
-  filter: blur(70px);
+    radial-gradient(ellipse 60% 60% at 14% 0%, rgba(96, 165, 250, 0.12), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 88% 12%, rgba(52, 211, 153, 0.08), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 80% 96%, rgba(34, 211, 238, 0.06), transparent 70%);
   animation: drift 36s ease-in-out infinite alternate;
   transition: opacity 0.4s ease;
 }
@@ -281,6 +281,9 @@ body::after {
 .sheet-in { animation: sheet 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes sheet { from { transform: translate(-50%, 12%); opacity: 0.4; } to { transform: translate(-50%, 0); opacity: 1; } }
 
+.nl-busy { animation: nlpulse 1.1s ease-in-out infinite; }
+@keyframes nlpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
 .press { transition: transform 0.15s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease; }
 .press:active { transform: scale(0.96); }
 @media (hover: hover) {
@@ -291,4 +294,5 @@ body::after {
   body::after { animation: none; }
   .boot > *, .sheet-in, .backdrop { animation: none; }
   .gauge-val, .seg-cell, .press, .tile, .panel, .odo-reel, .carousel, .dock-pill, .hbar, .ambient { transition: none; }
+  .nl-busy { animation: none; }
 }

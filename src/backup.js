@@ -1,7 +1,17 @@
 // Local-first backup: export/import all user-generated data as a JSON file.
 // Quotes are a derived cache and are intentionally excluded.
 
-const BACKUP_KEYS = ['afd-presets', 'afd-food-log', 'afd-sessions', 'afd-weights', 'afd-fit-day', 'afd-theme-dark']
+const BACKUP_KEYS = [
+  'afd-presets',
+  'afd-food-log',
+  'afd-sessions',
+  'afd-weights',
+  'afd-inbody',
+  'afd-program',
+  'afd-finance',
+  'afd-fit-day',
+  'afd-theme-dark',
+]
 
 export function exportData() {
   const data = {}

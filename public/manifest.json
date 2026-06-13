@@ -1,0 +1,15 @@
+{
+  "name": "AFD OS",
+  "short_name": "AFD OS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04060C",
+  "theme_color": "#04060C",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

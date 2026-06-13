@@ -84,6 +84,117 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
   )
 }
 
+/**
+ * Week day-selector strip. Raised flip-card on the active day, a status tick above each.
+ * `status(dateKey)` → 'win' (goal met, accent tick) | 'today' (amber tick) | 'miss' | 'empty'.
+ * Future days are dimmed and non-interactive.
+ */
+export function DayStrip({ value, onChange, status = () => 'empty' }) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    const dow = (d.getDay() + 6) % 7 // 0 = Monday
+    d.setDate(d.getDate() - dow + i)
+    const key = d.toISOString().slice(0, 10)
+    return {
+      key,
+      wd: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+      num: d.getDate(),
+      isToday: key === todayKey,
+      isFuture: key > todayKey,
+    }
+  })
+
+  return (
+    <div className="flex justify-between gap-1.5" role="group" aria-label="Select day">
+      {days.map(d => {
+        const st = status(d.key)
+        const selected = d.key === value
+        const tick = st === 'win' || st === 'today' ? 'var(--acc)' : 'transparent'
+        return (
+          <button key={d.key} onClick={() => !d.isFuture && onChange(d.key)}
+            disabled={d.isFuture} aria-pressed={selected} aria-label={`${d.wd} ${d.num}`}
+            className={`press relative flex-1 flex flex-col items-center rounded-2xl py-2.5 border border-transparent ${selected ? 'panel-2' : ''} ${d.isFuture ? 'opacity-35' : ''}`}
+            style={selected ? { borderColor: 'var(--line)' } : undefined}>
+            <span className="h-[3px] w-4 rounded-full mb-2"
+              style={{ background: tick, boxShadow: st === 'win' || st === 'today' ? '0 0 6px var(--acc)' : 'none' }} aria-hidden="true" />
+            <span className={`mono text-[9px] tracking-[0.1em] ${selected ? 't2' : 't3'}`}>{d.wd}</span>
+            <span className={`display text-[20px] font-bold leading-none mt-1 ${selected ? 't1' : d.isToday ? 'acc' : 't2'}`}>{d.num}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Smooth trend line for a single metric over time. InBody-style: gridline value labels,
+ * glowing points, emphasized latest point with a dashed marker. `data` = [{ date, value }].
+ */
+export function TrendChart({ data, color = 'var(--acc)', unit = '' }) {
+  const W = 320, H = 180
+  const padL = 6, padR = 38, padT = 14, padB = 22
+  const n = data.length
+  const xAt = i => padL + (W - padL - padR) * (n <= 1 ? 0.5 : i / (n - 1))
+
+  const vals = data.map(d => d.value)
+  let min = Math.min(...vals), max = Math.max(...vals)
+  if (min === max) { min -= 1; max += 1 }
+  const pad = (max - min) * 0.18
+  min -= pad; max += pad
+  const yAt = v => padT + (H - padT - padB) * (1 - (v - min) / (max - min))
+
+  const pts = data.map((d, i) => [xAt(i), yAt(d.value)])
+  // Catmull-Rom → cubic bézier for a smooth curve through every point.
+  const path = pts.length < 2
+    ? (pts.length ? `M ${pts[0][0]} ${pts[0][1]}` : '')
+    : pts.reduce((d, p, i) => {
+        if (i === 0) return `M ${p[0].toFixed(1)} ${p[1].toFixed(1)}`
+        const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p2 = p, p3 = pts[i + 1] || p
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6
+        return `${d} C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`
+      }, '')
+
+  const lines = 4
+  const grid = Array.from({ length: lines + 1 }, (_, i) => min + (max - min) * (i / lines))
+  // Enough precision that adjacent gridline labels stay distinct.
+  const step = (max - min) / lines
+  const decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : 2
+  const fmtDate = s => { const d = new Date(s + 'T00:00:00'); return `${d.getMonth() + 1}.${d.getDate()}` }
+  const last = pts[pts.length - 1]
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
+      aria-label={`Trend chart, latest ${data[n - 1]?.value}${unit}`} className="block">
+      {grid.map((v, i) => {
+        const y = yAt(v)
+        return (
+          <g key={i}>
+            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth="1" />
+            <text x={W - padR + 5} y={y + 3} fill="var(--ink-3)" className="mono" fontSize="8.5">{v.toFixed(decimals)}</text>
+          </g>
+        )
+      })}
+
+      {last && <line x1={last[0]} y1={padT} x2={last[0]} y2={H - padB} stroke="var(--ink-3)" strokeWidth="1" strokeDasharray="3 3" />}
+
+      <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+
+      {pts.map((p, i) => {
+        const isLast = i === pts.length - 1
+        return <circle key={i} cx={p[0]} cy={p[1]} r={isLast ? 4 : 2.6} fill={color}
+          stroke="var(--surface)" strokeWidth={isLast ? 2 : 1}
+          style={isLast ? { filter: `drop-shadow(0 0 5px ${color})` } : undefined} />
+      })}
+
+      {n > 0 && <text x={padL} y={H - 6} fill="var(--ink-3)" className="mono" fontSize="8.5">{fmtDate(data[0].date)}</text>}
+      {n > 1 && <text x={xAt(n - 1)} y={H - 6} fill="var(--ink-3)" className="mono" fontSize="8.5" textAnchor="end">{fmtDate(data[n - 1].date)}</text>}
+    </svg>
+  )
+}
+
 /** Monospace section label with leading tick. */
 export function Label({ children, className = '' }) {
   return (
