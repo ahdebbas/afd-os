@@ -303,7 +303,7 @@ function Shell() {
       <div className="ambient" style={{ '--ambient': TABS[idx].ambient }} aria-hidden="true" />
 
       {/* Island header */}
-      <header className="flex-shrink-0 z-50 px-5 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)' }}>
+      <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
         <Island dark={dark} onTheme={() => setDark(!dark)} onSettings={() => setSettingsOpen(true)} />
       </header>
 
@@ -326,7 +326,7 @@ function Shell() {
       </div>
 
       {/* Dock + FAB */}
-      <nav className={`fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }} aria-label="Modules">
+      <nav className={`app-dock fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
         <div className="dock dock-track rounded-[24px] p-1 flex" style={{ '--acc': TABS[idx].acc }}>
           <span className="dock-pill" style={{ width: DOCK_ITEM_WIDTH, transform: `translateX(${idx * DOCK_ITEM_WIDTH}px)` }} aria-hidden="true" />
           {TABS.map(t => {

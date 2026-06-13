@@ -181,6 +181,14 @@ body::after {
 .fab:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc-food) 60%, transparent), 0 10px 30px color-mix(in srgb, var(--acc-food) 50%, transparent); }
 .fab:active { transform: scale(0.92); }
 
+.app-header { padding-top: 18px; }
+.app-dock { bottom: 20px; }
+
+@media (max-width: 640px) {
+  .app-header { padding-top: calc(max(env(safe-area-inset-top, 0px), 46px) + 10px); }
+  .app-dock { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+}
+
 /* ---------- Ambient: environment re-tints per active module ---------- */
 @property --ambient {
   syntax: '<color>';
