@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo } from 'react'
 import { TARGETS } from './data'
 import { useOs } from './os'
 import { usePersistentState } from './hooks'
+import { todayKey } from './dates'
 
 const DEFAULT_PRESETS = [
   { id: 'p1', name: 'Beef-XP Isolate (30g)', kcal: 114, protein: 28, carbs: 0, fat: 0, emoji: '🥤' },
@@ -14,8 +15,6 @@ const DEFAULT_PRESETS = [
   { id: 'p8', name: 'Malek Tawook — Chicken Meal', kcal: 725, protein: 82, carbs: 42, fat: 24, emoji: '🍗' },
   { id: 'p9', name: 'Cottage Cheese + Milk Bread', kcal: 254, protein: 29, carbs: 27, fat: 3, emoji: '🧀' },
 ]
-
-const todayKey = () => new Date().toISOString().slice(0, 10)
 
 const FoodCtx = createContext(null)
 

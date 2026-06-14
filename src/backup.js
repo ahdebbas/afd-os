@@ -1,13 +1,15 @@
 // Local-first backup: export/import all user-generated data as a JSON file.
 // Quotes are a derived cache and are intentionally excluded.
 
+import { todayKey } from './dates'
+
 const BACKUP_KEYS = [
   'afd-presets',
   'afd-food-log',
   'afd-sessions',
   'afd-weights',
   'afd-inbody',
-  'afd-program',
+  'afd-program-v2',
   'afd-finance',
   'afd-fit-day',
   'afd-theme-dark',
@@ -25,7 +27,7 @@ export function exportData() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `afd-os-backup-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = `afd-os-backup-${todayKey()}.json`
   document.body.appendChild(a)
   a.click()
   a.remove()

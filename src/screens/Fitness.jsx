@@ -4,8 +4,7 @@ import { FITNESS, DEFAULT_WEIGHTS } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
-
-const todayKey = () => new Date().toISOString().slice(0, 10)
+import { dateKey, todayKey } from '../dates'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -216,7 +215,7 @@ export default function Fitness() {
       const d = new Date()
       const dow = (d.getDay() + 6) % 7
       d.setDate(d.getDate() - dow + i)
-      if (sessions.find(s => s.date === d.toISOString().slice(0, 10))) c++
+      if (sessions.find(s => s.date === dateKey(d))) c++
     }
     return c
   })()

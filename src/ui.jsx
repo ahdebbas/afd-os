@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
+import { dateKey } from './dates'
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
@@ -90,12 +91,12 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
  * Future days are dimmed and non-interactive.
  */
 export function DayStrip({ value, onChange, status = () => 'empty' }) {
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = dateKey()
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     const dow = (d.getDay() + 6) % 7 // 0 = Monday
     d.setDate(d.getDate() - dow + i)
-    const key = d.toISOString().slice(0, 10)
+    const key = dateKey(d)
     return {
       key,
       wd: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),

@@ -3,6 +3,7 @@ import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Whea
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
+import { dateKey, todayKey } from '../dates'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -22,7 +23,7 @@ function History({ logs }) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().slice(0, 10)
+    const key = dateKey(d)
     const day = (logs[key] || []).reduce(
       (a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + (e.protein || 0), carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0) }),
       { kcal: 0, protein: 0, carbs: 0, fat: 0 }
@@ -86,7 +87,6 @@ function History({ logs }) {
   )
 }
 
-const todayKey = () => new Date().toISOString().slice(0, 10)
 
 export default function Food() {
   const { presets, logs, addEntry, removeEntry, addPreset, removePreset } = useFood()

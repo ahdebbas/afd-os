@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useOs } from './os'
+import { todayKey } from './dates'
 
 // Hourly market sync via Yahoo Finance.
 //  - dev/preview: proxied through Vite (see vite.config.js)
@@ -9,7 +10,6 @@ import { useOs } from './os'
 const SYMBOLS = ['MSFT', 'ISDW.L', 'ISDU.L', 'ISDE.L', 'IGLN.L', 'QQQ']
 const CACHE_KEY = 'afd-quotes'
 const REFRESH_MS = 60 * 60 * 1000 // 1 hour
-const todayKey = () => new Date().toISOString().slice(0, 10)
 
 const loadCache = () => {
   try { return JSON.parse(localStorage.getItem(CACHE_KEY)) } catch { return null }
