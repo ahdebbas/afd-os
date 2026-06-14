@@ -298,10 +298,10 @@ export default function Fitness() {
           </div>
         </div>
         {program[day].exercises.map((e, i) => (
-          <div key={e.name} className={`flex justify-between items-center gap-2 py-2.5 ${i > 0 ? 'hairline-t' : ''}`}>
-            <span className="text-sm t1 font-medium flex items-center gap-2.5 min-w-0 flex-1 pr-1">
-              <span className="mono text-[9px] t3 w-3 flex-shrink-0">{String(i + 1).padStart(2, '0')}</span>
-              <span className="truncate">{e.name}</span>
+          <div key={e.name} className={`flex justify-between items-start gap-2 py-2.5 ${i > 0 ? 'hairline-t' : ''}`}>
+            <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
+              <span className="mono text-[9px] t3 w-3 flex-shrink-0 mt-1">{String(i + 1).padStart(2, '0')}</span>
+              <span className="leading-snug">{e.name}</span>
             </span>
             <div className="flex items-center justify-end gap-2 flex-shrink-0">
               <SetTracker spec={e.sets} onTick={() => os?.startTimer(90)} />
