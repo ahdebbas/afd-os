@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus } from 'lucide-react'
-import { FITNESS, DEFAULT_WEIGHTS } from '../data'
+import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
@@ -102,7 +102,7 @@ export default function Fitness() {
   const today = todayKey()
   const [selDate, setSelDate] = useState(today)
   const isToday = selDate === today
-  const idxOf = s => (Number.isInteger(s.idx) ? s.idx : program.findIndex(p => p.name === s.name))
+  const idxOf = s => sessionIdx(s, program)
 
   // Most-recent-first, so the rotation suggestion follows the last workout actually done.
   const ordered = useMemo(
@@ -113,7 +113,7 @@ export default function Fitness() {
   const done = !!selSession
 
   const lastLogged = ordered.find(s => idxOf(s) >= 0)
-  const suggested = lastLogged ? (idxOf(lastLogged) + 1) % program.length : 0
+  const suggested = nextWorkoutIdx(program, sessions)
   const activeIdx = selSession ? Math.max(0, idxOf(selSession)) : suggested
 
   // Most recent logged weight per exercise across all sessions (oldest→newest so newer wins).

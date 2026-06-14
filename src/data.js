@@ -101,6 +101,23 @@ export const holdingValue = (h, q) => {
   return quote && h.units ? h.units * quote.price : h.value
 }
 
+// Rotation index of a logged session within the program (stored idx, or name match).
+export const sessionIdx = (s, program) =>
+  Number.isInteger(s.idx) ? s.idx : program.findIndex(p => p.name === s.name)
+
+// Suggested next workout: the day after the most recent session in the rotation.
+// If it's been more than `gapDays` since the last session, restart at day 1.
+export const RESTART_GAP_DAYS = 7
+export const nextWorkoutIdx = (program, sessions, gapDays = RESTART_GAP_DAYS) => {
+  if (!program?.length) return 0
+  const ordered = [...sessions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  const last = ordered.find(s => sessionIdx(s, program) >= 0)
+  if (!last) return 0
+  const days = Math.floor((Date.now() - new Date(last.date + 'T00:00:00').getTime()) / 86400000)
+  if (days > gapDays) return 0
+  return (sessionIdx(last, program) + 1) % program.length
+}
+
 // Total return on a holding, derived live from current value vs. cost basis.
 // Falls back to the recorded perf when there's no cost basis (e.g. cash).
 export const holdingPerf = (h, q) =>

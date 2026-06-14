@@ -1,6 +1,6 @@
-import { ArrowRight, Flame, Beef, Wheat, Droplets, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowRight, Flame, Beef, Wheat, Droplets, TrendingUp, TrendingDown, Dumbbell } from 'lucide-react'
 import { useFood } from '../store'
-import { FITNESS, FINANCE, TARGETS, usd, sarwaTotal, ETF_SYMBOL } from '../data'
+import { FITNESS, FINANCE, TARGETS, usd, sarwaTotal, ETF_SYMBOL, nextWorkoutIdx } from '../data'
 import { Gauge, SegBar, Label, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
 import { usePersistentState } from '../hooks'
@@ -12,6 +12,11 @@ export default function Today({ goTo, openLog }) {
   const { goal } = FITNESS
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const latestBody = [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)).at(-1) || { fatPct: 0 }
+
+  // Next workout in the rotation, derived from the logged sessions (same source as Fitness).
+  const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
+  const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
+  const nextWorkout = program[nextWorkoutIdx(program, sessions)]?.name
   const toGoal = (latestBody.fatPct - goal.fatPct).toFixed(1)
   const msftPrice = q?.MSFT?.price ?? FINANCE.msft.price
   const msftChange = q?.MSFT ? q.MSFT.changePct : FINANCE.msft.dayChangePct
@@ -73,6 +78,11 @@ export default function Today({ goTo, openLog }) {
           <p className="mono text-[10px] mt-3 acc flex items-center gap-1.5">
             <Flame size={11} strokeWidth={2.5} /> {toGoal}% to {goal.fatPct}% goal
           </p>
+          {nextWorkout && (
+            <p className="mono text-[10px] mt-2 t2 flex items-center gap-1.5">
+              <Dumbbell size={11} strokeWidth={2.5} className="t3" /> next · {nextWorkout}
+            </p>
+          )}
           <span className="mono text-[9px] tracking-[0.16em] uppercase t3 mt-4 flex items-center gap-1">open <ArrowRight size={10} /></span>
         </button>
 
