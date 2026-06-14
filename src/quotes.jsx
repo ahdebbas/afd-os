@@ -1,18 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useOs } from './os'
 
-// Daily market sync via Yahoo Finance.
+// Hourly market sync via Yahoo Finance.
 //  - dev/preview: proxied through Vite (see vite.config.js)
 //  - production:  proxied through Netlify (see netlify.toml `/yq/*` redirect)
-// Cached in localStorage; refetched at most once per calendar day, or on manual refresh.
+// Cached in localStorage; refetched at most once per hour, or on manual refresh.
 
 const SYMBOLS = ['MSFT', 'ISDW.L', 'ISDU.L', 'ISDE.L', 'IGLN.L', 'QQQ']
 const CACHE_KEY = 'afd-quotes'
+const REFRESH_MS = 60 * 60 * 1000 // 1 hour
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
 const loadCache = () => {
   try { return JSON.parse(localStorage.getItem(CACHE_KEY)) } catch { return null }
 }
+
+// Fresh while the cached sync is under an hour old.
+const isFresh = c => !!c?.syncedAt && (Date.now() - new Date(c.syncedAt).getTime()) < REFRESH_MS
 
 async function fetchQuote(symbol) {
   const res = await fetch(`/yq/v8/finance/chart/${symbol}?interval=1d&range=1d`)
@@ -31,7 +35,7 @@ export function QuotesProvider({ children }) {
   const [status, setStatus] = useState(() => {
     const c = loadCache()
     if (!c) return 'idle'
-    return c.date === todayKey() ? 'live' : 'stale'
+    return isFresh(c) ? 'live' : 'stale'
   })
   const inflight = useRef(false)
 
@@ -56,9 +60,10 @@ export function QuotesProvider({ children }) {
   }, [os])
 
   useEffect(() => {
-    if (cache?.date === todayKey()) return
-    const id = setTimeout(refresh, 0)
-    return () => clearTimeout(id)
+    // Fetch on mount unless the cache is still fresh, then poll hourly.
+    if (!isFresh(cache)) refresh()
+    const id = setInterval(refresh, REFRESH_MS)
+    return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
