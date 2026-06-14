@@ -92,10 +92,11 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
  */
 export function DayStrip({ value, onChange, status = () => 'empty' }) {
   const todayKey = dateKey()
+  // Rolling 7-day window ending today (today is rightmost), so the previous
+  // six days are always visible and selectable regardless of the weekday.
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
-    const dow = (d.getDay() + 6) % 7 // 0 = Monday
-    d.setDate(d.getDate() - dow + i)
+    d.setDate(d.getDate() - (6 - i))
     const key = dateKey(d)
     return {
       key,
