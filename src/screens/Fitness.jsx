@@ -282,10 +282,13 @@ export default function Fitness() {
         <div className="grid grid-cols-4 gap-1 chip rounded-2xl p-1 mb-4">
           {program.map((d, i) => {
             const selected = day === i
+            // Split at the "&" so every tab renders as a consistent two-line label.
+            const [head, ...rest] = d.name.split(' & ')
             return (
               <button key={d.name} onClick={() => setDay(i)} aria-pressed={selected}
-                className={`press relative flex items-center justify-center text-center mono text-[9px] tracking-[0.02em] uppercase font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
-                {d.name}
+                className={`press relative flex flex-col items-center justify-center text-center mono text-[9px] tracking-[0.02em] uppercase font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
+                <span>{head}</span>
+                {rest.length > 0 && <span>&amp; {rest.join(' & ')}</span>}
               </button>
             )
           })}
