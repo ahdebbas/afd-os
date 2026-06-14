@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check } from 'lucide-react'
-import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, sarwaTotal, usd } from '../data'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, sarwaTotal, usd } from '../data'
 import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
@@ -143,12 +143,14 @@ export default function Finance() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold t1">{usd(hv)}</div>
-                {h.units != null && (
-                  <div className={`mono text-[10px] inline-flex items-center gap-1 ${h.perf >= 0 ? 'up' : 'down'}`}>
-                    {h.perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
-                    {h.perf >= 0 ? '+' : ''}{h.perf}%
+                {h.units != null && (() => {
+                  const perf = holdingPerf(h, q)
+                  return (
+                  <div className={`mono text-[10px] inline-flex items-center gap-1 ${perf >= 0 ? 'up' : 'down'}`}>
+                    {perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
+                    {perf >= 0 ? '+' : ''}{perf.toFixed(2)}%
                   </div>
-                )}
+                )})()}
               </div>
             </div>
           )})}

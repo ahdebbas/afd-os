@@ -79,13 +79,15 @@ export const FINANCE = {
     total: 31154.18,
     lastUpdated: 'Jun 13, 2026',
     // Exact unit counts from Sarwa, so value = units × live price tracks the daily quote.
-    // Cash (USD) has no units/symbol — it falls back to its fixed value.
+    // `cost` is the position's cost basis (total invested); perf is derived live from
+    // value vs. cost so it updates with the price instead of being a manual snapshot.
+    // Cash (USD) has no units/symbol — it falls back to its fixed value/perf.
     holdings: [
-      { ticker: 'ISDW', name: 'Developed Mkts (Halal)', alloc: 60.2, value: 18746.86, perf: 12.20, units: 279.8039 },
-      { ticker: 'ISDU', name: 'US Stocks (Halal)',      alloc: 24.8, value: 7721.80,  perf: 17.85, units: 75.9272 },
-      { ticker: 'ISDE', name: 'Emerging Mkts (Halal)', alloc: 6.4,  value: 1997.03,  perf: 30.96, units: 52.6921 },
-      { ticker: 'QQQ',  name: 'Invesco QQQ Trust',      alloc: 3.8,  value: 1192.96,  perf: 19.66, units: 1.65 },
-      { ticker: 'IGLN', name: 'Gold',                  alloc: 3.7,  value: 1150.38,  perf: -14.30, units: 14.0569 },
+      { ticker: 'ISDW', name: 'Developed Mkts (Halal)', alloc: 60.2, value: 18746.86, cost: 16708.43, perf: 12.20, units: 279.8039 },
+      { ticker: 'ISDU', name: 'US Stocks (Halal)',      alloc: 24.8, value: 7721.80,  cost: 6552.23,  perf: 17.85, units: 75.9272 },
+      { ticker: 'ISDE', name: 'Emerging Mkts (Halal)', alloc: 6.4,  value: 1997.03,  cost: 1525.07,  perf: 30.96, units: 52.6921 },
+      { ticker: 'QQQ',  name: 'Invesco QQQ Trust',      alloc: 3.8,  value: 1192.96,  cost: 996.96,   perf: 19.66, units: 1.65 },
+      { ticker: 'IGLN', name: 'Gold',                  alloc: 3.7,  value: 1150.38,  cost: 1342.33,  perf: -14.30, units: 14.0569 },
       { ticker: 'USD',  name: 'Cash (USD)',            alloc: 1.1,  value: 345.15,   perf: 0 },
     ],
   },
@@ -98,6 +100,11 @@ export const holdingValue = (h, q) => {
   const quote = q?.[ETF_SYMBOL[h.ticker]]
   return quote && h.units ? h.units * quote.price : h.value
 }
+
+// Total return on a holding, derived live from current value vs. cost basis.
+// Falls back to the recorded perf when there's no cost basis (e.g. cash).
+export const holdingPerf = (h, q) =>
+  h.cost ? (holdingValue(h, q) / h.cost - 1) * 100 : h.perf
 export const sarwaTotal = (sarwa, q) => sarwa.holdings.reduce((s, h) => s + holdingValue(h, q), 0)
 
 export const usd = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
