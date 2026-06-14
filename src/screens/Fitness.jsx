@@ -282,8 +282,8 @@ export default function Fitness() {
             const selected = day === i
             return (
               <button key={d.name} onClick={() => setDay(i)} aria-pressed={selected}
-                className={`press relative mono text-[10px] tracking-[0.04em] uppercase font-semibold py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
-                {d.name.split(' ')[0]}<br />{d.name.split(' ')[1] || ''}
+                className={`press relative mono text-[9px] tracking-[0.02em] uppercase font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
+                {d.name}
               </button>
             )
           })}

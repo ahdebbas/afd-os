@@ -19,7 +19,7 @@ export const FITNESS = {
   goal: { fatPct: 13.5 },
   // 4-day split — chest, arms & glutes focus
   program: [
-    { name: 'Chest Triceps', exercises: [
+    { name: 'Chest & Triceps', exercises: [
       { name: 'Smith Machine Incline Press', sets: '4×6–8' },
       { name: 'Chest Press Machine', sets: '3×8–10' },
       { name: 'Pec Deck / Cable Fly (high-to-low)', sets: '3×10–12' },
@@ -29,7 +29,7 @@ export const FITNESS = {
       { name: 'Cable Lateral Raise', sets: '3×12–15' },
       { name: 'Hammer Curl (dumbbell)', sets: '3×10–12' },
     ] },
-    { name: 'Glutes Hams', exercises: [
+    { name: 'Glutes & Hams', exercises: [
       { name: 'Hip Thrust Machine', sets: '4×8–10' },
       { name: 'Leg Press (feet high/wide)', sets: '3×8–10' },
       { name: 'Romanian Deadlift (dumbbell)', sets: '3×8–10' },
@@ -38,7 +38,7 @@ export const FITNESS = {
       { name: 'Bulgarian Split Squat (dumbbell)', sets: '3×8–10' },
       { name: 'Calf Raise Machine', sets: '3×12–15' },
     ] },
-    { name: 'Back Biceps', exercises: [
+    { name: 'Back & Biceps', exercises: [
       { name: 'Lat Pulldown', sets: '4×8–10' },
       { name: 'Seated Cable Row', sets: '3×8–10' },
       { name: 'Smith Machine Shoulder Press', sets: '3×8–10' },
@@ -46,7 +46,7 @@ export const FITNESS = {
       { name: 'Incline Dumbbell Curl', sets: '3×10–12' },
       { name: 'Rear Delt Cable Fly', sets: '3×12–15' },
     ] },
-    { name: 'Quads Glutes', exercises: [
+    { name: 'Quads & Glutes', exercises: [
       { name: 'Hip Thrust Machine', sets: '3×6–8' },
       { name: 'Smith Squat or Hack/Leg Press', sets: '4×8–10' },
       { name: 'Leg Extension Machine', sets: '3×12–15' },
