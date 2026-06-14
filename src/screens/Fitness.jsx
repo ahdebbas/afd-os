@@ -88,7 +88,9 @@ export default function Fitness() {
   const os = useOs()
   const { goal, injuries } = FITNESS
   // Program lives in storage so new exercises added during a workout persist to the template.
-  const [program, setProgram] = usePersistentState('afd-program', FITNESS.program, Array.isArray)
+  // Key is versioned: bump the suffix whenever FITNESS.program is redesigned so existing
+  // devices re-seed from the new template instead of showing the stale cached split.
+  const [program, setProgram] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [weights, setWeights] = usePersistentState('afd-weights', DEFAULT_WEIGHTS,
     v => v && typeof v === 'object' && !Array.isArray(v))
