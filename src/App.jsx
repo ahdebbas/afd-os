@@ -234,7 +234,8 @@ function Island({ dark, onTheme, onSettings }) {
 }
 
 function Shell() {
-  const [tab, setTab] = useState('today')
+  // Persisted so an iOS PWA reload (e.g. after backgrounding) resumes on the same tab.
+  const [tab, setTab] = usePersistentState('afd-tab', 'today', v => TABS.some(t => t.id === v))
   const [logOpen, setLogOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dark, setDark] = usePersistentState('afd-theme-dark', true, v => typeof v === 'boolean')
