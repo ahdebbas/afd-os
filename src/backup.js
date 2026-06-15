@@ -12,6 +12,8 @@ const BACKUP_KEYS = [
   'afd-program-v2',
   'afd-finance',
   'afd-fit-day',
+  'afd-food-day',
+  'afd-tab',
   'afd-theme-dark',
 ]
 

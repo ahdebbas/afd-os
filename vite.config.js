@@ -95,6 +95,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      // Take over as soon as a new build is fetched so updates apply on the next
+      // open instead of needing a second full relaunch of the installed PWA.
+      workbox: { skipWaiting: true, clientsClaim: true },
       manifest: {
         name: 'AFD OS — personal mission control',
         short_name: 'AFD OS',

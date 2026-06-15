@@ -100,7 +100,10 @@ export default function Fitness() {
   const [inForm, setInForm] = useState({ open: false, date: '', weight: '', smm: '', fatMass: '', fatPct: '' })
 
   const today = todayKey()
-  const [selDate, setSelDate] = useState(today)
+  // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
+  const [selDate, setSelDate] = usePersistentState('afd-fit-day', today,
+    v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  useEffect(() => { if (selDate < today) setSelDate(today) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isToday = selDate === today
   const idxOf = s => sessionIdx(s, program)
 

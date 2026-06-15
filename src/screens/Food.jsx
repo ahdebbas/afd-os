@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
+import { usePersistentState } from '../hooks'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -90,7 +91,10 @@ function History({ logs }) {
 
 export default function Food() {
   const { presets, logs, addEntry, removeEntry, addPreset, removePreset } = useFood()
-  const [date, setDate] = useState(todayKey())
+  // Persisted so a reload mid-session resumes on the same day; snapped to today below if stale.
+  const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
+    v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  useEffect(() => { if (date < todayKey()) setDate(todayKey()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isToday = date === todayKey()
   const [showForm, setShowForm] = useState(false)
 
