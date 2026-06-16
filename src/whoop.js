@@ -30,19 +30,6 @@ export async function fetchWhoopCalories() {
   }
 }
 
-// { connected, workouts: [{ id, sport, start, durationMin, kcal, strain }] }
-export async function fetchWhoopWorkouts() {
-  const t = await accessToken()
-  if (!t) return { connected: false }
-  try {
-    const r = await fetch('/api/whoop/workouts', { headers: { Authorization: `Bearer ${t}` } })
-    if (!r.ok) return { connected: false, error: true }
-    return await r.json()
-  } catch {
-    return { connected: false, error: true }
-  }
-}
-
 export async function disconnectWhoop() {
   const t = await accessToken()
   if (!t) return
