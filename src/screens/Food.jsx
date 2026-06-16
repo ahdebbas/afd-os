@@ -5,7 +5,7 @@ import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
-import { connectWhoop, fetchWhoopCalories, disconnectWhoop } from '../whoop'
+import { connectWhoop, fetchWhoopCalories } from '../whoop'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -216,52 +216,35 @@ export default function Food() {
             </div>
           ))}
         </div>
-      </section>
 
-      {/* WHOOP — energy deficit (today only). Burn never raises the 1,900 ceiling;
-          it only surfaces the deficit. F1 of the WHOOP spec. */}
-      {isToday && whoop && (
-        <section className="panel p-5" style={{ '--acc': 'var(--acc-food)' }}>
-          {whoop.connected && whoop.kcal != null ? (() => {
-            const deficit = whoop.kcal - totals.kcal // burned − eaten; positive = deficit
-            const isDeficit = deficit >= 0
-            return (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="flex items-center gap-2 mono text-[10px] tracking-[0.18em] uppercase t3">
-                    <Flame size={13} strokeWidth={2.5} /> Energy · WHOOP
-                  </span>
-                  {whoop.strain != null && (
-                    <span className="mono text-[10px] t3">strain {whoop.strain.toFixed(1)}</span>
-                  )}
-                </div>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <Odometer value={Math.abs(deficit)}
-                      className={`display text-[40px] leading-none font-bold ${isDeficit ? 't1' : 'down'}`} />
-                    <span className="mono text-[9px] tracking-[0.2em] uppercase t3 ml-1">
-                      kcal {isDeficit ? 'deficit' : 'surplus'}
-                    </span>
+        {/* WHOOP KPIs — compact footer. Burn never raises the 1,950 cap; it only
+            surfaces the deficit (F1). */}
+        {isToday && whoop && (whoop.connected && whoop.kcal != null ? (() => {
+          const deficit = whoop.kcal - totals.kcal // burned − eaten; positive = deficit
+          const kpis = [
+            { label: 'Burned', value: whoop.kcal.toLocaleString(), cls: 't1' },
+            { label: deficit >= 0 ? 'Deficit' : 'Surplus', value: Math.abs(deficit).toLocaleString(), cls: deficit >= 0 ? 'acc' : 'down' },
+            { label: 'Strain', value: whoop.strain != null ? whoop.strain.toFixed(1) : '—', cls: 't1' },
+          ]
+          return (
+            <div className="mt-5 pt-4 hairline-t grid grid-cols-3 gap-2">
+              {kpis.map(k => (
+                <div key={k.label} className="text-center">
+                  <div className={`display text-[20px] leading-none font-bold ${k.cls}`}>{k.value}</div>
+                  <div className="mono text-[8px] tracking-[0.18em] uppercase t3 mt-1.5 flex items-center justify-center gap-1">
+                    {k.label === 'Burned' && <Flame size={9} strokeWidth={2.5} />}{k.label}
                   </div>
                 </div>
-                <p className="mono text-[10px] t3 mt-2.5">
-                  burned <span className="t1">{whoop.kcal.toLocaleString()}</span> · eaten{' '}
-                  <span className="t1">{totals.kcal.toLocaleString()}</span> / {TARGETS.kcal.toLocaleString()} cap
-                </p>
-                <button onClick={() => disconnectWhoop().then(() => setWhoop({ connected: false }))}
-                  className="press mono text-[9px] tracking-[0.16em] uppercase t3 mt-3">
-                  Disconnect
-                </button>
-              </>
-            )
-          })() : (
-            <button onClick={connectWhoop}
-              className="press w-full flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm acc-chip">
-              <Activity size={15} strokeWidth={2.5} /> Connect WHOOP for burned calories
-            </button>
-          )}
-        </section>
-      )}
+              ))}
+            </div>
+          )
+        })() : (
+          <button onClick={connectWhoop}
+            className="press mt-5 pt-4 hairline-t w-full flex items-center justify-center gap-2 mono text-[10px] tracking-[0.14em] uppercase font-semibold acc">
+            <Activity size={13} strokeWidth={2.5} /> Connect WHOOP
+          </button>
+        ))}
+      </section>
 
       {/* Quick add — only today is editable */}
       {isToday && (
