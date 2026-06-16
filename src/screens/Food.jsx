@@ -218,35 +218,43 @@ export default function Food() {
         </div>
       </section>
 
-      {/* WHOOP — calories burned + net (today only) */}
+      {/* WHOOP — energy deficit (today only). Burn never raises the 1,900 ceiling;
+          it only surfaces the deficit. F1 of the WHOOP spec. */}
       {isToday && whoop && (
         <section className="panel p-5" style={{ '--acc': 'var(--acc-food)' }}>
-          {whoop.connected && whoop.kcal != null ? (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip flex-shrink-0">
-                    <Flame size={16} strokeWidth={2.5} />
+          {whoop.connected && whoop.kcal != null ? (() => {
+            const deficit = whoop.kcal - totals.kcal // burned − eaten; positive = deficit
+            const isDeficit = deficit >= 0
+            return (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="flex items-center gap-2 mono text-[10px] tracking-[0.18em] uppercase t3">
+                    <Flame size={13} strokeWidth={2.5} /> Energy · WHOOP
                   </span>
-                  <div className="min-w-0">
-                    <div className="mono text-[9px] tracking-[0.18em] uppercase t3">Burned · WHOOP</div>
-                    <div className="text-[15px] font-bold t1">
-                      {whoop.kcal.toLocaleString()} <span className="t3 font-normal text-[12px]">kcal</span>
-                      {whoop.strain != null && <span className="mono text-[10px] t3 font-normal"> · strain {whoop.strain.toFixed(1)}</span>}
-                    </div>
+                  {whoop.strain != null && (
+                    <span className="mono text-[10px] t3">strain {whoop.strain.toFixed(1)}</span>
+                  )}
+                </div>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <Odometer value={Math.abs(deficit)}
+                      className={`display text-[40px] leading-none font-bold ${isDeficit ? 't1' : 'down'}`} />
+                    <span className="mono text-[9px] tracking-[0.2em] uppercase t3 ml-1">
+                      kcal {isDeficit ? 'deficit' : 'surplus'}
+                    </span>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="mono text-[9px] tracking-[0.18em] uppercase t3">Net eaten</div>
-                  <div className="text-[15px] font-bold t1">{(totals.kcal - whoop.kcal).toLocaleString()}</div>
-                </div>
-              </div>
-              <button onClick={() => disconnectWhoop().then(() => setWhoop({ connected: false }))}
-                className="press mono text-[9px] tracking-[0.16em] uppercase t3 mt-3">
-                Disconnect
-              </button>
-            </>
-          ) : (
+                <p className="mono text-[10px] t3 mt-2.5">
+                  burned <span className="t1">{whoop.kcal.toLocaleString()}</span> · eaten{' '}
+                  <span className="t1">{totals.kcal.toLocaleString()}</span> / {TARGETS.kcal.toLocaleString()} cap
+                </p>
+                <button onClick={() => disconnectWhoop().then(() => setWhoop({ connected: false }))}
+                  className="press mono text-[9px] tracking-[0.16em] uppercase t3 mt-3">
+                  Disconnect
+                </button>
+              </>
+            )
+          })() : (
             <button onClick={connectWhoop}
               className="press w-full flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm acc-chip">
               <Activity size={15} strokeWidth={2.5} /> Connect WHOOP for burned calories
