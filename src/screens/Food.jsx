@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil, Flame, Activity } from 'lucide-react'
+import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
-import { connectWhoop, fetchWhoopCalories } from '../whoop'
+import { fetchWhoopCalories } from '../whoop'
+import { WhoopBudgetFooter } from '../whoopInsights'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -217,33 +218,7 @@ export default function Food() {
           ))}
         </div>
 
-        {/* WHOOP KPIs — compact footer. Burn never raises the 1,950 cap; it only
-            surfaces the deficit (F1). */}
-        {isToday && whoop && (whoop.connected && whoop.kcal != null ? (() => {
-          const deficit = whoop.kcal - totals.kcal // burned − eaten; positive = deficit
-          const kpis = [
-            { label: 'Burned', value: whoop.kcal.toLocaleString(), cls: 't1' },
-            { label: deficit >= 0 ? 'Deficit' : 'Surplus', value: Math.abs(deficit).toLocaleString(), cls: deficit >= 0 ? 'acc' : 'down' },
-            { label: 'Strain', value: whoop.strain != null ? whoop.strain.toFixed(1) : '—', cls: 't1' },
-          ]
-          return (
-            <div className="mt-5 pt-4 hairline-t grid grid-cols-3 gap-2">
-              {kpis.map(k => (
-                <div key={k.label} className="text-center">
-                  <div className={`display text-[20px] leading-none font-bold ${k.cls}`}>{k.value}</div>
-                  <div className="mono text-[8px] tracking-[0.18em] uppercase t3 mt-1.5 flex items-center justify-center gap-1">
-                    {k.label === 'Burned' && <Flame size={9} strokeWidth={2.5} />}{k.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        })() : (
-          <button onClick={connectWhoop}
-            className="press mt-5 pt-4 hairline-t w-full flex items-center justify-center gap-2 mono text-[10px] tracking-[0.14em] uppercase font-semibold acc">
-            <Activity size={13} strokeWidth={2.5} /> Connect WHOOP
-          </button>
-        ))}
+        {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} />}
       </section>
 
       {/* Quick add — only today is editable */}

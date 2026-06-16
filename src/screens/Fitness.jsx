@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus } from 'lucide-react'
+import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, RefreshCw } from 'lucide-react'
 import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
@@ -7,6 +7,7 @@ import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
 import { fetchWhoopCalories, fetchWhoopCycles } from '../whoop'
 import { useFood } from '../store'
+import { WhoopEnergyPanel } from '../whoopInsights'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -104,10 +105,22 @@ export default function Fitness() {
   // WHOOP burn + intraday pacing (today only). Null until loaded.
   const [whoop, setWhoop] = useState(null)
   const [cycles, setCycles] = useState(null)
+  const [whoopLoadedAt, setWhoopLoadedAt] = useState(null)
+  const [refreshingWhoop, setRefreshingWhoop] = useState(false)
   const { logs: foodLogs } = useFood()
+  const refreshWhoop = async () => {
+    setRefreshingWhoop(true)
+    try {
+      const [burn, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
+      setWhoop(burn)
+      setCycles(history)
+      setWhoopLoadedAt(new Date())
+    } finally {
+      setRefreshingWhoop(false)
+    }
+  }
   useEffect(() => {
-    fetchWhoopCalories().then(setWhoop)
-    fetchWhoopCycles().then(setCycles)
+    void Promise.resolve().then(refreshWhoop)
   }, [])
 
   const today = todayKey()
@@ -262,7 +275,11 @@ export default function Fitness() {
     const maintenance = Math.round(days.reduce((a, d) => a + d.burned, 0) / days.length)
     const logged = days.filter(d => d.eaten > 0) // only days you actually logged food
     const netDeficit = logged.reduce((a, d) => a + (d.burned - d.eaten), 0)
-    const predictedKg = netDeficit / 7700 // ~7,700 kcal per kg of fat
+    const avgIntake = logged.length ? Math.round(logged.reduce((a, d) => a + d.eaten, 0) / logged.length) : 0
+    const avgDeficit = logged.length ? Math.round(netDeficit / logged.length) : 0
+    const weeklyDeficit = logged.length ? Math.round(avgDeficit * 7) : 0
+    const deficitDays = logged.filter(d => d.burned > d.eaten).length
+    const predictedKg = weeklyDeficit / 7700 // ~7,700 kcal per kg of fat
 
     let actualKg = null
     if (readings.length >= 2) actualKg = latest.weight - readings[readings.length - 2].weight
@@ -273,7 +290,15 @@ export default function Fitness() {
       const weeks = weeklyFatPct > 0.01 ? (latest.fatPct - goal.fatPct) / weeklyFatPct : 0
       if (weeks > 0 && weeks < 260) { const dt = new Date(); dt.setDate(dt.getDate() + Math.round(weeks * 7)); etaDate = dateKey(dt) }
     }
-    return { maintenance, netDeficit, predictedKg, loggedDays: logged.length, actualKg, etaDate }
+    const insight = logged.length < 3
+      ? 'Log more food days to make the WHOOP projection trustworthy.'
+      : avgDeficit < 0
+        ? 'Food is outrunning burn this week; fat-loss ETA is paused.'
+        : avgDeficit > 900
+          ? 'Deficit is aggressive; protect training quality and protein.'
+          : 'Deficit is controlled enough to support the body-fat goal.'
+
+    return { maintenance, avgIntake, avgDeficit, weeklyDeficit, netDeficit, predictedKg, loggedDays: logged.length, burnDays: days.length, deficitDays, actualKg, etaDate, insight, days }
   }, [cycles, foodLogs, readings, latest, goal])
 
   const addResult = () => {
@@ -397,32 +422,7 @@ export default function Fitness() {
         </button>
       </section>
 
-      {/* Energy · WHOOP — calories burned today + intraday pacing vs prior days */}
-      {isToday && whoop?.connected && whoop.kcal != null && (() => {
-        const ahead = whoop.yesterday != null && whoop.kcal >= whoop.yesterday
-        return (
-          <section className="panel p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Label><Flame size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy · WHOOP</Label>
-              <span className="mono text-[10px] t3">strain {whoop.strain != null ? whoop.strain.toFixed(1) : '—'}</span>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="display text-[40px] font-bold t1 leading-none">{whoop.kcal.toLocaleString()}</span>
-              <span className="mono text-[9px] tracking-[0.2em] uppercase t3 mb-1">kcal burned today</span>
-            </div>
-            <p className="mono text-[10px] mt-3 t3">
-              {whoop.yesterday != null ? (
-                <>
-                  <span className={ahead ? 'acc' : 'down'}>{ahead ? 'ahead of' : 'behind'}</span>{' '}
-                  yesterday ~{whoop.yesterday.toLocaleString()}
-                  {whoop.weeklyAvg != null && <> · wk avg ~{whoop.weeklyAvg.toLocaleString()}</>}
-                  {' '}by this hour
-                </>
-              ) : 'building pace history…'}
-            </p>
-          </section>
-        )
-      })()}
+      {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} />}
 
       {/* Body module — InBody log */}
       <section className="panel p-6">
@@ -522,13 +522,19 @@ export default function Fitness() {
         const losingActual = energy.actualKg != null && energy.actualKg < 0
         const tracking = energy.actualKg != null && losingPredicted === losingActual
         const kpis = [
-          { label: 'Maintenance', value: energy.maintenance.toLocaleString(), sub: 'avg burn/day' },
-          { label: 'Net deficit', value: energy.netDeficit.toLocaleString(), sub: `${energy.loggedDays}d logged` },
-          { label: 'Predicted', value: `${energy.predictedKg >= 0 ? '−' : '+'}${Math.abs(energy.predictedKg).toFixed(1)}`, sub: 'kg fat (calc)' },
+          { label: 'Avg burn', value: energy.maintenance.toLocaleString(), sub: `${energy.burnDays} WHOOP days` },
+          { label: 'Avg intake', value: energy.avgIntake ? energy.avgIntake.toLocaleString() : '—', sub: `${energy.loggedDays} food days` },
+          { label: 'Weekly fat', value: `${energy.predictedKg >= 0 ? '−' : '+'}${Math.abs(energy.predictedKg).toFixed(1)}`, sub: 'kg projected' },
         ]
         return (
           <section className="panel p-6">
-            <Label className="mb-4"><Zap size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy balance · 7d</Label>
+            <div className="flex items-center justify-between mb-4">
+              <Label><Zap size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy balance · 7d</Label>
+              <button onClick={refreshWhoop} disabled={refreshingWhoop}
+                className="press chip rounded-lg px-2.5 py-1.5 mono text-[9px] tracking-[0.14em] uppercase t3 disabled:opacity-40 inline-flex items-center gap-1">
+                <RefreshCw size={10} className={refreshingWhoop ? 'animate-spin' : ''} /> Refresh
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {kpis.map(k => (
                 <div key={k.label} className="text-center">
@@ -539,11 +545,12 @@ export default function Fitness() {
               ))}
             </div>
             <div className="mt-4 pt-4 hairline-t space-y-1.5">
+              <p className="mono text-[10px] t2 leading-relaxed">{energy.insight}</p>
               {energy.actualKg != null ? (
                 <p className="mono text-[10px] t3">
-                  reconcile · predicted {energy.predictedKg >= 0 ? '−' : '+'}{Math.abs(energy.predictedKg).toFixed(1)}kg fat
+                  reconcile · predicted {energy.predictedKg >= 0 ? '−' : '+'}{Math.abs(energy.predictedKg).toFixed(1)}kg/week fat
                   {' '}vs InBody {energy.actualKg <= 0 ? '−' : '+'}{Math.abs(energy.actualKg).toFixed(1)}kg{' '}
-                  <span className={tracking ? 'acc' : 'down'}>{tracking ? 'tracking ✓' : '⚠ check'}</span>
+                  <span className={tracking ? 'acc' : 'down'}>{tracking ? 'tracking' : 'check'}</span>
                 </p>
               ) : (
                 <p className="mono text-[10px] t3">add ≥2 InBody readings to validate against actual change</p>
@@ -551,10 +558,51 @@ export default function Fitness() {
               <p className="mono text-[10px] t3">
                 goal {goal.fatPct}% · {energy.etaDate ? <>ETA ≈ <span className="t1">{longDate(energy.etaDate)}</span></> : 'ETA — (need more data)'}
               </p>
+              {whoopLoadedAt && <p className="mono text-[9px] t3">WHOOP refreshed {whoopLoadedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>}
             </div>
           </section>
         )
       })()}
+
+      {energy && (
+        <section className="panel p-6">
+          <div className="flex items-center justify-between mb-4">
+            <Label><Zap size={12} className="inline-block mr-0.5 -mt-0.5" /> Weekly coaching</Label>
+            <span className="mono text-[10px] t3">{energy.loggedDays}/7 food days</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="chip rounded-2xl p-3">
+              <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Deficit consistency</div>
+              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{energy.deficitDays}/{energy.loggedDays || 0}</div>
+              <p className="mono text-[9px] t3 mt-1.5">logged food days under burn</p>
+            </div>
+            <div className="chip rounded-2xl p-3">
+              <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Training load</div>
+              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{weekCount}/4</div>
+              <p className="mono text-[9px] t3 mt-1.5">sessions this week</p>
+            </div>
+            <div className="chip rounded-2xl p-3">
+              <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Body target</div>
+              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{toGoal}%</div>
+              <p className="mono text-[9px] t3 mt-1.5">body fat to goal</p>
+            </div>
+            <div className="chip rounded-2xl p-3">
+              <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Next week</div>
+              <div className={`display text-[26px] leading-none font-bold mt-1.5 ${energy.avgDeficit >= 0 ? 'acc' : 'down'}`}>
+                {energy.avgDeficit >= 0 ? 'Hold' : 'Reset'}
+              </div>
+              <p className="mono text-[9px] t3 mt-1.5">{energy.avgDeficit >= 0 ? 'repeat the current deficit' : 'bring intake below burn'}</p>
+            </div>
+          </div>
+          <p className="mono text-[10px] t2 leading-relaxed mt-4 pt-4 hairline-t">
+            {energy.loggedDays < 5
+              ? 'Report confidence is limited until at least five food days are logged.'
+              : energy.avgDeficit >= 350
+                ? 'Keep calories steady; the WHOOP burn trend already supports the cut.'
+                : 'Tighten the calorie cap or add low-strain movement before changing the lifting plan.'}
+          </p>
+        </section>
+      )}
 
       {/* PRs — auto-derived from logged weights */}
       <section className="panel p-6">

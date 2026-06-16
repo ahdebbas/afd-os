@@ -6,6 +6,7 @@ import { Gauge, SegBar, Label, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
 import { usePersistentState } from '../hooks'
 import { fetchWhoopCalories } from '../whoop'
+import { WhoopEnergyPanel } from '../whoopInsights'
 
 export default function Today({ goTo, openLog }) {
   const { totals, remaining, proteinLeft } = useFood()
@@ -74,32 +75,7 @@ export default function Today({ goTo, openLog }) {
         </div>
       </section>
 
-      {/* Energy · WHOOP — burned today + intraday pacing */}
-      {whoop?.connected && whoop.kcal != null && (() => {
-        const ahead = whoop.yesterday != null && whoop.kcal >= whoop.yesterday
-        return (
-          <section className="panel p-5" style={{ '--acc': 'var(--acc-fit)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <Label><Flame size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy · WHOOP</Label>
-              <span className="mono text-[10px] t3">strain {whoop.strain != null ? whoop.strain.toFixed(1) : '—'}</span>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="display text-[34px] font-bold t1 leading-none">{whoop.kcal.toLocaleString()}</span>
-              <span className="mono text-[9px] tracking-[0.2em] uppercase t3 mb-1">kcal burned today</span>
-            </div>
-            <p className="mono text-[10px] mt-2 t3">
-              {whoop.yesterday != null ? (
-                <>
-                  <span className={ahead ? 'acc' : 'down'}>{ahead ? 'ahead of' : 'behind'}</span>{' '}
-                  yesterday ~{whoop.yesterday.toLocaleString()}
-                  {whoop.weeklyAvg != null && <> · wk avg ~{whoop.weeklyAvg.toLocaleString()}</>}
-                  {' '}by this hour
-                </>
-              ) : 'building pace history…'}
-            </p>
-          </section>
-        )
-      })()}
+      <WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} compact />
 
       {/* Module bento */}
       <div className="grid grid-cols-2 gap-3.5">
