@@ -15,12 +15,14 @@ export async function connectWhoop() {
   window.location.href = `/api/whoop/login?t=${encodeURIComponent(t)}`
 }
 
-// { connected, kcal, strain, start } — kcal is calories burned this cycle.
+// { connected, kcal, strain, yesterday, weeklyAvg, days } — kcal is calories
+// burned this cycle; yesterday/weeklyAvg are cumulative burn at this hour on
+// prior days (null until history accumulates).
 export async function fetchWhoopCalories() {
   const t = await accessToken()
   if (!t) return { connected: false }
   try {
-    const r = await fetch('/api/whoop/calories', { headers: { Authorization: `Bearer ${t}` } })
+    const r = await fetch('/api/whoop/intraday', { headers: { Authorization: `Bearer ${t}` } })
     if (!r.ok) return { connected: false, error: true }
     return await r.json()
   } catch {

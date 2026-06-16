@@ -226,17 +226,33 @@ export default function Food() {
             { label: deficit >= 0 ? 'Deficit' : 'Surplus', value: Math.abs(deficit).toLocaleString(), cls: deficit >= 0 ? 'acc' : 'down' },
             { label: 'Strain', value: whoop.strain != null ? whoop.strain.toFixed(1) : '—', cls: 't1' },
           ]
+          const ahead = whoop.yesterday != null && whoop.kcal != null && whoop.kcal >= whoop.yesterday
           return (
-            <div className="mt-5 pt-4 hairline-t grid grid-cols-3 gap-2">
-              {kpis.map(k => (
-                <div key={k.label} className="text-center">
-                  <div className={`display text-[20px] leading-none font-bold ${k.cls}`}>{k.value}</div>
-                  <div className="mono text-[8px] tracking-[0.18em] uppercase t3 mt-1.5 flex items-center justify-center gap-1">
-                    {k.label === 'Burned' && <Flame size={9} strokeWidth={2.5} />}{k.label}
+            <>
+              <div className="mt-5 pt-4 hairline-t grid grid-cols-3 gap-2">
+                {kpis.map(k => (
+                  <div key={k.label} className="text-center">
+                    <div className={`display text-[20px] leading-none font-bold ${k.cls}`}>{k.value}</div>
+                    <div className="mono text-[8px] tracking-[0.18em] uppercase t3 mt-1.5 flex items-center justify-center gap-1">
+                      {k.label === 'Burned' && <Flame size={9} strokeWidth={2.5} />}{k.label}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {/* F2 — intraday pacing vs prior days (estimates; ~ until history fills) */}
+              <p className="mono text-[10px] mt-3 text-center t3">
+                {whoop.yesterday != null ? (
+                  <>
+                    <span className={ahead ? 'acc' : 'down'}>{ahead ? 'ahead of' : 'behind'}</span>{' '}
+                    yesterday ~{whoop.yesterday.toLocaleString()}
+                    {whoop.weeklyAvg != null && <> · wk avg ~{whoop.weeklyAvg.toLocaleString()}</>}
+                    {' '}by this hour
+                  </>
+                ) : (
+                  'building pace history…'
+                )}
+              </p>
+            </>
           )
         })() : (
           <button onClick={connectWhoop}
