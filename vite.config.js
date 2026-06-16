@@ -97,7 +97,13 @@ export default defineConfig({
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       // Take over as soon as a new build is fetched so updates apply on the next
       // open instead of needing a second full relaunch of the installed PWA.
-      workbox: { skipWaiting: true, clientsClaim: true },
+      // Don't let the SPA navigation-fallback swallow server routes — /api/* must
+      // reach the Vercel functions (WHOOP OAuth), /yq is the finance proxy.
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallbackDenylist: [/^\/api\//, /^\/yq\//],
+      },
       manifest: {
         name: 'AFD OS — personal mission control',
         short_name: 'AFD OS',
