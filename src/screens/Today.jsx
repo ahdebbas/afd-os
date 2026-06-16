@@ -105,8 +105,8 @@ export default function Today({ goTo, openLog }) {
       <div className="grid grid-cols-2 gap-3.5">
         <button onClick={() => goTo('fitness')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fit)' }}>
           <Label className="mb-3">Body</Label>
-          <div className="h-[52px] flex items-start">
-            <p className="display text-[26px] leading-tight font-bold t1">{nextWorkout || '—'}</p>
+          <div className="h-[54px] flex items-start overflow-hidden">
+            <p className="display text-[22px] leading-[1.12] font-bold t1">{nextWorkout || '—'}</p>
           </div>
           <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-1 flex items-center gap-1.5">
             <Dumbbell size={10} strokeWidth={2.5} /> next workout
@@ -119,7 +119,7 @@ export default function Today({ goTo, openLog }) {
 
         <button onClick={() => goTo('finance')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fin)' }}>
           <Label className="mb-3">Net</Label>
-          <div className="h-[52px] flex items-start">
+          <div className="h-[54px] flex items-start">
             <Odometer value={total} format={usd} className="display text-[30px] leading-none font-bold t1" />
           </div>
           <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-1">total portfolio</p>
