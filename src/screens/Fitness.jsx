@@ -5,7 +5,7 @@ import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
-import { fetchWhoopCalories } from '../whoop'
+import { fetchWhoopCalories, fetchWhoopWorkouts } from '../whoop'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -14,6 +14,10 @@ const METRICS = [
   { key: 'fatPct', label: 'Body fat', unit: '%' },
 ]
 const shortDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+const workoutWhen = iso => {
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+}
 const longDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 const relativeDay = dateStr => {
@@ -102,7 +106,11 @@ export default function Fitness() {
 
   // WHOOP burn + intraday pacing (today only). Null until loaded.
   const [whoop, setWhoop] = useState(null)
-  useEffect(() => { fetchWhoopCalories().then(setWhoop) }, [])
+  const [whoopWorkouts, setWhoopWorkouts] = useState(null)
+  useEffect(() => {
+    fetchWhoopCalories().then(setWhoop)
+    fetchWhoopWorkouts().then(setWhoopWorkouts)
+  }, [])
 
   const today = todayKey()
   // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
@@ -383,6 +391,29 @@ export default function Fitness() {
           </section>
         )
       })()}
+
+      {/* Workouts · WHOOP — recent detected workouts (read-only, last 7d) */}
+      {whoopWorkouts?.connected && whoopWorkouts.workouts?.length > 0 && (
+        <section className="panel p-6">
+          <Label className="mb-4"><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> Workouts · WHOOP · 7d</Label>
+          {whoopWorkouts.workouts.map((w, i) => (
+            <div key={w.id} className={`flex items-center justify-between gap-2 py-2.5 ${i > 0 ? 'hairline-t' : ''}`}>
+              <div className="min-w-0">
+                <div className="text-sm font-bold t1 capitalize truncate">{w.sport}</div>
+                <div className="mono text-[10px] t3 mt-0.5">
+                  {workoutWhen(w.start)}{w.durationMin != null && ` · ${w.durationMin}m`}
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <div className="mono text-[12px] t1 font-semibold">
+                  {w.kcal != null ? w.kcal.toLocaleString() : '—'} <span className="t3">kcal</span>
+                </div>
+                {w.strain != null && <div className="mono text-[9px] t3 mt-0.5">strain {w.strain.toFixed(1)}</div>}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* Body module — InBody log */}
       <section className="panel p-6">
