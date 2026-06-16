@@ -5,7 +5,7 @@ import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
-import { fetchWhoopCalories, fetchWhoopWorkouts } from '../whoop'
+import { fetchWhoopCalories, fetchWhoopWorkouts, connectWhoop } from '../whoop'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -388,6 +388,11 @@ export default function Fitness() {
                 </>
               ) : 'building pace history…'}
             </p>
+            {/* Re-authorize to grant new scopes (e.g. workouts) without losing the link. */}
+            <button onClick={connectWhoop}
+              className="press mono text-[9px] tracking-[0.16em] uppercase t3 mt-3">
+              ↻ Reconnect / grant access
+            </button>
           </section>
         )
       })()}
