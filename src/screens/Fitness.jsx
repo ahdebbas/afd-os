@@ -5,6 +5,7 @@ import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
+import { fetchWhoopCalories } from '../whoop'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -98,6 +99,10 @@ export default function Fitness() {
   const [exForm, setExForm] = useState({ open: false, name: '', sets: '' })
   const [metric, setMetric] = useState('weight')
   const [inForm, setInForm] = useState({ open: false, date: '', weight: '', smm: '', fatMass: '', fatPct: '' })
+
+  // WHOOP burn + intraday pacing (today only). Null until loaded.
+  const [whoop, setWhoop] = useState(null)
+  useEffect(() => { fetchWhoopCalories().then(setWhoop) }, [])
 
   const today = todayKey()
   // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
@@ -351,6 +356,33 @@ export default function Fitness() {
           {done ? `${isToday ? 'Finished' : dayLabel} ${selSession.name} ✓ · tap to undo` : `${isToday ? 'Finish' : `Log ${dayLabel} ·`} ${program[day].name}`}
         </button>
       </section>
+
+      {/* Energy · WHOOP — calories burned today + intraday pacing vs prior days */}
+      {isToday && whoop?.connected && whoop.kcal != null && (() => {
+        const ahead = whoop.yesterday != null && whoop.kcal >= whoop.yesterday
+        return (
+          <section className="panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Label><Flame size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy · WHOOP</Label>
+              <span className="mono text-[10px] t3">strain {whoop.strain != null ? whoop.strain.toFixed(1) : '—'}</span>
+            </div>
+            <div className="flex items-end gap-2">
+              <span className="display text-[40px] font-bold t1 leading-none">{whoop.kcal.toLocaleString()}</span>
+              <span className="mono text-[9px] tracking-[0.2em] uppercase t3 mb-1">kcal burned today</span>
+            </div>
+            <p className="mono text-[10px] mt-3 t3">
+              {whoop.yesterday != null ? (
+                <>
+                  <span className={ahead ? 'acc' : 'down'}>{ahead ? 'ahead of' : 'behind'}</span>{' '}
+                  yesterday ~{whoop.yesterday.toLocaleString()}
+                  {whoop.weeklyAvg != null && <> · wk avg ~{whoop.weeklyAvg.toLocaleString()}</>}
+                  {' '}by this hour
+                </>
+              ) : 'building pace history…'}
+            </p>
+          </section>
+        )
+      })()}
 
       {/* Body module — InBody log */}
       <section className="panel p-6">
