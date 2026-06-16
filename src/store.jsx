@@ -5,15 +5,35 @@ import { usePersistentState } from './hooks'
 import { todayKey } from './dates'
 
 const DEFAULT_PRESETS = [
-  { id: 'p1', name: 'Beef-XP Isolate (30g)', kcal: 114, protein: 28, carbs: 0, fat: 0, emoji: '🥤' },
-  { id: 'p2', name: 'Keto Pizza', kcal: 494, protein: 59, carbs: 6, fat: 26, emoji: '🍕' },
-  { id: 'p3', name: 'Chicken Zucchini Pasta', kcal: 337, protein: 35, carbs: 29, fat: 9, emoji: '🍝' },
-  { id: 'p4', name: 'Protein Marble Brownie', kcal: 325, protein: 22, carbs: 22, fat: 13, emoji: '🍫' },
-  { id: 'p5', name: 'Chocolate Protein Brownie', kcal: 165, protein: 12, carbs: 18, fat: 5, emoji: '🧁' },
-  { id: 'p6', name: 'White Choc Protein Cookie', kcal: 151, protein: 12, carbs: 10, fat: 7, emoji: '🍪' },
-  { id: 'p7', name: 'Iced Almond Latte', kcal: 30, protein: 1, carbs: 2, fat: 2, emoji: '☕' },
-  { id: 'p8', name: 'Malek Tawook — Chicken Meal', kcal: 725, protein: 82, carbs: 42, fat: 24, emoji: '🍗' },
-  { id: 'p9', name: 'Cottage Cheese + Milk Bread', kcal: 254, protein: 29, carbs: 27, fat: 3, emoji: '🧀' },
+  // Breakfast
+  { id: 'p9',  name: 'Cottage Cheese + Milk Bread', kcal: 254, protein: 29, carbs: 27, fat: 3,  emoji: '🧀', category: 'Breakfast' },
+  { id: 'p10', name: 'Boiled Egg',                  kcal: 70,  protein: 6,  carbs: 0,  fat: 5,  emoji: '🥚', category: 'Breakfast' },
+  { id: 'p11', name: 'Fried Egg (Oil Spray)',        kcal: 85,  protein: 6,  carbs: 0,  fat: 6,  emoji: '🍳', category: 'Breakfast' },
+  { id: 'p12', name: 'Egg White',                    kcal: 17,  protein: 4,  carbs: 0,  fat: 0,  emoji: '🥚', category: 'Breakfast' },
+  // Snacks
+  { id: 'p1',  name: 'Beef-XP Isolate (30g)',        kcal: 114, protein: 28, carbs: 0,  fat: 0,  emoji: '🥤', category: 'Snacks' },
+  { id: 'p4',  name: 'Protein Marble Brownie',       kcal: 325, protein: 22, carbs: 22, fat: 13, emoji: '🍫', category: 'Snacks' },
+  { id: 'p5',  name: 'Chocolate Protein Brownie',    kcal: 165, protein: 12, carbs: 18, fat: 5,  emoji: '🧁', category: 'Snacks' },
+  { id: 'p6',  name: 'White Choc Protein Cookie',    kcal: 151, protein: 12, carbs: 10, fat: 7,  emoji: '🍪', category: 'Snacks' },
+  { id: 'p13', name: 'Banana',                       kcal: 89,  protein: 1,  carbs: 23, fat: 0,  emoji: '🍌', category: 'Snacks' },
+  // Meals
+  { id: 'p2',  name: 'Keto Pizza',                   kcal: 494, protein: 59, carbs: 6,  fat: 26, emoji: '🍕', category: 'Meals' },
+  { id: 'p3',  name: 'Chicken Zucchini Pasta',       kcal: 337, protein: 35, carbs: 29, fat: 9,  emoji: '🍝', category: 'Meals' },
+  { id: 'p8',  name: 'Malek Tawook — Chicken Meal',  kcal: 725, protein: 82, carbs: 42, fat: 24, emoji: '🍗', category: 'Meals' },
+  // Build — per-100g cooked building blocks (multi-tap to scale to your portion)
+  { id: 'p14', name: 'Rice — 100g',                  kcal: 130, protein: 3,  carbs: 28, fat: 0,  emoji: '🍚', category: 'Build' },
+  { id: 'p15', name: 'Chicken — 100g',               kcal: 165, protein: 31, carbs: 0,  fat: 4,  emoji: '🍗', category: 'Build' },
+  { id: 'p16', name: 'Beef — 100g',                  kcal: 217, protein: 26, carbs: 0,  fat: 12, emoji: '🥩', category: 'Build' },
+  { id: 'p17', name: 'Salmon — 100g',                kcal: 206, protein: 22, carbs: 0,  fat: 13, emoji: '🐟', category: 'Build' },
+  { id: 'p18', name: 'White Fish / Shrimp — 100g',   kcal: 100, protein: 22, carbs: 0,  fat: 1,  emoji: '🦐', category: 'Build' },
+  { id: 'p19', name: 'Sweet Potato — 100g',          kcal: 90,  protein: 2,  carbs: 21, fat: 0,  emoji: '🍠', category: 'Build' },
+  { id: 'p20', name: 'Potato — 100g',                kcal: 87,  protein: 2,  carbs: 20, fat: 0,  emoji: '🥔', category: 'Build' },
+  { id: 'p21', name: 'Pasta — 100g',                 kcal: 158, protein: 6,  carbs: 31, fat: 1,  emoji: '🍝', category: 'Build' },
+  { id: 'p22', name: 'Mixed Veggies — 100g',         kcal: 50,  protein: 3,  carbs: 10, fat: 0,  emoji: '🥦', category: 'Build' },
+  { id: 'p23', name: 'Avocado — 100g',               kcal: 160, protein: 2,  carbs: 9,  fat: 15, emoji: '🥑', category: 'Build' },
+  { id: 'p24', name: 'Olive Oil — 1 tbsp',           kcal: 119, protein: 0,  carbs: 0,  fat: 14, emoji: '🫒', category: 'Build' },
+  // Drinks
+  { id: 'p7',  name: 'Iced Almond Latte',            kcal: 30,  protein: 1,  carbs: 2,  fat: 2,  emoji: '☕', category: 'Drinks' },
 ]
 
 const FoodCtx = createContext(null)
@@ -29,6 +49,19 @@ export function FoodProvider({ children }) {
     (a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + (e.protein || 0), carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0) }),
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   ), [entries])
+
+  // Reconcile cached presets with DEFAULT_PRESETS so edits to the built-ins
+  // (renames, macro fixes, new items) reach users who already have a list saved.
+  // Built-ins (default ids) are refreshed from source — safe because presets are
+  // only ever added or deleted, never edited, so a default id is unmodified.
+  // Custom presets (timestamp ids) are preserved untouched.
+  useEffect(() => {
+    setPresets(prev => {
+      const defaultIds = new Set(DEFAULT_PRESETS.map(d => d.id))
+      const custom = prev.filter(p => !defaultIds.has(p.id))
+      return [...DEFAULT_PRESETS, ...custom]
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Merge entries from food-sync.json (generated by npm run sync-food) on mount.
   // Uses uid as dedup key so re-running sync never creates duplicates.
@@ -63,12 +96,13 @@ export function FoodProvider({ children }) {
   const removeEntry = uid => setLogs(prev => ({ ...prev, [today]: (prev[today] || []).filter(e => e.uid !== uid) }))
   const addPreset = item => setPresets(prev => [...prev, { ...item, id: 'p' + Date.now() }])
   const removePreset = id => setPresets(prev => prev.filter(x => x.id !== id))
+  const updatePreset = (id, patch) => setPresets(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
 
   const value = {
     presets, entries, totals, logs,
     remaining: TARGETS.kcal - totals.kcal,
     proteinLeft: TARGETS.protein - totals.protein,
-    addEntry, removeEntry, addPreset, removePreset,
+    addEntry, removeEntry, addPreset, removePreset, updatePreset,
   }
   return <FoodCtx.Provider value={value}>{children}</FoodCtx.Provider>
 }

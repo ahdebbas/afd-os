@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus } from 'lucide-react'
+import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
@@ -90,7 +90,7 @@ function History({ logs }) {
 
 
 export default function Food() {
-  const { presets, logs, addEntry, removeEntry, addPreset, removePreset } = useFood()
+  const { presets, logs, addEntry, removeEntry, addPreset, removePreset, updatePreset } = useFood()
   // Persisted so a reload mid-session resumes on the same day; snapped to today below if stale.
   const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
     v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
@@ -130,7 +130,20 @@ export default function Food() {
   })()
 
   const [editMode, setEditMode] = useState(false)
-  const [form, setForm] = useState({ name: '', kcal: '', protein: '', carbs: '', fat: '', save: false })
+  const [activeCategory, setActiveCategory] = useState('All')
+  const blankForm = { name: '', kcal: '', protein: '', carbs: '', fat: '', category: 'Meals', save: false, editId: null }
+  const [form, setForm] = useState(blankForm)
+
+  // Open the form prefilled to edit an existing preset's macros/name/category.
+  const openEdit = p => {
+    setForm({ name: p.name, kcal: String(p.kcal), protein: String(p.protein ?? ''), carbs: String(p.carbs ?? ''),
+      fat: String(p.fat ?? ''), category: p.category || 'Meals', save: false, editId: p.id })
+    setShowForm(true)
+    setEditMode(false)
+  }
+
+  const CATEGORIES = ['All', 'Breakfast', 'Snacks', 'Meals', 'Build', 'Drinks']
+  const filteredPresets = activeCategory === 'All' ? presets : presets.filter(p => p.category === activeCategory)
 
   const macros = [
     { Icon: Beef, label: 'Protein', val: totals.protein, target: TARGETS.protein, color: 'var(--acc-food)' },
@@ -145,11 +158,15 @@ export default function Food() {
       protein: +form.protein || 0,
       carbs: +form.carbs || 0,
       fat: +form.fat || 0,
-      emoji: '🍽️',
+      category: form.category,
     }
-    addEntry(item)
-    if (form.save) addPreset(item)
-    setForm({ name: '', kcal: '', protein: '', carbs: '', fat: '', save: false })
+    if (form.editId) {
+      updatePreset(form.editId, item) // edit existing preset, don't log it
+    } else {
+      addEntry({ ...item, emoji: '🍽️' })
+      if (form.save) addPreset({ ...item, emoji: '🍽️' })
+    }
+    setForm(blankForm)
     setShowForm(false)
   }
 
@@ -193,22 +210,39 @@ export default function Food() {
       {/* Quick add — only today is editable */}
       {isToday && (
       <section className="panel p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <Label>Presets · {presets.length}</Label>
           <div className="flex gap-2">
-            <button onClick={() => { setEditMode(!editMode); setShowForm(false) }}
+            <button onClick={() => { setEditMode(!editMode); setShowForm(false); setForm(blankForm) }}
               className="press mono text-[10px] tracking-[0.14em] uppercase font-semibold rounded-lg px-3.5 py-2 chip t2">
               {editMode ? 'Done' : 'Edit'}
             </button>
-            <button onClick={() => { setShowForm(!showForm); setEditMode(false) }}
+            <button onClick={() => { setShowForm(!showForm); setEditMode(false); setForm(blankForm) }}
               className="press mono text-[10px] tracking-[0.14em] uppercase font-semibold rounded-lg px-3 py-2 acc-chip inline-flex items-center gap-1">
               {showForm ? 'Cancel' : <><Plus size={12} strokeWidth={3} /> Custom</>}
             </button>
           </div>
         </div>
 
+        {/* Category filter chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
+          {CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setActiveCategory(cat)}
+              className={`press flex-shrink-0 mono text-[10px] tracking-[0.14em] uppercase font-semibold rounded-full px-3.5 py-1.5 transition-colors ${
+                activeCategory === cat ? 'acc-chip' : 'chip t2'
+              }`}>
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {showForm && (
           <div className="mb-4 space-y-2.5 panel-2 rounded-2xl p-4">
+            {form.editId && (
+              <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
+                <Pencil size={11} strokeWidth={2.5} /> Editing preset
+              </p>
+            )}
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
               placeholder="Name" aria-label="Food name" className="field w-full rounded-xl px-4 py-3 text-sm outline-none" />
             <div className="grid grid-cols-4 gap-2">
@@ -218,21 +252,34 @@ export default function Food() {
                   className="field rounded-xl px-2 py-3 text-sm outline-none text-center mono" />
               ))}
             </div>
-            <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
-              <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
-                className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
-              Save as preset
-            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {CATEGORIES.filter(c => c !== 'All').map(cat => (
+                <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
+                  className={`press mono text-[10px] tracking-[0.12em] uppercase font-semibold rounded-full px-3 py-1.5 ${
+                    form.category === cat ? 'acc-chip' : 'chip t2'
+                  }`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {!form.editId && (
+              <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
+                <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
+                  className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
+                Save as preset
+              </label>
+            )}
             <button onClick={submitCustom} disabled={!form.kcal}
               className="press w-full disabled:opacity-30 disabled:cursor-not-allowed rounded-xl py-3.5 font-bold text-sm acc-chip">
-              Add to log
+              {form.editId ? 'Save changes' : 'Add to log'}
             </button>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-2.5">
-          {presets.map(p => (
-            <button key={p.id} onClick={() => editMode ? null : addEntry(p)}
+          {filteredPresets.map(p => (
+            <button key={p.id} onClick={() => editMode ? openEdit(p) : addEntry(p)}
+              aria-label={editMode ? `Edit ${p.name}` : `Add ${p.name}`}
               className="press chip rounded-2xl p-4 text-left relative">
               {editMode && (
                 <span onClick={e => { e.stopPropagation(); removePreset(p.id) }}
@@ -242,9 +289,15 @@ export default function Food() {
                   <X size={14} strokeWidth={3} />
                 </span>
               )}
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center mb-2.5 acc-chip">
-                <FoodIcon emoji={p.emoji} size={16} />
-              </span>
+              <div className="flex items-start justify-between mb-2.5">
+                <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip">
+                  <FoodIcon emoji={p.emoji} size={16} />
+                </span>
+                <span aria-hidden="true"
+                  className="w-6 h-6 rounded-full flex items-center justify-center acc-chip opacity-70">
+                  {editMode ? <Pencil size={12} strokeWidth={2.5} /> : <Plus size={13} strokeWidth={3} />}
+                </span>
+              </div>
               <div className="text-[13px] font-bold leading-tight t1">{p.name}</div>
               <div className="mono text-[10px] t3 mt-2">{p.kcal} kcal · {p.protein}P {p.carbs ?? 0}C {p.fat ?? 0}F</div>
             </button>

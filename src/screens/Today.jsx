@@ -72,24 +72,25 @@ export default function Today({ goTo, openLog }) {
       {/* Module bento */}
       <div className="grid grid-cols-2 gap-3.5">
         <button onClick={() => goTo('fitness')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fit)' }}>
-          <Label className="mb-4">Body</Label>
-          <p className="display text-[40px] leading-none font-bold t1">{latestBody.fatPct}<span className="text-[22px] t3">%</span></p>
-          <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-2">body fat</p>
-          <p className="mono text-[10px] mt-3 acc flex items-center gap-1.5">
-            <Flame size={11} strokeWidth={2.5} /> {toGoal}% to {goal.fatPct}% goal
+          <Label className="mb-3">Body</Label>
+          <div className="h-[52px] flex items-start">
+            <p className="display text-[26px] leading-tight font-bold t1">{nextWorkout || '—'}</p>
+          </div>
+          <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-1 flex items-center gap-1.5">
+            <Dumbbell size={10} strokeWidth={2.5} /> next workout
           </p>
-          {nextWorkout && (
-            <p className="mono text-[10px] mt-2 t2 flex items-center gap-1.5">
-              <Dumbbell size={11} strokeWidth={2.5} className="t3" /> next · {nextWorkout}
-            </p>
-          )}
+          <p className="mono text-[10px] mt-3 acc flex items-center gap-1.5">
+            <Flame size={11} strokeWidth={2.5} /> {latestBody.fatPct}% fat · {toGoal}% to goal
+          </p>
           <span className="mono text-[9px] tracking-[0.16em] uppercase t3 mt-4 flex items-center gap-1">open <ArrowRight size={10} /></span>
         </button>
 
         <button onClick={() => goTo('finance')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fin)' }}>
-          <Label className="mb-4">Net</Label>
-          <Odometer value={total} format={usd} className="display text-[34px] font-bold t1" />
-          <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-2">total portfolio</p>
+          <Label className="mb-3">Net</Label>
+          <div className="h-[52px] flex items-start">
+            <Odometer value={total} format={usd} className="display text-[30px] leading-none font-bold t1" />
+          </div>
+          <p className="mono text-[9px] tracking-[0.18em] uppercase t3 mt-1">total portfolio</p>
           <p className={`mono text-[10px] mt-3 flex items-center gap-1.5 ${msftUp ? 'up' : 'down'}`}>
             {msftUp ? <TrendingUp size={11} strokeWidth={2.5} /> : <TrendingDown size={11} strokeWidth={2.5} />}
             MSFT {msftUp ? '+' : ''}{msftChange.toFixed(2)}% {q?.MSFT ? 'live' : 'today'}
