@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import { ArrowRight, Flame, Beef, Wheat, Droplets, TrendingUp, TrendingDown, Dumbbell } from 'lucide-react'
 import { useFood } from '../store'
 import { FITNESS, FINANCE, TARGETS, usd, sarwaTotal, ETF_SYMBOL, nextWorkoutIdx } from '../data'
 import { Gauge, SegBar, Label, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
 import { usePersistentState } from '../hooks'
+import { fetchWhoopCalories } from '../whoop'
 
 export default function Today({ goTo, openLog }) {
   const { totals, remaining, proteinLeft } = useFood()
@@ -29,6 +31,9 @@ export default function Today({ goTo, openLog }) {
     { Icon: Wheat, label: 'C', val: totals.carbs, target: TARGETS.carbs, color: '#FBBF24' },
     { Icon: Droplets, label: 'F', val: totals.fat, target: TARGETS.fat, color: '#A78BFA' },
   ]
+
+  const [whoop, setWhoop] = useState(null)
+  useEffect(() => { fetchWhoopCalories().then(setWhoop) }, [])
 
   const hour = new Date().getHours()
   const phase = hour < 5 ? 'Night ops' : hour < 12 ? 'Morning systems check' : hour < 18 ? 'Midday status' : 'Evening review'
@@ -68,6 +73,33 @@ export default function Today({ goTo, openLog }) {
           </div>
         </div>
       </section>
+
+      {/* Energy · WHOOP — burned today + intraday pacing */}
+      {whoop?.connected && whoop.kcal != null && (() => {
+        const ahead = whoop.yesterday != null && whoop.kcal >= whoop.yesterday
+        return (
+          <section className="panel p-5" style={{ '--acc': 'var(--acc-fit)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <Label><Flame size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy · WHOOP</Label>
+              <span className="mono text-[10px] t3">strain {whoop.strain != null ? whoop.strain.toFixed(1) : '—'}</span>
+            </div>
+            <div className="flex items-end gap-2">
+              <span className="display text-[34px] font-bold t1 leading-none">{whoop.kcal.toLocaleString()}</span>
+              <span className="mono text-[9px] tracking-[0.2em] uppercase t3 mb-1">kcal burned today</span>
+            </div>
+            <p className="mono text-[10px] mt-2 t3">
+              {whoop.yesterday != null ? (
+                <>
+                  <span className={ahead ? 'acc' : 'down'}>{ahead ? 'ahead of' : 'behind'}</span>{' '}
+                  yesterday ~{whoop.yesterday.toLocaleString()}
+                  {whoop.weeklyAvg != null && <> · wk avg ~{whoop.weeklyAvg.toLocaleString()}</>}
+                  {' '}by this hour
+                </>
+              ) : 'building pace history…'}
+            </p>
+          </section>
+        )
+      })()}
 
       {/* Module bento */}
       <div className="grid grid-cols-2 gap-3.5">
