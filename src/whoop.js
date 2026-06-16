@@ -30,6 +30,19 @@ export async function fetchWhoopCalories() {
   }
 }
 
+// { connected, cycles: [{ date, kcal, partial }] } — per-day total burn.
+export async function fetchWhoopCycles() {
+  const t = await accessToken()
+  if (!t) return { connected: false }
+  try {
+    const r = await fetch('/api/whoop/cycles', { headers: { Authorization: `Bearer ${t}` } })
+    if (!r.ok) return { connected: false, error: true }
+    return await r.json()
+  } catch {
+    return { connected: false, error: true }
+  }
+}
+
 export async function disconnectWhoop() {
   const t = await accessToken()
   if (!t) return

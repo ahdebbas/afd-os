@@ -5,7 +5,8 @@ import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
-import { fetchWhoopCalories } from '../whoop'
+import { fetchWhoopCalories, fetchWhoopCycles } from '../whoop'
+import { useFood } from '../store'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -102,7 +103,12 @@ export default function Fitness() {
 
   // WHOOP burn + intraday pacing (today only). Null until loaded.
   const [whoop, setWhoop] = useState(null)
-  useEffect(() => { fetchWhoopCalories().then(setWhoop) }, [])
+  const [cycles, setCycles] = useState(null)
+  const { logs: foodLogs } = useFood()
+  useEffect(() => {
+    fetchWhoopCalories().then(setWhoop)
+    fetchWhoopCycles().then(setCycles)
+  }, [])
 
   const today = todayKey()
   // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
@@ -230,11 +236,45 @@ export default function Fitness() {
 
   // InBody readings, oldest→newest. Latest drives the cards + gauge.
   const readings = useMemo(() => [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)), [inbody])
-  const latest = readings[readings.length - 1] || { weight: 0, smm: 0, fatMass: 0, fatPct: 0, date: today }
+  const latest = useMemo(
+    () => readings[readings.length - 1] || { weight: 0, smm: 0, fatMass: 0, fatPct: 0, date: today },
+    [readings, today])
   const prevReading = readings[readings.length - 2]
   const firstReading = readings[0]
   const selMetric = METRICS.find(m => m.key === metric)
   const chartData = readings.filter(r => r[metric] != null).map(r => ({ date: r.date, value: r[metric] }))
+
+  // Energy balance: real maintenance (avg burn), net deficit, predicted vs actual
+  // fat loss, and goal ETA — from WHOOP cycles + the food log + InBody. #1/#2/#4.
+  const energy = useMemo(() => {
+    if (!cycles?.connected || !cycles.cycles?.length) return null
+    const burnByDate = {}
+    cycles.cycles.forEach(c => { if (!c.partial) burnByDate[c.date] = c.kcal })
+    const days = []
+    for (let i = 1; i <= 7; i++) { // last 7 completed days (exclude today, which is partial)
+      const d = new Date(); d.setDate(d.getDate() - i)
+      const key = dateKey(d)
+      if (burnByDate[key] == null) continue
+      const eaten = (foodLogs[key] || []).reduce((a, e) => a + e.kcal, 0)
+      days.push({ key, burned: burnByDate[key], eaten })
+    }
+    if (!days.length) return null
+    const maintenance = Math.round(days.reduce((a, d) => a + d.burned, 0) / days.length)
+    const logged = days.filter(d => d.eaten > 0) // only days you actually logged food
+    const netDeficit = logged.reduce((a, d) => a + (d.burned - d.eaten), 0)
+    const predictedKg = netDeficit / 7700 // ~7,700 kcal per kg of fat
+
+    let actualKg = null
+    if (readings.length >= 2) actualKg = latest.weight - readings[readings.length - 2].weight
+
+    let etaDate = null
+    if (latest.fatPct && latest.weight && logged.length && predictedKg > 0) {
+      const weeklyFatPct = (predictedKg / logged.length * 7) / latest.weight * 100
+      const weeks = weeklyFatPct > 0.01 ? (latest.fatPct - goal.fatPct) / weeklyFatPct : 0
+      if (weeks > 0 && weeks < 260) { const dt = new Date(); dt.setDate(dt.getDate() + Math.round(weeks * 7)); etaDate = dateKey(dt) }
+    }
+    return { maintenance, netDeficit, predictedKg, loggedDays: logged.length, actualKg, etaDate }
+  }, [cycles, foodLogs, readings, latest, goal])
 
   const addResult = () => {
     const weight = +inForm.weight || null
@@ -475,6 +515,46 @@ export default function Fitness() {
           ))}
         </div>
       </section>
+
+      {/* Energy balance · 7d — real maintenance, net deficit, predicted vs actual */}
+      {energy && (() => {
+        const losingPredicted = energy.predictedKg > 0
+        const losingActual = energy.actualKg != null && energy.actualKg < 0
+        const tracking = energy.actualKg != null && losingPredicted === losingActual
+        const kpis = [
+          { label: 'Maintenance', value: energy.maintenance.toLocaleString(), sub: 'avg burn/day' },
+          { label: 'Net deficit', value: energy.netDeficit.toLocaleString(), sub: `${energy.loggedDays}d logged` },
+          { label: 'Predicted', value: `${energy.predictedKg >= 0 ? '−' : '+'}${Math.abs(energy.predictedKg).toFixed(1)}`, sub: 'kg fat (calc)' },
+        ]
+        return (
+          <section className="panel p-6">
+            <Label className="mb-4"><Zap size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy balance · 7d</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {kpis.map(k => (
+                <div key={k.label} className="text-center">
+                  <div className="display text-[22px] leading-none font-bold t1">{k.value}</div>
+                  <div className="mono text-[8px] tracking-[0.14em] uppercase t3 mt-1.5">{k.label}</div>
+                  <div className="mono text-[8px] t3 mt-0.5">{k.sub}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 hairline-t space-y-1.5">
+              {energy.actualKg != null ? (
+                <p className="mono text-[10px] t3">
+                  reconcile · predicted {energy.predictedKg >= 0 ? '−' : '+'}{Math.abs(energy.predictedKg).toFixed(1)}kg fat
+                  {' '}vs InBody {energy.actualKg <= 0 ? '−' : '+'}{Math.abs(energy.actualKg).toFixed(1)}kg{' '}
+                  <span className={tracking ? 'acc' : 'down'}>{tracking ? 'tracking ✓' : '⚠ check'}</span>
+                </p>
+              ) : (
+                <p className="mono text-[10px] t3">add ≥2 InBody readings to validate against actual change</p>
+              )}
+              <p className="mono text-[10px] t3">
+                goal {goal.fatPct}% · {energy.etaDate ? <>ETA ≈ <span className="t1">{longDate(energy.etaDate)}</span></> : 'ETA — (need more data)'}
+              </p>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* PRs — auto-derived from logged weights */}
       <section className="panel p-6">
