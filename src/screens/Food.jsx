@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil } from 'lucide-react'
+import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil, Flame, Activity } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
+import { connectWhoop, fetchWhoopCalories, disconnectWhoop } from '../whoop'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
@@ -97,6 +98,16 @@ export default function Food() {
   useEffect(() => { if (date < todayKey()) setDate(todayKey()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isToday = date === todayKey()
   const [showForm, setShowForm] = useState(false)
+
+  // WHOOP: calories burned for the current cycle. Pulled once on mount (today only).
+  const [whoop, setWhoop] = useState(null)
+  useEffect(() => {
+    // Clean the ?whoop=… param left by the OAuth redirect, then load burn data.
+    if (new URLSearchParams(window.location.search).get('whoop')) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    fetchWhoopCalories().then(setWhoop)
+  }, [])
 
   // Selected-day view, derived from the log. Editing (add/remove) only applies to today.
   const entries = logs[date] || []
@@ -206,6 +217,43 @@ export default function Food() {
           ))}
         </div>
       </section>
+
+      {/* WHOOP — calories burned + net (today only) */}
+      {isToday && whoop && (
+        <section className="panel p-5" style={{ '--acc': 'var(--acc-food)' }}>
+          {whoop.connected && whoop.kcal != null ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip flex-shrink-0">
+                    <Flame size={16} strokeWidth={2.5} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="mono text-[9px] tracking-[0.18em] uppercase t3">Burned · WHOOP</div>
+                    <div className="text-[15px] font-bold t1">
+                      {whoop.kcal.toLocaleString()} <span className="t3 font-normal text-[12px]">kcal</span>
+                      {whoop.strain != null && <span className="mono text-[10px] t3 font-normal"> · strain {whoop.strain.toFixed(1)}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="mono text-[9px] tracking-[0.18em] uppercase t3">Net eaten</div>
+                  <div className="text-[15px] font-bold t1">{(totals.kcal - whoop.kcal).toLocaleString()}</div>
+                </div>
+              </div>
+              <button onClick={() => disconnectWhoop().then(() => setWhoop({ connected: false }))}
+                className="press mono text-[9px] tracking-[0.16em] uppercase t3 mt-3">
+                Disconnect
+              </button>
+            </>
+          ) : (
+            <button onClick={connectWhoop}
+              className="press w-full flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm acc-chip">
+              <Activity size={15} strokeWidth={2.5} /> Connect WHOOP for burned calories
+            </button>
+          )}
+        </section>
+      )}
 
       {/* Quick add — only today is editable */}
       {isToday && (

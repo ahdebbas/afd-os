@@ -18,4 +18,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Server-side Vercel functions + shared lib run on Node, not the browser.
+    files: ['api/**/*.js', 'lib/**/*.js'],
+    languageOptions: { globals: globals.node },
+  },
 ])
