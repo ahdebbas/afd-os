@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LayoutGrid, Wallet, UtensilsCrossed, Dumbbell, Sun, Moon, Plus, Check, Sparkles, Settings, Download, Upload, ArrowUp } from 'lucide-react'
+import { LayoutGrid, Wallet, UtensilsCrossed, Dumbbell, Sun, Moon, Check, Sparkles, Settings, Download, Upload, ArrowUp, Target } from 'lucide-react'
 import { OsProvider, useOs } from './os'
 import { QuotesProvider } from './quotes'
 import { FoodProvider, useFood } from './store'
@@ -117,6 +117,7 @@ function SettingsSheet({ open, onClose }) {
   const { announce } = useOs()
   const fileRef = useRef(null)
   const [msg, setMsg] = useState(null)
+  const [adaptive, setAdaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
 
   const onExport = () => {
     exportData()
@@ -145,6 +146,18 @@ function SettingsSheet({ open, onClose }) {
         <p className="text-[13px] t2 leading-relaxed">
           Your data lives only on this device. Export a backup regularly — or to move to a new device.
         </p>
+        <button onClick={() => setAdaptive(v => !v)} role="switch" aria-checked={adaptive}
+          className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
+          <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Target size={16} strokeWidth={2.25} /></span>
+          <span className="flex-1">
+            <span className="block text-sm font-bold t1">Adaptive intake guidance</span>
+            <span className="block mono text-[10px] t3 mt-0.5">WHOOP burn projection &amp; recommended calories</span>
+          </span>
+          <span className={`w-10 h-6 rounded-full flex-shrink-0 relative transition-colors ${adaptive ? 'acc-chip' : 'chip'}`} style={{ borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--line)' }}>
+            <span className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full transition-all ${adaptive ? 'left-[18px]' : 'left-1'}`}
+              style={{ background: adaptive ? 'var(--acc)' : 'var(--ink-3)' }} />
+          </span>
+        </button>
         <button onClick={onExport}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Download size={16} strokeWidth={2.25} /></span>
@@ -326,7 +339,7 @@ function Shell() {
         </div>
       </div>
 
-      {/* Dock + FAB */}
+      {/* Dock */}
       <nav className={`app-dock fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
         <div className="dock dock-track rounded-[24px] p-1 flex" style={{ '--acc': TABS[idx].acc }}>
           <span className="dock-pill" style={{ width: DOCK_ITEM_WIDTH, transform: `translateX(${idx * DOCK_ITEM_WIDTH}px)` }} aria-hidden="true" />
@@ -342,10 +355,6 @@ function Shell() {
             )
           })}
         </div>
-        <button onClick={() => setLogOpen(true)} aria-label="Quick log food"
-          className="fab w-[52px] h-[52px] rounded-2xl flex items-center justify-center">
-          <Plus size={22} strokeWidth={2.75} />
-        </button>
       </nav>
 
       <QuickLog open={logOpen} onClose={() => setLogOpen(false)} />

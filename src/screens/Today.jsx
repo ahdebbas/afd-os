@@ -75,8 +75,6 @@ export default function Today({ goTo, openLog }) {
         </div>
       </section>
 
-      <WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} compact />
-
       {/* Module bento */}
       <div className="grid grid-cols-2 gap-3.5">
         <button onClick={() => goTo('fitness')} className="panel tile p-5 text-left" style={{ '--acc': 'var(--acc-fit)' }}>
@@ -112,6 +110,8 @@ export default function Today({ goTo, openLog }) {
         <span className="mono text-[10px] tracking-[0.2em] uppercase t3">Log a meal from anywhere — tap +</span>
         <ArrowRight size={13} className="t3" />
       </button>
+
+      <WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} protein={totals.protein} compact />
     </>
   )
 }

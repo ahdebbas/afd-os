@@ -1,9 +1,58 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
 import { CLOUD_STATE_KEYS, clearCloudSyncSink, setCloudSyncSink } from './cloudSync'
 import { hasSupabaseConfig, supabase } from './supabase'
 
 const CloudCtx = createContext(null)
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+
+function TurnstileCaptcha({ onToken, resetSignal }) {
+  const boxRef = useRef(null)
+  const widgetRef = useRef(null)
+
+  useEffect(() => {
+    if (!turnstileSiteKey || !boxRef.current) return
+    let cancelled = false
+    const render = () => {
+      if (cancelled || !window.turnstile || !boxRef.current || widgetRef.current != null) return
+      widgetRef.current = window.turnstile.render(boxRef.current, {
+        sitekey: turnstileSiteKey,
+        callback: onToken,
+        'expired-callback': () => onToken(''),
+        'error-callback': () => onToken(''),
+      })
+    }
+
+    if (window.turnstile) render()
+    else {
+      let script = document.querySelector('script[data-turnstile]')
+      if (!script) {
+        script = document.createElement('script')
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+        script.async = true
+        script.defer = true
+        script.dataset.turnstile = 'true'
+        document.head.appendChild(script)
+      }
+      script.addEventListener('load', render, { once: true })
+    }
+
+    return () => {
+      cancelled = true
+      if (window.turnstile && widgetRef.current != null) window.turnstile.remove(widgetRef.current)
+      widgetRef.current = null
+    }
+  }, [onToken])
+
+  useEffect(() => {
+    if (!window.turnstile || widgetRef.current == null) return
+    window.turnstile.reset(widgetRef.current)
+    onToken('')
+  }, [resetSignal, onToken])
+
+  if (!turnstileSiteKey) return null
+  return <div ref={boxRef} className="min-h-[65px] flex justify-center" />
+}
 
 function ConfigMissing() {
   return (
@@ -30,12 +79,17 @@ function AuthScreen() {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaReset, setCaptchaReset] = useState(0)
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault()
-    if (mode === 'signup') signUp(email, password)
-    else signIn(email, password)
+    if (mode === 'signup') await signUp(email, password, captchaToken)
+    else await signIn(email, password, captchaToken)
+    setCaptchaReset(v => v + 1)
   }
+
+  const captchaRequired = Boolean(turnstileSiteKey)
 
   return (
     <div className="min-h-dvh w-full max-w-md mx-auto flex items-center justify-center px-6">
@@ -60,9 +114,15 @@ function AuthScreen() {
             <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6}
               className="field mt-1.5 rounded-xl px-3 py-2.5 w-full text-sm outline-none" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
           </label>
+          <TurnstileCaptcha onToken={setCaptchaToken} resetSignal={captchaReset} />
+          {!turnstileSiteKey && authError?.includes('captcha') && (
+            <p className="text-[12px] down leading-relaxed" role="alert">
+              Supabase captcha is enabled. Set VITE_TURNSTILE_SITE_KEY in the app environment or disable captcha protection in Supabase Auth.
+            </p>
+          )}
           {authError && <p className="text-[12px] down leading-relaxed" role="alert">{authError}</p>}
           {authMessage && <p className="text-[12px] up leading-relaxed" role="status">{authMessage}</p>}
-          <button disabled={authBusy || !email || password.length < 6}
+          <button disabled={authBusy || !email || password.length < 6 || (captchaRequired && !captchaToken)}
             className="press w-full rounded-xl py-3.5 font-bold text-sm acc-chip disabled:opacity-40 disabled:cursor-not-allowed">
             {authBusy ? 'Working...' : mode === 'signup' ? 'Create account' : 'Sign in'}
           </button>
@@ -177,11 +237,15 @@ export function CloudProvider({ children }) {
     }
   }, [session])
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, captchaToken) => {
     setAuthBusy(true)
     setAuthError(null)
     setAuthMessage(null)
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    })
     if (error) setAuthError(error.message)
     else if (data.session) {
       setSession(data.session)
@@ -190,11 +254,15 @@ export function CloudProvider({ children }) {
     setAuthBusy(false)
   }
 
-  const signUp = async (email, password) => {
+  const signUp = async (email, password, captchaToken) => {
     setAuthBusy(true)
     setAuthError(null)
     setAuthMessage(null)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    })
     if (error) setAuthError(error.message)
     else if (!data.session) setAuthMessage('Account created. Check your email to confirm it, then sign in.')
     else {

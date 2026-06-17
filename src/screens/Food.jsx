@@ -218,7 +218,7 @@ export default function Food() {
           ))}
         </div>
 
-        {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} />}
+        {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
 
       {/* Quick add — only today is editable */}

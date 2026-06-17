@@ -8,6 +8,7 @@ import { dateKey, todayKey } from '../dates'
 import { fetchWhoopCalories, fetchWhoopCycles } from '../whoop'
 import { useFood } from '../store'
 import { WhoopEnergyPanel } from '../whoopInsights'
+import { netEnergyData } from '../whoopEnergy'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -422,7 +423,7 @@ export default function Fitness() {
         </button>
       </section>
 
-      {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} />}
+      {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} protein={(foodLogs[today] || []).reduce((a, e) => a + (e.protein || 0), 0)} />}
 
       {/* Body module — InBody log */}
       <section className="panel p-6">
@@ -601,6 +602,19 @@ export default function Fitness() {
                 ? 'Keep calories steady; the WHOOP burn trend already supports the cut.'
                 : 'Tighten the calorie cap or add low-strain movement before changing the lifting plan.'}
           </p>
+          {(() => {
+            const net = netEnergyData(energy.days)
+            if (net.length < 2) return null
+            return (
+              <div className="mt-4 pt-4 hairline-t">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="mono text-[8px] tracking-[0.14em] uppercase t3">Net energy · burn − intake</span>
+                  <span className="mono text-[8px] t3">{net.length}d</span>
+                </div>
+                <TrendChart data={net} color="var(--acc-fit)" unit=" kcal" />
+              </div>
+            )
+          })()}
         </section>
       )}
 

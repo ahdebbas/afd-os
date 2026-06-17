@@ -1,7 +1,9 @@
-import { Activity, Clock, Flame, TrendingDown, TrendingUp, Zap } from 'lucide-react'
-import { TARGETS } from './data'
+import { Activity, Clock, Flame, TrendingDown, TrendingUp, Zap, Target, TriangleAlert } from 'lucide-react'
+import { TARGETS, DEFICIT_GOAL } from './data'
 import { Label } from './ui'
 import { connectWhoop } from './whoop'
+import { usePersistentState } from './hooks'
+import { projectBurn, recommendedIntake, fuelingFlag } from './whoopEnergy'
 
 const kcal = n => Math.round(n).toLocaleString('en-US')
 const hourLabel = h => `${String(h).padStart(2, '0')}:00`
@@ -69,13 +71,15 @@ export function BurnPaceChart({ whoop }) {
   const W = 320, H = 92
   const pad = { l: 8, r: 8, t: 10, b: 18 }
   const maxHour = Math.max(...[...today, ...weekly, ...yesterday].map(p => p.hour), 1)
-  const min = Math.min(...all)
+  const min = 0
   const max = Math.max(...all)
   const span = Math.max(1, max - min)
   const xAt = h => pad.l + (W - pad.l - pad.r) * (h / Math.max(1, maxHour))
   const yAt = v => pad.t + (H - pad.t - pad.b) * (1 - ((v - min) / span))
   const pathFor = points => points.map((p, i) => `${i ? 'L' : 'M'} ${xAt(p.hour).toFixed(1)} ${yAt(p.kcal).toFixed(1)}`).join(' ')
   const lastToday = today.at(-1)
+  const previousToday = today.at(-2)
+  const delta = lastToday && previousToday ? lastToday.kcal - previousToday.kcal : null
 
   return (
     <div className="mt-4 panel-2 rounded-2xl p-3">
@@ -93,10 +97,14 @@ export function BurnPaceChart({ whoop }) {
         <text x={W - pad.r} y={H - 4} fill="var(--ink-3)" className="mono" fontSize="8.5" textAnchor="end">{hourLabel(maxHour)}</text>
       </svg>
       <div className="flex items-center justify-between mt-2 mono text-[8px] tracking-[0.12em] uppercase t3">
-        <span className="acc">Today</span>
+        <span className="acc">Today so far</span>
         {yesterday.length > 1 && <span style={{ color: 'var(--warn)' }}>Yesterday</span>}
         {weekly.length > 1 && <span>Weekly avg</span>}
       </div>
+      <p className="mono text-[9px] t3 mt-2 leading-relaxed">
+        Cumulative calories burned since midnight. A steeper line means faster burn; the chart now starts from zero so small changes do not look like big drops.
+        {delta != null && <> Latest sample moved <span className={delta >= 0 ? 'acc' : 'down'}>{delta >= 0 ? '+' : ''}{kcal(delta)}</span> kcal from the prior sample.</>}
+      </p>
     </div>
   )
 }
@@ -114,7 +122,8 @@ function DataHealth({ snap }) {
   )
 }
 
-export function WhoopEnergyPanel({ whoop, eaten = 0, compact = false, showChart = true }) {
+export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = false, showChart = false }) {
+  const [adaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state !== 'ready') return <EmptyWhoop whoop={whoop} compact={compact} />
 
@@ -122,7 +131,20 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, compact = false, showChart 
   const paceAhead = paceKnown && snap.paceDelta >= 0
   const netDeficit = snap.net >= 0
   const PaceIcon = paceAhead ? TrendingUp : TrendingDown
-  const paceLabel = whoop.weeklyAvg != null ? 'weekly pace' : 'yesterday pace'
+  const vsYesterday = whoop.yesterday == null ? null : snap.burned - whoop.yesterday
+  const vsWeekly = whoop.weeklyAvg == null ? null : snap.burned - whoop.weeklyAvg
+
+  const projected = projectBurn(whoop)
+  const recommend = recommendedIntake(projected)
+  const flag = fuelingFlag({ whoop, eaten, protein, projectedBurn: projected })
+  const recIntakeLeft = recommend != null ? recommend - eaten : null
+  const actionText = recommend == null
+    ? 'Need more hours of burn data before giving an intake recommendation.'
+    : recIntakeLeft == null
+      ? null
+      : recIntakeLeft >= 0
+        ? `You can still eat about ${kcal(recIntakeLeft)} kcal and stay on plan.`
+        : `You are about ${kcal(Math.abs(recIntakeLeft))} kcal above the recommended intake for today.`
 
   return (
     <section className={`panel ${compact ? 'p-5' : 'p-6'}`} style={{ '--acc': 'var(--acc-fit)' }}>
@@ -148,25 +170,64 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, compact = false, showChart 
           <div className="mono text-[8px] tracking-[0.14em] uppercase t3 mt-1.5">{netDeficit ? 'deficit' : 'surplus'}</div>
         </div>
         <div className="chip rounded-2xl p-3 text-center">
-          <div className={`display text-[22px] leading-none font-bold ${paceAhead ? 'acc' : paceKnown ? 'down' : 't1'}`}>
-            {paceKnown ? `${paceAhead ? '+' : '−'}${kcal(Math.abs(snap.paceDelta))}` : '—'}
+          <div className={`display text-[22px] leading-none font-bold ${projected != null ? 't1' : 't3'}`}>
+            {projected != null ? `~${kcal(projected)}` : '—'}
           </div>
-          <div className="mono text-[8px] tracking-[0.14em] uppercase t3 mt-1.5">pace</div>
+          <div className="mono text-[8px] tracking-[0.14em] uppercase t3 mt-1.5">tonight</div>
         </div>
       </div>
-      <p className="mono text-[10px] mt-3 t3 flex items-center gap-1.5">
-        {paceKnown ? <PaceIcon size={12} strokeWidth={2.5} /> : <Zap size={12} strokeWidth={2.5} />}
-        {paceKnown
-          ? <><span className={paceAhead ? 'acc' : 'down'}>{paceAhead ? 'ahead of' : 'behind'}</span> {paceLabel} by this hour</>
-          : 'building pace history from hourly samples'}
-      </p>
+      <div className="mt-3 panel-2 rounded-2xl px-3.5 py-3 space-y-2.5">
+        <div className="flex items-center justify-between gap-3 mono text-[10px]">
+          <span className="t3 uppercase tracking-[0.14em]">vs yesterday by now</span>
+          <span className={vsYesterday == null ? 't3' : vsYesterday >= 0 ? 'acc' : 'down'}>
+            {vsYesterday == null ? 'building' : `${vsYesterday >= 0 ? '+' : '−'}${kcal(Math.abs(vsYesterday))} kcal`}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 mono text-[10px]">
+          <span className="t3 uppercase tracking-[0.14em]">vs weekly average</span>
+          <span className={vsWeekly == null ? 't3' : vsWeekly >= 0 ? 'acc' : 'down'}>
+            {vsWeekly == null ? 'building' : `${vsWeekly >= 0 ? '+' : '−'}${kcal(Math.abs(vsWeekly))} kcal`}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 mono text-[10px]">
+          <span className="t3 uppercase tracking-[0.14em]">pace read</span>
+          <span className="flex items-center gap-1.5">
+            {paceKnown ? <PaceIcon size={12} strokeWidth={2.5} /> : <Zap size={12} strokeWidth={2.5} />}
+            {paceKnown
+              ? <span className={paceAhead ? 'acc' : 'down'}>{paceAhead ? 'ahead' : 'behind'}</span>
+              : <span className="t3">building</span>}
+          </span>
+        </div>
+      </div>
+      {adaptive && projected != null && recommend != null && (
+        <div className="mt-3 panel-2 rounded-2xl px-3.5 py-3 flex items-start gap-2.5">
+          <Target size={13} strokeWidth={2.5} className="acc flex-shrink-0 mt-0.5" />
+          <p className="mono text-[10px] t2 leading-relaxed">
+            Projected burn <span className="t1">~{kcal(projected)}</span> by midnight · eat
+            {' '}<span className="acc">~{kcal(recommend)}</span> for a {kcal(DEFICIT_GOAL)} deficit
+            {recIntakeLeft != null && (
+              <> · <span className={recIntakeLeft >= 0 ? 't1' : 'down'}>{recIntakeLeft >= 0 ? `${kcal(recIntakeLeft)} kcal headroom` : `${kcal(Math.abs(recIntakeLeft))} kcal over`}</span></>
+            )}
+          </p>
+        </div>
+      )}
+      {actionText && (
+        <p className="mono text-[10px] mt-3 t2 leading-relaxed">
+          <span className={recIntakeLeft != null && recIntakeLeft < 0 ? 'down' : 'acc'}>Action:</span> {actionText}
+        </p>
+      )}
+      {flag && (
+        <p className={`mono text-[10px] mt-3 leading-relaxed flex items-start gap-1.5 ${flag.kind === 'protein' ? 't2' : 'down'}`}>
+          <TriangleAlert size={12} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" />{flag.msg}
+        </p>
+      )}
       {showChart && <BurnPaceChart whoop={whoop} />}
       <DataHealth snap={snap} />
     </section>
   )
 }
 
-export function WhoopBudgetFooter({ whoop, eaten }) {
+export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state === 'loading') return null
   if (snap.state !== 'ready') {
@@ -179,6 +240,7 @@ export function WhoopBudgetFooter({ whoop, eaten }) {
   }
 
   const netDeficit = snap.net >= 0
+  const flag = fuelingFlag({ whoop, eaten, protein, projectedBurn: projectBurn(whoop) })
   const kpis = [
     { label: 'Eaten', value: kcal(eaten), cls: 't1' },
     { label: 'Burned', value: kcal(snap.burned), cls: 't1' },
@@ -200,6 +262,11 @@ export function WhoopBudgetFooter({ whoop, eaten }) {
         {snap.capLeft >= 0 ? `${kcal(snap.capLeft)} kcal left before the food cap` : `${kcal(Math.abs(snap.capLeft))} kcal above the food cap`}
         {' '}· WHOOP only explains net position.
       </p>
+      {flag && (
+        <p className={`mono text-[9px] text-center mt-2 leading-relaxed flex items-center justify-center gap-1.5 ${flag.kind === 'protein' ? 't2' : 'down'}`}>
+          <TriangleAlert size={10} strokeWidth={2.5} className="flex-shrink-0" />{flag.msg}
+        </p>
+      )}
     </div>
   )
 }

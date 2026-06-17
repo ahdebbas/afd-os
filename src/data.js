@@ -2,6 +2,9 @@
 
 export const TARGETS = { kcal: 1950, protein: 180, carbs: 170, fat: 54 }
 
+// Target daily energy deficit (kcal) used by WHOOP-adaptive intake guidance.
+export const DEFICIT_GOAL = 500
+
 export const FITNESS = {
   // InBody readings over time (most recent last). Latest drives the cards/gauge.
   inbody: [
