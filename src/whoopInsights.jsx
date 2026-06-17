@@ -6,7 +6,6 @@ import { usePersistentState } from './hooks'
 import { projectBurn, recommendedIntake, fuelingFlag } from './whoopEnergy'
 
 const kcal = n => Math.round(n).toLocaleString('en-US')
-const hourLabel = h => `${String(h).padStart(2, '0')}:00`
 
 function whoopSnapshot(whoop, eaten = 0) {
   if (!whoop) return { state: 'loading' }
@@ -60,55 +59,6 @@ function EmptyWhoop({ whoop, compact = false }) {
   )
 }
 
-export function BurnPaceChart({ whoop }) {
-  const series = whoop?.series
-  const today = series?.today || []
-  const weekly = series?.weeklyAvg || []
-  const yesterday = series?.yesterday || []
-  const all = [...today, ...weekly, ...yesterday].map(p => p.kcal).filter(Number.isFinite)
-  if (today.length < 2 || all.length < 2) return null
-
-  const W = 320, H = 92
-  const pad = { l: 8, r: 8, t: 10, b: 18 }
-  const maxHour = Math.max(...[...today, ...weekly, ...yesterday].map(p => p.hour), 1)
-  const min = 0
-  const max = Math.max(...all)
-  const span = Math.max(1, max - min)
-  const xAt = h => pad.l + (W - pad.l - pad.r) * (h / Math.max(1, maxHour))
-  const yAt = v => pad.t + (H - pad.t - pad.b) * (1 - ((v - min) / span))
-  const pathFor = points => points.map((p, i) => `${i ? 'L' : 'M'} ${xAt(p.hour).toFixed(1)} ${yAt(p.kcal).toFixed(1)}`).join(' ')
-  const lastToday = today.at(-1)
-  const previousToday = today.at(-2)
-  const delta = lastToday && previousToday ? lastToday.kcal - previousToday.kcal : null
-
-  return (
-    <div className="mt-4 panel-2 rounded-2xl p-3">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="WHOOP intraday burn pace">
-        {[0, 0.5, 1].map(t => {
-          const y = pad.t + (H - pad.t - pad.b) * t
-          return <line key={t} x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="var(--line)" strokeWidth="1" />
-        })}
-        {weekly.length > 1 && <path d={pathFor(weekly)} fill="none" stroke="var(--ink-3)" strokeWidth="1.8" strokeDasharray="4 4" />}
-        {yesterday.length > 1 && <path d={pathFor(yesterday)} fill="none" stroke="var(--warn)" strokeWidth="1.6" opacity="0.7" />}
-        <path d={pathFor(today)} fill="none" stroke="var(--acc)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 4px var(--acc))' }} />
-        {lastToday && <circle cx={xAt(lastToday.hour)} cy={yAt(lastToday.kcal)} r="4" fill="var(--acc)" stroke="var(--surface)" strokeWidth="2" />}
-        <text x={pad.l} y={H - 4} fill="var(--ink-3)" className="mono" fontSize="8.5">00:00</text>
-        <text x={W - pad.r} y={H - 4} fill="var(--ink-3)" className="mono" fontSize="8.5" textAnchor="end">{hourLabel(maxHour)}</text>
-      </svg>
-      <div className="flex items-center justify-between mt-2 mono text-[8px] tracking-[0.12em] uppercase t3">
-        <span className="acc">Today so far</span>
-        {yesterday.length > 1 && <span style={{ color: 'var(--warn)' }}>Yesterday</span>}
-        {weekly.length > 1 && <span>Weekly avg</span>}
-      </div>
-      <p className="mono text-[9px] t3 mt-2 leading-relaxed">
-        Cumulative calories burned since midnight. A steeper line means faster burn; the chart now starts from zero so small changes do not look like big drops.
-        {delta != null && <> Latest sample moved <span className={delta >= 0 ? 'acc' : 'down'}>{delta >= 0 ? '+' : ''}{kcal(delta)}</span> kcal from the prior sample.</>}
-      </p>
-    </div>
-  )
-}
-
 function DataHealth({ snap }) {
   const sampleText = snap.lastSampleAt
     ? `${snap.stale ? 'stale' : 'sampled'} ${snap.lastSampleAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -122,7 +72,7 @@ function DataHealth({ snap }) {
   )
 }
 
-export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = false, showChart = false }) {
+export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = false }) {
   const [adaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state !== 'ready') return <EmptyWhoop whoop={whoop} compact={compact} />
@@ -221,7 +171,6 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
           <TriangleAlert size={12} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" />{flag.msg}
         </p>
       )}
-      {showChart && <BurnPaceChart whoop={whoop} />}
       <DataHealth snap={snap} />
     </section>
   )
