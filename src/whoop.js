@@ -2,6 +2,9 @@
 // token; all WHOOP secrets live server-side in the /api/whoop/* functions.
 import { supabase } from './supabase'
 
+// Client refresh cadence for WHOOP surfaces while the app stays open.
+export const WHOOP_POLL_MS = 5 * 60 * 1000
+
 async function accessToken() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()

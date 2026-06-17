@@ -5,7 +5,7 @@ import { TARGETS } from '../data'
 import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
-import { fetchWhoopCalories } from '../whoop'
+import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
 import { WhoopBudgetFooter } from '../whoopInsights'
 
 // Stored entries keep their emoji field for backward compat; render as SVG
@@ -103,11 +103,33 @@ export default function Food() {
   // WHOOP: calories burned for the current cycle. Pulled once on mount (today only).
   const [whoop, setWhoop] = useState(null)
   useEffect(() => {
+    let alive = true
+    const loadWhoop = async () => {
+      const data = await fetchWhoopCalories()
+      if (alive) setWhoop(data)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void loadWhoop()
+    }
+
     // Clean the ?whoop=… param left by the OAuth redirect, then load burn data.
     if (new URLSearchParams(window.location.search).get('whoop')) {
       window.history.replaceState({}, '', window.location.pathname)
     }
-    fetchWhoopCalories().then(setWhoop)
+    void Promise.resolve().then(loadWhoop)
+
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadWhoop()
+    }, WHOOP_POLL_MS)
+    window.addEventListener('focus', onVisibility)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      alive = false
+      clearInterval(id)
+      window.removeEventListener('focus', onVisibility)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   // Selected-day view, derived from the log. Editing (add/remove) only applies to today.

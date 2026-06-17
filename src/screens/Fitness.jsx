@@ -5,7 +5,7 @@ import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
-import { fetchWhoopCalories, fetchWhoopCycles } from '../whoop'
+import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 import { useFood } from '../store'
 import { WhoopEnergyPanel } from '../whoopInsights'
 import { netEnergyData } from '../whoopEnergy'
@@ -109,19 +109,34 @@ export default function Fitness() {
   const [whoopLoadedAt, setWhoopLoadedAt] = useState(null)
   const [refreshingWhoop, setRefreshingWhoop] = useState(false)
   const { logs: foodLogs } = useFood()
-  const refreshWhoop = async () => {
-    setRefreshingWhoop(true)
+  const refreshWhoop = async ({ silent = false } = {}) => {
+    if (!silent) setRefreshingWhoop(true)
     try {
       const [burn, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
       setWhoop(burn)
       setCycles(history)
       setWhoopLoadedAt(new Date())
     } finally {
-      setRefreshingWhoop(false)
+      if (!silent) setRefreshingWhoop(false)
     }
   }
   useEffect(() => {
-    void Promise.resolve().then(refreshWhoop)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void refreshWhoop({ silent: true })
+    }
+
+    void Promise.resolve().then(() => refreshWhoop())
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshWhoop({ silent: true })
+    }, WHOOP_POLL_MS)
+    window.addEventListener('focus', onVisibility)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('focus', onVisibility)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   const today = todayKey()

@@ -5,7 +5,7 @@ import { FITNESS, FINANCE, TARGETS, usd, sarwaTotal, ETF_SYMBOL, nextWorkoutIdx 
 import { Gauge, SegBar, Label, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
 import { usePersistentState } from '../hooks'
-import { fetchWhoopCalories } from '../whoop'
+import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
 import { WhoopEnergyPanel } from '../whoopInsights'
 
 export default function Today({ goTo, openLog }) {
@@ -34,7 +34,30 @@ export default function Today({ goTo, openLog }) {
   ]
 
   const [whoop, setWhoop] = useState(null)
-  useEffect(() => { fetchWhoopCalories().then(setWhoop) }, [])
+  useEffect(() => {
+    let alive = true
+    const loadWhoop = async () => {
+      const data = await fetchWhoopCalories()
+      if (alive) setWhoop(data)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void loadWhoop()
+    }
+
+    void Promise.resolve().then(loadWhoop)
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadWhoop()
+    }, WHOOP_POLL_MS)
+    window.addEventListener('focus', onVisibility)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      alive = false
+      clearInterval(id)
+      window.removeEventListener('focus', onVisibility)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   const hour = new Date().getHours()
   const phase = hour < 5 ? 'Night ops' : hour < 12 ? 'Morning systems check' : hour < 18 ? 'Midday status' : 'Evening review'
