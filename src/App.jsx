@@ -489,7 +489,7 @@ function Shell() {
   }
 
   return (
-    <div className={isDesktop ? 'h-dvh w-full relative' : 'h-dvh w-full max-w-md mx-auto relative flex flex-col'}>
+    <div className={isDesktop ? 'h-dvh w-full relative' : 'mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col'}>
       <div className="ambient" style={{ '--ambient': activeTab.ambient }} aria-hidden="true" />
 
       {isDesktop ? (

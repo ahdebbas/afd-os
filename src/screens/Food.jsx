@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
-import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil, ArrowUp, MoreHorizontal } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
-import { Gauge, SegBar, Label, Odometer, DayStrip } from '../ui'
+import { SegBar, Label, Odometer, DayStrip } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
 import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
@@ -12,7 +12,8 @@ import { WhoopBudgetFooter } from '../whoopInsights'
 const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
 export const FoodIcon = ({ emoji, size = 18 }) => {
   const I = EMOJI_ICONS[emoji] || UtensilsCrossed
-  return <I size={size} strokeWidth={2.25} />
+  if (EMOJI_ICONS[emoji]) return <I size={size} strokeWidth={2.25} />
+  return <span className="food-emoji" style={{ fontSize: size }} aria-hidden="true">{emoji || '🍽️'}</span>
 }
 
 const TREND_MACROS = [
@@ -20,6 +21,71 @@ const TREND_MACROS = [
   { key: 'carbs', label: 'C', color: '#FBBF24', kcalPerG: 4 },
   { key: 'fat', label: 'F', color: '#A78BFA', kcalPerG: 9 },
 ]
+
+const FOOD_GRADIENTS = [
+  ['#F8DDBB', '#F4A261'],
+  ['#CDECCF', '#5FB774'],
+  ['#FFE1D6', '#EF8354'],
+  ['#DDE8FF', '#7A9DF5'],
+  ['#F7E7A7', '#D6A735'],
+  ['#F2D6FF', '#A879D8'],
+]
+
+const presetTone = preset => FOOD_GRADIENTS[Math.abs([...preset.id].reduce((a, c) => a + c.charCodeAt(0), 0)) % FOOD_GRADIENTS.length]
+
+function FoodPlate({ preset, large = false }) {
+  const [from, to] = presetTone(preset)
+  return (
+    <div className={`food-plate ${large ? 'food-plate-lg' : ''}`} style={{ '--plate-a': from, '--plate-b': to }} aria-hidden="true">
+      <span className="food-plate-glow" />
+      <span className="food-plate-dish"><FoodIcon emoji={preset.emoji} size={large ? 24 : 17} /></span>
+    </div>
+  )
+}
+
+function macroPhrase(entry) {
+  const protein = entry.protein || 0
+  const carbs = entry.carbs || 0
+  const fat = entry.fat || 0
+  if (protein >= 45) return 'protein anchor'
+  if (carbs >= 25 && fat <= 10) return 'clean carb lift'
+  if (fat >= 18) return 'rich and filling'
+  if (entry.kcal <= 120) return 'small bite'
+  return 'balanced add'
+}
+
+function dayNote(entries, totals, remaining, isToday) {
+  if (!entries.length) return isToday ? 'Start with one tap. Keep it honest and light.' : 'No meals were logged on this day.'
+  if (remaining < 0) return `Over target by ${Math.abs(remaining).toLocaleString()} kcal. Keep the rest of the day simple.`
+  if (totals.protein >= TARGETS.protein) return 'Protein is covered. The remaining calories are optional, not a chase.'
+  return `${Math.max(0, Math.round(TARGETS.protein - totals.protein))}g protein still open. Pick the next thing with purpose.`
+}
+
+function JournalEntry({ entry, preset, canRemove, onRemove }) {
+  return (
+    <article className="food-journal-entry">
+      <FoodPlate preset={preset || entry} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold t1 leading-tight truncate">{entry.name}</h3>
+            <p className="text-[11px] t3 mt-0.5 truncate">{macroPhrase(entry)} · {entry.time || 'logged'}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[13px] font-bold t1">{entry.kcal}</div>
+            <div className="text-[9px] t3 uppercase tracking-[0.12em]">cal</div>
+          </div>
+        </div>
+        <div className="mono text-[10px] t3 mt-2">{entry.protein || 0}P · {entry.carbs ?? 0}C · {entry.fat ?? 0}F</div>
+      </div>
+      {canRemove && (
+        <button onClick={onRemove} aria-label={`Remove ${entry.name}`} className="food-delete press">
+          <X size={12} strokeWidth={2.6} />
+        </button>
+      )}
+    </article>
+  )
+}
 
 /** Last 7 days of fuel: stacked macro bars vs target, streak, averages. Built from the existing log. */
 function History({ logs }) {
@@ -139,6 +205,7 @@ export default function Food() {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   )
   const remaining = TARGETS.kcal - totals.kcal
+  const progress = Math.min(1, totals.kcal / TARGETS.kcal)
 
   const dayStatus = key => {
     if (key === todayKey()) return 'today'
@@ -164,7 +231,7 @@ export default function Food() {
   })()
 
   const [editMode, setEditMode] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [activeCategory, setActiveCategory] = useState('Breakfast')
   const blankForm = { name: '', kcal: '', protein: '', carbs: '', fat: '', category: 'Meals', save: false, editId: null }
   const [form, setForm] = useState(blankForm)
 
@@ -176,14 +243,16 @@ export default function Food() {
     setEditMode(false)
   }
 
-  const CATEGORIES = ['All', 'Breakfast', 'Snacks', 'Meals', 'Build', 'Drinks']
-  const filteredPresets = activeCategory === 'All' ? presets : presets.filter(p => p.category === activeCategory)
+  const CATEGORIES = ['Breakfast', 'Snacks', 'Meals', 'Build', 'Drinks']
+  const filteredPresets = presets.filter(p => p.category === activeCategory)
 
   const macros = [
     { Icon: Beef, label: 'Protein', val: totals.protein, target: TARGETS.protein, color: 'var(--acc-food)' },
     { Icon: Wheat, label: 'Carbs', val: totals.carbs, target: TARGETS.carbs, color: '#FBBF24' },
     { Icon: Droplets, label: 'Fat', val: totals.fat, target: TARGETS.fat, color: '#A78BFA' },
   ]
+
+  const presetByName = useMemo(() => new Map(presets.map(p => [p.name, p])), [presets])
 
   const submitCustom = () => {
     const item = {
@@ -205,62 +274,63 @@ export default function Food() {
   }
 
   return (
-    <div className="space-y-4" style={{ '--acc': 'var(--acc-food)' }}>
-      {/* Day selector */}
-      <section className="panel p-4">
+    <div className="food-journal space-y-4 pb-24" style={{ '--acc': 'var(--acc-food)' }}>
+      <section className="food-day-picker">
         <DayStrip value={date} onChange={setDate} status={dayStatus} />
       </section>
 
-      {/* Fuel gauge */}
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-2">
-          <Label>Fuel · {dayLabel}</Label>
-          <span className="mono text-[10px] t3">{totals.kcal.toLocaleString()} / {TARGETS.kcal.toLocaleString()} kcal</span>
+      <section className="food-hero">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="mono text-[10px] tracking-[0.22em] uppercase t3">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</p>
+            <h1 className="text-[37px] font-semibold tracking-[-0.02em] t1 leading-none mt-1">{dayLabel}</h1>
+          </div>
+          <button onClick={() => setEditMode(!editMode)} className="food-round press" aria-label={editMode ? 'Done editing presets' : 'Edit presets'}>
+            {editMode ? <X size={17} /> : <MoreHorizontal size={18} />}
+          </button>
         </div>
-        <div className="flex flex-col items-center">
-          <Gauge pct={totals.kcal / TARGETS.kcal} size={210} stroke={13} label="Calories eaten"
-            color={remaining < 0 ? 'var(--down)' : 'var(--acc)'}>
-            <Odometer value={Math.abs(remaining)} className={`display text-[58px] font-bold ${remaining < 0 ? 'down' : 't1'}`} />
-            <span className="mono text-[10px] tracking-[0.22em] uppercase t3 mt-2">{remaining >= 0 ? 'kcal left' : 'kcal over'}</span>
-          </Gauge>
-          <p className="mono text-[10px] t2 mt-3 text-center leading-relaxed">{insight}</p>
+
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div className="flex items-baseline gap-2">
+            <Odometer value={totals.kcal} className="display text-[58px] font-bold t1 leading-none" />
+            <span className="text-[13px] t3 mb-2">of {TARGETS.kcal.toLocaleString()} cal</span>
+          </div>
+          <div className="text-right mb-2">
+            <div className="text-[17px] font-semibold t1">{Math.round(totals.protein)}g</div>
+            <div className="mono text-[9px] tracking-[0.16em] uppercase t3">protein</div>
+          </div>
         </div>
-        <div className="mt-2 space-y-4">
+
+        <div className="food-progress mt-3" aria-label={`${Math.round(progress * 100)}% of calorie target`}>
+          <span style={{ width: `${Math.max(4, progress * 100)}%`, background: remaining < 0 ? 'var(--down)' : 'var(--acc)' }} />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mt-4">
           {macros.map(({ Icon, label, val, target, color }) => (
-            <div key={label}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="flex items-center gap-2" style={{ color }}>
-                  <Icon size={14} strokeWidth={2.5} />
-                  <span className="mono text-[10px] tracking-[0.18em] uppercase">{label}</span>
-                </span>
-                <span className="mono text-[11px] t1">{Math.round(val)}g <span className="t3">/ {target}g</span></span>
+            <div key={label} className="food-macro">
+              <div className="flex items-center gap-1.5" style={{ color }}>
+                <Icon size={12} strokeWidth={2.5} />
+                <span className="mono text-[9px] tracking-[0.16em] uppercase">{label[0]}</span>
               </div>
-              <SegBar pct={val / target} color={color} />
+              <div className="mt-2 text-[13px] font-semibold t1">{Math.round(val)}<span className="text-[10px] t3 font-medium">/{target}g</span></div>
+              <SegBar pct={val / target} color={color} cells={5} />
             </div>
           ))}
         </div>
 
+        <p className="food-note mt-4">{dayNote(entries, totals, remaining, isToday)}</p>
+
         {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
 
-      {/* Quick add — only today is editable */}
       {isToday && (
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-3">
-          <Label>Presets · {presets.length}</Label>
-          <div className="flex gap-2">
-            <button onClick={() => { setEditMode(!editMode); setShowForm(false); setForm(blankForm) }}
-              className="press mono text-[10px] tracking-[0.14em] uppercase font-semibold rounded-lg px-3.5 py-2 chip t2">
-              {editMode ? 'Done' : 'Edit'}
-            </button>
-            <button onClick={() => { setShowForm(!showForm); setEditMode(false); setForm(blankForm) }}
-              className="press mono text-[10px] tracking-[0.14em] uppercase font-semibold rounded-lg px-3 py-2 acc-chip inline-flex items-center gap-1">
-              {showForm ? 'Cancel' : <><Plus size={12} strokeWidth={3} /> Custom</>}
-            </button>
-          </div>
+      <section className="food-presets">
+        <div className="flex items-center justify-between px-1 mb-3">
+          <Label>Plates</Label>
+          <button onClick={() => { setEditMode(!editMode); setShowForm(false); setForm(blankForm) }} className="food-link press">
+            {editMode ? 'Done' : 'Edit'}
+          </button>
         </div>
-
-        {/* Category filter chips */}
         <div className="flex gap-2 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)}
@@ -272,51 +342,11 @@ export default function Food() {
           ))}
         </div>
 
-        {showForm && (
-          <div className="mb-4 space-y-2.5 panel-2 rounded-2xl p-4">
-            {form.editId && (
-              <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
-                <Pencil size={11} strokeWidth={2.5} /> Editing preset
-              </p>
-            )}
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder="Name" aria-label="Food name" className="field w-full rounded-xl px-4 py-3 text-sm outline-none" />
-            <div className="grid grid-cols-4 gap-2">
-              {['kcal', 'protein', 'carbs', 'fat'].map(f => (
-                <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })}
-                  placeholder={f} aria-label={f} type="number" inputMode="numeric"
-                  className="field rounded-xl px-2 py-3 text-sm outline-none text-center mono" />
-              ))}
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {CATEGORIES.filter(c => c !== 'All').map(cat => (
-                <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
-                  className={`press mono text-[10px] tracking-[0.12em] uppercase font-semibold rounded-full px-3 py-1.5 ${
-                    form.category === cat ? 'acc-chip' : 'chip t2'
-                  }`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-            {!form.editId && (
-              <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
-                <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
-                  className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
-                Save as preset
-              </label>
-            )}
-            <button onClick={submitCustom} disabled={!form.kcal}
-              className="press w-full disabled:opacity-30 disabled:cursor-not-allowed rounded-xl py-3.5 font-bold text-sm acc-chip">
-              {form.editId ? 'Save changes' : 'Add to log'}
-            </button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="food-plates-rail">
           {filteredPresets.map(p => (
             <button key={p.id} onClick={() => editMode ? openEdit(p) : addEntry(p)}
               aria-label={editMode ? `Edit ${p.name}` : `Add ${p.name}`}
-              className="press chip rounded-2xl p-4 text-left relative">
+              className="food-preset-card press relative">
               {editMode && (
                 <span onClick={e => { e.stopPropagation(); removePreset(p.id) }}
                   role="button" aria-label={`Delete ${p.name}`}
@@ -326,9 +356,7 @@ export default function Food() {
                 </span>
               )}
               <div className="flex items-start justify-between mb-2.5">
-                <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip">
-                  <FoodIcon emoji={p.emoji} size={16} />
-                </span>
+                <FoodPlate preset={p} />
                 <span aria-hidden="true"
                   className="w-6 h-6 rounded-full flex items-center justify-center acc-chip opacity-70">
                   {editMode ? <Pencil size={12} strokeWidth={2.5} /> : <Plus size={13} strokeWidth={3} />}
@@ -342,40 +370,75 @@ export default function Food() {
       </section>
       )}
 
-      {/* Day log — timeline */}
-      <section className="panel p-6">
-        <Label className="mb-4">Log · {dayLabel} · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Label>
+      <section className="food-logbook">
+        <div className="flex items-center justify-between px-1 mb-3">
+          <Label>Journal · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Label>
+          <span className="mono text-[10px] t3">{insight}</span>
+        </div>
         {entries.length === 0 ? (
-          <p className="text-sm t3 text-center py-5">{isToday ? 'Nothing logged yet — tap a preset or the + button' : 'No food logged this day'}</p>
+          <div className="food-empty">
+            <p className="text-[15px] font-semibold t1">Nothing logged yet</p>
+            <p className="text-[13px] t3 mt-1">{isToday ? 'Tap a quick plate or use the bottom input.' : 'No food logged this day.'}</p>
+          </div>
         ) : (
-          <div className="relative pl-4">
-            <span className="absolute left-0 top-2 bottom-2 w-px" style={{ background: 'var(--line)' }} aria-hidden="true" />
+          <div className="space-y-4">
             {entries.map(e => (
-              <div key={e.uid} className="relative py-3 flex items-center justify-between">
-                <span className="absolute -left-[18.5px] w-[9px] h-[9px] rounded-full border-2"
-                  style={{ background: 'var(--surface)', borderColor: 'var(--acc)' }} aria-hidden="true" />
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold t1 truncate">{e.name}</div>
-                    <div className="mono text-[10px] t3 mt-0.5">{e.time} · {e.protein}P {e.carbs ?? 0}C {e.fat ?? 0}F</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 flex-shrink-0">
-                  <span className="mono text-[12px] font-semibold t1">{e.kcal}</span>
-                  {isToday && (
-                    <button onClick={() => removeEntry(e.uid)} aria-label={`Remove ${e.name}`}
-                      className="press t3 p-1.5 rounded-lg chip">
-                      <X size={13} strokeWidth={2.5} />
-                    </button>
-                  )}
-                </div>
-              </div>
+              <JournalEntry key={e.uid} entry={e} preset={presetByName.get(e.name)} canRemove={isToday} onRemove={() => removeEntry(e.uid)} />
             ))}
+            <p className="food-note">{dayNote(entries, totals, remaining, isToday)}</p>
           </div>
         )}
       </section>
 
       <History logs={logs} />
+
+      {isToday && showForm && (
+        <div className="food-form-sheet">
+          {form.editId && (
+            <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
+              <Pencil size={11} strokeWidth={2.5} /> Editing preset
+            </p>
+          )}
+          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+            placeholder="Food name" aria-label="Food name" className="field w-full rounded-2xl px-4 py-3 text-sm outline-none" />
+          <div className="grid grid-cols-4 gap-2">
+            {['kcal', 'protein', 'carbs', 'fat'].map(f => (
+              <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })}
+                placeholder={f} aria-label={f} type="number" inputMode="numeric"
+                className="field rounded-2xl px-2 py-3 text-sm outline-none text-center mono" />
+            ))}
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {CATEGORIES.map(cat => (
+              <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
+                className={`press mono text-[10px] tracking-[0.12em] uppercase font-semibold rounded-full px-3 py-1.5 flex-shrink-0 ${
+                  form.category === cat ? 'acc-chip' : 'chip t2'
+                }`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          {!form.editId && (
+            <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
+              <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
+                className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
+              Save as preset
+            </label>
+          )}
+        </div>
+      )}
+
+      {isToday && (
+        <div className="food-composer">
+          <button onClick={() => { setShowForm(!showForm); setEditMode(false); setForm(blankForm) }} className="food-composer-plus press" aria-label="Add custom food">
+            {showForm ? <X size={17} /> : <Plus size={17} />}
+          </button>
+          <button onClick={() => { setShowForm(true); setEditMode(false); setForm(blankForm) }} className="food-composer-field press">What did you eat?</button>
+          <button onClick={submitCustom} disabled={!showForm || !form.kcal} className="food-composer-send press" aria-label="Submit food">
+            <ArrowUp size={15} strokeWidth={3} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
