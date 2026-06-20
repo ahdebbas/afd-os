@@ -85,9 +85,18 @@ const yahooProxy = {
   },
 }
 
+const whoopProxy = {
+  '/api/whoop': {
+    target: 'https://afd-os.vercel.app',
+    changeOrigin: true,
+  },
+}
+
+const devProxy = { ...yahooProxy, ...whoopProxy }
+
 export default defineConfig({
-  server: { proxy: yahooProxy },
-  preview: { proxy: yahooProxy },
+  server: { proxy: devProxy },
+  preview: { proxy: devProxy },
   plugins: [
     aiFood(),
     react(),

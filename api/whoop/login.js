@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     }
     const uid = await userIdFromToken(req.query.t)
     if (!uid) return res.status(401).json({ error: 'Not authenticated' })
-    res.redirect(302, authorizeUrl(makeState(uid)))
+    res.redirect(302, authorizeUrl(makeState(uid, req.query.returnTo)))
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

@@ -7,6 +7,7 @@ export const CLOUD_STATE_KEYS = [
   'afd-program',
   'afd-finance',
   'afd-theme-dark',
+  'afd-shell-mode',
 ]
 
 let syncSink = null

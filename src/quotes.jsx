@@ -61,11 +61,15 @@ export function QuotesProvider({ children }) {
 
   useEffect(() => {
     // Fetch on mount unless the cache is still fresh, then poll hourly.
-    if (!isFresh(cache)) refresh()
+    const initial = setTimeout(() => {
+      if (!isFresh(loadCache())) refresh()
+    }, 0)
     const id = setInterval(refresh, REFRESH_MS)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    return () => {
+      clearTimeout(initial)
+      clearInterval(id)
+    }
+  }, [refresh])
 
   const value = {
     data: cache?.data ?? null,

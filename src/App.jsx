@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { LayoutGrid, Wallet, UtensilsCrossed, Dumbbell, Sun, Moon, Check, Sparkles, Settings, Download, Upload, ArrowUp, Target } from 'lucide-react'
 import { OsProvider, useOs } from './os'
 import { QuotesProvider } from './quotes'
@@ -12,6 +12,7 @@ import Food from './screens/Food'
 import Fitness from './screens/Fitness'
 import { useClock, usePersistentState } from './hooks'
 import { exportData, importData } from './backup'
+import DesktopApp from './desktop/DesktopApp'
 
 const TABS = [
   { id: 'today', label: 'Today', Icon: LayoutGrid, acc: 'var(--acc-os)', ambient: '#7C9EFF' },
@@ -20,6 +21,13 @@ const TABS = [
   { id: 'fitness', label: 'Fitness', Icon: Dumbbell, acc: 'var(--acc-fit)', ambient: '#22D3EE' },
 ]
 const DOCK_ITEM_WIDTH = 62
+
+function ModuleScreen({ tabId, onTabChange, onOpenLog }) {
+  if (tabId === 'today') return <Today goTo={onTabChange} openLog={onOpenLog} />
+  if (tabId === 'finance') return <Finance />
+  if (tabId === 'food') return <Food />
+  return <Fitness />
+}
 
 /** Natural-language logging: describe a meal, Claude estimates the macros. */
 // Removed NLLog as requested.
@@ -113,11 +121,18 @@ function QuickLog({ open, onClose }) {
   )
 }
 
-function SettingsSheet({ open, onClose }) {
+function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell }) {
   const { announce } = useOs()
   const fileRef = useRef(null)
   const [msg, setMsg] = useState(null)
   const [adaptive, setAdaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
+  const SHELL_MODES = [
+    { id: 'auto', label: 'Auto' },
+    { id: 'mobile', label: 'Mobile' },
+    { id: 'desktop', label: 'Desktop' },
+  ]
+  const selectedShellLabel = SHELL_MODES.find(m => m.id === shellMode)?.label || 'Auto'
+  const activeShellLabel = effectiveShell === 'desktop' ? 'Desktop' : 'Mobile'
 
   const onExport = () => {
     exportData()
@@ -146,6 +161,19 @@ function SettingsSheet({ open, onClose }) {
         <p className="text-[13px] t2 leading-relaxed">
           Your data lives only on this device. Export a backup regularly — or to move to a new device.
         </p>
+        <div className="chip rounded-2xl px-4 py-3.5">
+          <p className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">Shell mode</p>
+          <p className="mono text-[9px] t3 mt-1.5">Current: {activeShellLabel} · Selected: {selectedShellLabel}</p>
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+            {SHELL_MODES.map(mode => (
+              <button key={mode.id} onClick={() => setShellMode(mode.id)} aria-pressed={shellMode === mode.id}
+                className={`press rounded-xl py-2 mono text-[10px] tracking-[0.12em] uppercase font-semibold ${shellMode === mode.id ? 'acc-chip' : 'chip t2'}`}>
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <p className="mono text-[9px] t3 mt-2">Desktop shortcuts: Cmd/Ctrl+1..4 modules, Cmd/Ctrl+L quick log, Cmd/Ctrl+, settings.</p>
+        </div>
         <button onClick={() => setAdaptive(v => !v)} role="switch" aria-checked={adaptive}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Target size={16} strokeWidth={2.25} /></span>
@@ -246,52 +274,193 @@ function Island({ dark, onTheme, onSettings }) {
   )
 }
 
+function MobileShell({
+  tab,
+  idx,
+  activeTab,
+  dark,
+  onToggleTheme,
+  onOpenSettings,
+  onOpenLog,
+  onTabChange,
+  kbOpen,
+  dragging,
+  drag,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+}) {
+  return (
+    <>
+      {/* Island header */}
+      <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
+        <Island dark={dark} onTheme={onToggleTheme} onSettings={onOpenSettings} />
+      </header>
+
+      {/* Module carousel */}
+      <div className="flex-1 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <div className={`carousel ${dragging && drag !== 0 ? 'dragging' : ''}`}
+          style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}>
+          {TABS.map(t => (
+            <div key={t.id} className="w-full h-full flex-shrink-0 min-w-0 screen-scroll px-5 pt-2 pb-36"
+              aria-hidden={t.id !== tab} inert={t.id !== tab ? true : undefined}>
+              <div className="boot space-y-4">
+                <ModuleScreen tabId={t.id} onTabChange={onTabChange} onOpenLog={onOpenLog} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dock */}
+      <nav className={`app-dock fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
+        <div className="dock dock-track rounded-[24px] p-1 flex" style={{ '--acc': activeTab.acc }}>
+          <span className="dock-pill" style={{ width: DOCK_ITEM_WIDTH, transform: `translateX(${idx * DOCK_ITEM_WIDTH}px)` }} aria-hidden="true" />
+          {TABS.map(t => {
+            const active = tab === t.id
+            return (
+              <button key={t.id} onClick={() => onTabChange(t.id)} aria-label={t.label} aria-current={active ? 'page' : undefined}
+                className="dock-btn flex flex-col items-center gap-1 pt-2 pb-1.5 rounded-xl w-[62px]"
+                style={{ color: active ? t.acc : 'var(--ink-3)' }}>
+                <t.Icon size={18} strokeWidth={active ? 2.5 : 2} />
+                <span className="mono text-[7px] tracking-[0.12em] uppercase">{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </nav>
+    </>
+  )
+}
+
 function Shell() {
+  const { announce } = useOs()
   // Persisted so an iOS PWA reload (e.g. after backgrounding) resumes on the same tab.
   const [tab, setTab] = usePersistentState('afd-tab', 'today', v => TABS.some(t => t.id === v))
   const [logOpen, setLogOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dark, setDark] = usePersistentState('afd-theme-dark', true, v => typeof v === 'boolean')
+  const [shellMode, setShellMode] = usePersistentState('afd-shell-mode', 'auto',
+    v => v === 'auto' || v === 'mobile' || v === 'desktop')
   const [kbOpen, setKbOpen] = useState(false)
   const [drag, setDrag] = useState(0)
   const [dragging, setDragging] = useState(false)
   const touch = useRef(null)
+  const ignoreSwipe = useRef(false)
+  const [viewportDesktop, setViewportDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : false)
 
   const idx = TABS.findIndex(t => t.id === tab)
+  const activeTab = TABS[Math.max(0, idx)]
+  const isDesktop = shellMode === 'desktop' || (shellMode === 'auto' && viewportDesktop)
+  const nextShellMode = shellMode === 'auto' ? 'desktop' : shellMode === 'desktop' ? 'mobile' : 'auto'
+  const nextShellLabel = nextShellMode === 'auto' ? 'Auto' : nextShellMode === 'desktop' ? 'Desktop' : 'Mobile'
 
-  const handleTabChange = (newTabId) => {
-    setTab(newTabId)
+  const cycleShellMode = () => {
+    setShellMode(nextShellMode)
+    announce(`SHELL · ${nextShellLabel.toUpperCase()}`, 'var(--acc-os)')
   }
+
+  const shouldIgnoreSwipe = target => {
+    if (!(target instanceof Element)) return false
+    // Explicit opt-out marker for known horizontal controls.
+    if (target.closest('[data-no-carousel-swipe="true"]')) return true
+
+    // Any horizontally scrollable ancestor should keep the gesture.
+    let el = target
+    while (el && el !== document.body) {
+      const style = window.getComputedStyle(el)
+      const scrollable = el.scrollWidth > el.clientWidth + 2
+      const allowsX = style.overflowX === 'auto' || style.overflowX === 'scroll'
+      if (scrollable && allowsX) return true
+      el = el.parentElement
+    }
+    return false
+  }
+
+  const handleTabChange = useCallback((newTabId) => {
+    setTab(newTabId)
+  }, [setTab])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
   }, [dark])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = e => setViewportDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    if (isDesktop) return
     if (!window.visualViewport) return
     const onResize = () => {
       setKbOpen(window.visualViewport.height < window.innerHeight * 0.8)
     }
+    const frame = requestAnimationFrame(onResize)
     window.visualViewport.addEventListener('resize', onResize)
-    return () => window.visualViewport.removeEventListener('resize', onResize)
-  }, [])
+    return () => {
+      cancelAnimationFrame(frame)
+      window.visualViewport.removeEventListener('resize', onResize)
+    }
+  }, [isDesktop])
 
   // Keyboard navigation between modules
   useEffect(() => {
     const onKey = e => {
       if (logOpen || settingsOpen) return
+      const el = e.target
+      if (el instanceof HTMLElement && (
+        el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' ||
+        el.isContentEditable
+      )) return
+
+      const mod = e.metaKey || e.ctrlKey
+      if (isDesktop && mod && /^[1-4]$/.test(e.key)) {
+        const next = TABS[Number(e.key) - 1]
+        if (next) handleTabChange(next.id)
+        e.preventDefault()
+        return
+      }
+      if (isDesktop && mod && e.key.toLowerCase() === 'l') {
+        setLogOpen(true)
+        e.preventDefault()
+        return
+      }
+      if (isDesktop && mod && e.key === ',') {
+        setSettingsOpen(true)
+        e.preventDefault()
+        return
+      }
+
       if (e.key === 'ArrowRight' && idx < TABS.length - 1) handleTabChange(TABS[idx + 1].id)
       if (e.key === 'ArrowLeft' && idx > 0) handleTabChange(TABS[idx - 1].id)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [idx, logOpen, settingsOpen])
+  }, [idx, logOpen, settingsOpen, isDesktop, handleTabChange])
 
   const onTouchStart = e => {
+    const target = e.target
+    // Let nested horizontal controls (chips, rails) own the gesture.
+    if (shouldIgnoreSwipe(target)) {
+      ignoreSwipe.current = true
+      touch.current = null
+      setDragging(false)
+      setDrag(0)
+      return
+    }
+    ignoreSwipe.current = false
     touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, locked: null }
     setDragging(true)
   }
   const onTouchMove = e => {
+    if (ignoreSwipe.current) return
     if (!touch.current) return
     const dx = e.touches[0].clientX - touch.current.x
     const dy = e.touches[0].clientY - touch.current.y
@@ -303,6 +472,13 @@ function Shell() {
     setDrag(atEdge ? dx / 3 : dx)
   }
   const onTouchEnd = () => {
+    if (ignoreSwipe.current) {
+      ignoreSwipe.current = false
+      touch.current = null
+      setDrag(0)
+      setDragging(false)
+      return
+    }
     if (touch.current?.locked === 'x' && Math.abs(drag) > 56) {
       const next = idx + (drag < 0 ? 1 : -1)
       if (next >= 0 && next < TABS.length) handleTabChange(TABS[next].id)
@@ -313,52 +489,48 @@ function Shell() {
   }
 
   return (
-    <div className="h-dvh w-full max-w-md mx-auto relative flex flex-col">
-      <div className="ambient" style={{ '--ambient': TABS[idx].ambient }} aria-hidden="true" />
+    <div className={isDesktop ? 'h-dvh w-full relative' : 'h-dvh w-full max-w-md mx-auto relative flex flex-col'}>
+      <div className="ambient" style={{ '--ambient': activeTab.ambient }} aria-hidden="true" />
 
-      {/* Island header */}
-      <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
-        <Island dark={dark} onTheme={() => setDark(!dark)} onSettings={() => setSettingsOpen(true)} />
-      </header>
-
-      {/* Module carousel */}
-      <div className="flex-1 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        <div className={`carousel ${dragging && drag !== 0 ? 'dragging' : ''}`}
-          style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}>
-          {TABS.map(t => (
-            <div key={t.id} className="w-full h-full flex-shrink-0 min-w-0 screen-scroll px-5 pt-2 pb-36"
-              aria-hidden={t.id !== tab} inert={t.id !== tab ? true : undefined}>
-              <div className="boot space-y-4">
-                {t.id === 'today' && <Today goTo={handleTabChange} openLog={() => setLogOpen(true)} />}
-                {t.id === 'finance' && <Finance />}
-                {t.id === 'food' && <Food />}
-                {t.id === 'fitness' && <Fitness />}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Dock */}
-      <nav className={`app-dock fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
-        <div className="dock dock-track rounded-[24px] p-1 flex" style={{ '--acc': TABS[idx].acc }}>
-          <span className="dock-pill" style={{ width: DOCK_ITEM_WIDTH, transform: `translateX(${idx * DOCK_ITEM_WIDTH}px)` }} aria-hidden="true" />
-          {TABS.map(t => {
-            const active = tab === t.id
-            return (
-              <button key={t.id} onClick={() => handleTabChange(t.id)} aria-label={t.label} aria-current={active ? 'page' : undefined}
-                className="dock-btn flex flex-col items-center gap-1 pt-2 pb-1.5 rounded-xl w-[62px]"
-                style={{ color: active ? t.acc : 'var(--ink-3)' }}>
-                <t.Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                <span className="mono text-[7px] tracking-[0.12em] uppercase">{t.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </nav>
+      {isDesktop ? (
+        <DesktopApp
+          tab={tab}
+          onTabChange={handleTabChange}
+          dark={dark}
+          onToggleTheme={() => setDark(!dark)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenLog={() => setLogOpen(true)}
+          shellMode={shellMode}
+          nextShellLabel={nextShellLabel}
+          onCycleShell={cycleShellMode}
+        />
+      ) : (
+        <MobileShell
+          tab={tab}
+          idx={idx}
+          activeTab={activeTab}
+          dark={dark}
+          onToggleTheme={() => setDark(!dark)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenLog={() => setLogOpen(true)}
+          onTabChange={handleTabChange}
+          kbOpen={kbOpen}
+          dragging={dragging}
+          drag={drag}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        />
+      )}
 
       <QuickLog open={logOpen} onClose={() => setLogOpen(false)} />
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        shellMode={shellMode}
+        setShellMode={setShellMode}
+        effectiveShell={isDesktop ? 'desktop' : 'mobile'}
+      />
     </div>
   )
 }

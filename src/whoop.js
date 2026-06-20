@@ -15,7 +15,8 @@ async function accessToken() {
 export async function connectWhoop() {
   const t = await accessToken()
   if (!t) return
-  window.location.href = `/api/whoop/login?t=${encodeURIComponent(t)}`
+  const p = new URLSearchParams({ t, returnTo: window.location.origin })
+  window.location.href = `/api/whoop/login?${p}`
 }
 
 // { connected, kcal, strain, yesterday, weeklyAvg, days } — kcal is calories

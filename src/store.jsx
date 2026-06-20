@@ -84,16 +84,16 @@ export function FoodProvider({ children }) {
       })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addEntry = item => {
+  const addEntry = (item, day = todayKey()) => {
     const uid = crypto.randomUUID()
     const entry = { ...item, time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), uid }
-    setLogs(prev => ({ ...prev, [today]: [...(prev[today] || []), entry] }))
+    setLogs(prev => ({ ...prev, [day]: [...(prev[day] || []), entry] }))
     os?.announce(`FUEL +${item.kcal} kcal · ${item.protein || 0}P`, 'var(--acc-food)', {
       label: 'Undo',
-      onClick: () => removeEntry(uid)
+      onClick: () => removeEntry(uid, day)
     })
   }
-  const removeEntry = uid => setLogs(prev => ({ ...prev, [today]: (prev[today] || []).filter(e => e.uid !== uid) }))
+  const removeEntry = (uid, day = todayKey()) => setLogs(prev => ({ ...prev, [day]: (prev[day] || []).filter(e => e.uid !== uid) }))
   const addPreset = item => setPresets(prev => [...prev, { ...item, id: 'p' + Date.now() }])
   const removePreset = id => setPresets(prev => prev.filter(x => x.id !== id))
   const updatePreset = (id, patch) => setPresets(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
