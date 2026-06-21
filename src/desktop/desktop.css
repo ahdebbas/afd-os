@@ -24,6 +24,7 @@
   --d-up: #2E9E6B;
   --d-down: #D1453B;
   --d-warn: #C2791C;
+  --d-date-selected: #B45A4B;
   --d-up-weak: rgba(46, 158, 107, 0.12);
   --d-down-weak: rgba(209, 69, 59, 0.12);
   --d-shadow: 0 1px 2px rgba(17, 19, 24, 0.04), 0 4px 12px rgba(17, 19, 24, 0.05);
@@ -60,6 +61,7 @@ html.dark .dsk {
   --d-up: #3FB985;
   --d-down: #EF6B61;
   --d-warn: #E0974C;
+  --d-date-selected: #E07A68;
   --d-up-weak: rgba(63, 185, 133, 0.15);
   --d-down-weak: rgba(239, 107, 97, 0.15);
   --d-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.36);
@@ -128,6 +130,47 @@ html.dark .dsk {
   cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
 }
 .dsk .d-icon-btn:hover { background: var(--d-panel-3); color: var(--d-text); }
+
+/* compact week picker */
+.dsk .d-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  padding: 5px;
+  border-radius: 16px;
+  background: var(--d-panel-2);
+  border: 1px solid var(--d-border);
+}
+.dsk .d-week-day {
+  position: relative;
+  height: 48px;
+  min-width: 0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--d-text-2);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.dsk .d-week-day:hover { background: var(--d-panel-2); color: var(--d-text); }
+.dsk .d-week-day-active {
+  background: var(--d-panel);
+  color: var(--d-text);
+  border-color: var(--d-border-strong);
+  box-shadow: var(--d-shadow);
+}
+.dsk .d-week-day-active .d-week-num { color: var(--d-text); }
+.dsk .d-week-day-active .d-week-wd { color: var(--d-date-selected); }
+.dsk .d-week-day-today:not(.d-week-day-active) .d-week-num { color: var(--d-text); }
+.dsk .d-week-day-disabled { opacity: 0.35; cursor: default; }
+.dsk .d-week-day-disabled:hover { background: transparent; color: var(--d-text-2); }
+.dsk .d-week-num { font-size: 15px; line-height: 1; font-weight: 660; font-variant-numeric: tabular-nums; }
+.dsk .d-week-wd { font-size: 8px; line-height: 1; font-weight: 560; letter-spacing: 0.06em; color: var(--d-text-3); }
 
 /* sidebar nav item */
 .dsk .d-nav {

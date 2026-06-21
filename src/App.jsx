@@ -15,15 +15,13 @@ import { exportData, importData } from './backup'
 import DesktopApp from './desktop/DesktopApp'
 
 const TABS = [
-  { id: 'today', label: 'Today', Icon: LayoutGrid, acc: 'var(--acc-os)', ambient: '#7C9EFF' },
-  { id: 'finance', label: 'Finance', Icon: Wallet, acc: 'var(--acc-fin)', ambient: '#60A5FA' },
-  { id: 'food', label: 'Food', Icon: UtensilsCrossed, acc: 'var(--acc-food)', ambient: '#34D399' },
-  { id: 'fitness', label: 'Fitness', Icon: Dumbbell, acc: 'var(--acc-fit)', ambient: '#22D3EE' },
+  { id: 'today', label: 'Today', Icon: LayoutGrid, acc: 'var(--acc-os)', ambient: '#8FA2D8' },
+  { id: 'finance', label: 'Finance', Icon: Wallet, acc: 'var(--acc-fin)', ambient: '#6E93CC' },
+  { id: 'food', label: 'Food', Icon: UtensilsCrossed, acc: 'var(--acc-food)', ambient: '#46B58C' },
+  { id: 'fitness', label: 'Fitness', Icon: Dumbbell, acc: 'var(--acc-fit)', ambient: '#4FAFC0' },
 ]
-const DOCK_ITEM_WIDTH = 62
-
-function ModuleScreen({ tabId, onTabChange, onOpenLog }) {
-  if (tabId === 'today') return <Today goTo={onTabChange} openLog={onOpenLog} />
+function ModuleScreen({ tabId, onTabChange, onOpenLog, onOpenSettings, dark, onToggleTheme }) {
+  if (tabId === 'today') return <Today goTo={onTabChange} openLog={onOpenLog} onOpenSettings={onOpenSettings} dark={dark} onToggleTheme={onToggleTheme} />
   if (tabId === 'finance') return <Finance />
   if (tabId === 'food') return <Food />
   return <Fitness />
@@ -222,7 +220,7 @@ function Island({ dark, onTheme, onSettings }) {
   }
 
   return (
-    <div className={`dock island rounded-2xl px-4 py-3 ${toast ? 'island-live' : ''}`}
+    <div className={`island island-shell ${toast ? 'island-live' : ''}`}
       style={toast ? { '--toast-acc': toast.acc } : {}}>
       <div className="island-idle flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -292,20 +290,21 @@ function MobileShell({
 }) {
   return (
     <>
-      {/* Island header */}
-      <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
-        <Island dark={dark} onTheme={onToggleTheme} onSettings={onOpenSettings} />
-      </header>
+      {tab !== 'today' && (
+        <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
+          <Island dark={dark} onTheme={onToggleTheme} onSettings={onOpenSettings} />
+        </header>
+      )}
 
       {/* Module carousel */}
       <div className="flex-1 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className={`carousel ${dragging && drag !== 0 ? 'dragging' : ''}`}
           style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}>
           {TABS.map(t => (
-            <div key={t.id} className="w-full h-full flex-shrink-0 min-w-0 screen-scroll px-5 pt-2 pb-36"
+            <div key={t.id} className={`w-full h-full flex-shrink-0 min-w-0 screen-scroll ${t.id === 'today' ? 'today-screen-scroll' : 'px-5 pt-2 pb-44'}`}
               aria-hidden={t.id !== tab} inert={t.id !== tab ? true : undefined}>
               <div className="boot space-y-4">
-                <ModuleScreen tabId={t.id} onTabChange={onTabChange} onOpenLog={onOpenLog} />
+                <ModuleScreen tabId={t.id} onTabChange={onTabChange} onOpenLog={onOpenLog} onOpenSettings={onOpenSettings} dark={dark} onToggleTheme={onToggleTheme} />
               </div>
             </div>
           ))}
@@ -313,17 +312,16 @@ function MobileShell({
       </div>
 
       {/* Dock */}
-      <nav className={`app-dock fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
-        <div className="dock dock-track rounded-[24px] p-1 flex" style={{ '--acc': activeTab.acc }}>
-          <span className="dock-pill" style={{ width: DOCK_ITEM_WIDTH, transform: `translateX(${idx * DOCK_ITEM_WIDTH}px)` }} aria-hidden="true" />
+      <nav className={`app-dock mobile-dock-rail fixed z-50 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
+        <div className="dock dock-track" style={{ '--acc': activeTab.acc }}>
           {TABS.map(t => {
             const active = tab === t.id
             return (
               <button key={t.id} onClick={() => onTabChange(t.id)} aria-label={t.label} aria-current={active ? 'page' : undefined}
-                className="dock-btn flex flex-col items-center gap-1 pt-2 pb-1.5 rounded-xl w-[62px]"
+                className="dock-btn"
                 style={{ color: active ? t.acc : 'var(--ink-3)' }}>
-                <t.Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                <span className="mono text-[7px] tracking-[0.12em] uppercase">{t.label}</span>
+                <t.Icon size={22} strokeWidth={active ? 2.4 : 2} />
+                <span>{t.label}</span>
               </button>
             )
           })}

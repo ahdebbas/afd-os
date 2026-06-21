@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, RefreshCw } from 'lucide-react'
+import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, RefreshCw, ArrowRight } from 'lucide-react'
 import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
@@ -60,30 +60,18 @@ function WeightCell({ weight, flash, onCommit }) {
   )
 }
 
-function SetTracker({ spec, onTick }) {
-  const match = String(spec).trim().match(/^(\d+)×/)
-  const total = match ? parseInt(match[1], 10) : 1
-  const [done, setDone] = useState(0)
-
-  const toggle = () => {
-    const next = done >= total ? 0 : done + 1
-    setDone(next)
-    if (next > done) onTick()
-  }
-
+function ExerciseRow({ exercise, index, weight, flash, onCommit }) {
   return (
-    <button onClick={toggle} className="flex gap-1.5 items-center press h-6 px-1">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className="w-[14px] h-[14px] rounded-full flex-shrink-0"
-          style={{
-            background: i < done ? 'var(--acc-fit)' : 'transparent',
-            border: `1.5px solid ${i < done ? 'var(--acc-fit)' : 'var(--line)'}`,
-            boxShadow: i < done ? '0 0 6px var(--acc-fit)' : 'none'
-          }}
-        />
-      ))}
-      <span className="mono text-[10px] t3 ml-1">{spec}</span>
-    </button>
+    <div className={`flex justify-between items-start gap-2 py-2.5 ${index > 0 ? 'hairline-t' : ''}`}>
+      <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
+        <span className="mono text-[9px] w-3 flex-shrink-0 mt-1 t2">{String(index + 1).padStart(2, '0')}</span>
+        <span className="leading-snug">{exercise.name}</span>
+      </span>
+      <div className="flex items-center justify-end gap-2 flex-shrink-0">
+        <span className="mono text-[10px] t2 w-20 text-right pt-1.5">{exercise.sets}</span>
+        <WeightCell weight={weight} flash={flash} onCommit={onCommit} />
+      </div>
+    </div>
   )
 }
 
@@ -355,17 +343,6 @@ export default function Fitness() {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 mb-4">
-          <span className="display text-[34px] font-bold t1 leading-none">{program[day].name}</span>
-          {done && idxOf(selSession) === day ? (
-            <span className="acc-chip rounded-md px-2 py-0.5 mono text-[9px] tracking-[0.16em] uppercase inline-flex items-center gap-1">
-              <Check size={11} strokeWidth={3} /> done
-            </span>
-          ) : day === suggested && isToday && (
-            <span className="acc-chip rounded-md px-2 py-0.5 mono text-[9px] tracking-[0.16em] uppercase">next</span>
-          )}
-        </div>
-
         {/* Rotation strip */}
         <div className="grid grid-cols-4 gap-1 chip rounded-2xl p-1 mb-4">
           {program.map((d, i) => {
@@ -374,9 +351,15 @@ export default function Fitness() {
             const [head, ...rest] = d.name.split(' & ')
             return (
               <button key={d.name} onClick={() => setDay(i)} aria-pressed={selected}
-                className={`press relative flex flex-col items-center justify-center text-center mono text-[9px] tracking-[0.02em] uppercase font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
+                className={`press relative flex flex-col items-center justify-center text-center mono text-[9px] tracking-0 font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
                 <span>{head}</span>
                 {rest.length > 0 && <span>&amp; {rest.join(' & ')}</span>}
+                {selected && done && idxOf(selSession) === day && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[8px] tracking-0 t2"><Check size={9} strokeWidth={3} /> done</span>
+                )}
+                {selected && !done && day === suggested && isToday && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[8px] tracking-0 t2">up next <ArrowRight size={9} strokeWidth={2.5} /></span>
+                )}
               </button>
             )
           })}
@@ -391,17 +374,14 @@ export default function Fitness() {
           </div>
         </div>
         {program[day].exercises.map((e, i) => (
-          <div key={e.name} className={`flex justify-between items-start gap-2 py-2.5 ${i > 0 ? 'hairline-t' : ''}`}>
-            <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
-              <span className="mono text-[9px] t3 w-3 flex-shrink-0 mt-1">{String(i + 1).padStart(2, '0')}</span>
-              <span className="leading-snug">{e.name}</span>
-            </span>
-            <div className="flex items-center justify-end gap-2 flex-shrink-0">
-              <SetTracker spec={e.sets} onTick={() => os?.startTimer(90)} />
-              <WeightCell weight={effWeight(e.name)} flash={flashPR === e.name}
-                onCommit={val => setWeight(e.name, val)} />
-            </div>
-          </div>
+          <ExerciseRow
+            key={e.name}
+            exercise={e}
+            index={i}
+            weight={effWeight(e.name)}
+            flash={flashPR === e.name}
+            onCommit={val => setWeight(e.name, val)}
+          />
         ))}
 
         {/* Add exercise → saves to this day's template */}
@@ -419,7 +399,7 @@ export default function Fitness() {
                 placeholder="Sets · e.g. 3×10" aria-label="Sets and reps"
                 className="field flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none mono" />
               <button onClick={addExercise} disabled={!exForm.name.trim()}
-                className="press acc-chip rounded-xl px-5 mono text-[10px] tracking-[0.14em] uppercase font-semibold disabled:opacity-30 disabled:cursor-not-allowed">
+                className="press acc-chip rounded-xl px-5 text-[12px] font-semibold disabled:opacity-30 disabled:cursor-not-allowed">
                 Add
               </button>
             </div>
@@ -427,13 +407,13 @@ export default function Fitness() {
           </div>
         ) : (
           <button onClick={() => setExForm({ open: true, name: '', sets: '' })}
-            className="press w-full mt-2 flex items-center justify-center gap-1.5 mono text-[10px] tracking-[0.14em] uppercase t3 py-2.5 rounded-xl chip">
+            className="press w-full mt-2 flex items-center justify-center gap-1.5 text-[12px] font-semibold t3 py-2.5 rounded-xl chip">
             <Plus size={12} strokeWidth={3} /> Add exercise
           </button>
         )}
 
         <button onClick={toggleDone}
-          className={`press w-full mt-4 rounded-xl py-3.5 mono text-[11px] tracking-[0.18em] uppercase font-semibold ${done ? 'chip t2' : 'acc-chip'}`}>
+          className={`press w-full mt-4 rounded-xl py-3.5 text-[13px] font-semibold ${done ? 'chip t2' : 'fitness-finish-primary'}`}>
           {done ? `${isToday ? 'Finished' : dayLabel} ${selSession.name} ✓ · tap to undo` : `${isToday ? 'Finish' : `Log ${dayLabel} ·`} ${program[day].name}`}
         </button>
       </section>
@@ -448,10 +428,10 @@ export default function Fitness() {
         </div>
 
         {/* Fat% gauge + goal */}
-        <div className="flex items-center gap-5 mb-5">
-          <Gauge pct={progress} size={150} label="Progress toward body fat goal">
-            <span className="display text-[36px] leading-none font-bold t1">{latest.fatPct}<span className="text-[18px] t3">%</span></span>
-            <span className="mono text-[9px] tracking-[0.2em] uppercase t3 mt-1.5">body fat</span>
+        <div className="flex items-center gap-4 mb-4">
+          <Gauge pct={progress} size={132} label="Progress toward body fat goal">
+            <span className="display text-[32px] leading-none font-bold t1">{latest.fatPct}<span className="text-[16px] t3">%</span></span>
+            <span className="mono text-[9px] tracking-[0.08em] uppercase t3 mt-1.5">body fat</span>
           </Gauge>
           <div className="flex-1 space-y-2.5">
             <div className="acc-chip rounded-xl px-3 py-2">

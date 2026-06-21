@@ -5,7 +5,7 @@ import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
 
-const COLORS = ['var(--acc-food)', 'var(--acc-fin)', '#A78BFA', '#22D3EE', '#FBBF24', '#94A3B8']
+const COLORS = ['var(--acc-fin)', 'var(--acc-food)', 'var(--acc-fit)', 'var(--warn)', 'var(--ink-3)', 'var(--track)']
 
 const SYNC = {
   loading: { text: 'Syncing…', color: 'var(--ink-3)' },
@@ -93,7 +93,7 @@ export default function Finance() {
         <div className="mt-6">
           <div className="relative h-7">
             <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 h-[3px] rounded-full"
-              style={{ background: 'linear-gradient(90deg, var(--down), #FBBF24, var(--up))', opacity: 0.5 }} />
+              style={{ background: 'linear-gradient(90deg, var(--down), var(--warn), var(--up))', opacity: 0.5 }} />
             {[0, 25, 50, 75, 100].map(t => (
               <span key={t} className="absolute top-1/2 -translate-y-1/2 w-px h-2.5" style={{ left: `${t}%`, background: 'var(--track)' }} />
             ))}

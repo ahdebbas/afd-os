@@ -1,47 +1,67 @@
 import { useEffect, useMemo, useState } from 'react'
-import { GlassWater, Pizza, Soup, Cookie, CakeSlice, UtensilsCrossed, Beef, Wheat, Droplets, X, Plus, Pencil, ArrowUp, MoreHorizontal } from 'lucide-react'
+import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, Milk, Salad, Sandwich, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
-import { SegBar, Label, Odometer, DayStrip } from '../ui'
+import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
 import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
 import { WhoopBudgetFooter } from '../whoopInsights'
 
-// Stored entries keep their emoji field for backward compat; render as SVG
-const EMOJI_ICONS = { '🥤': GlassWater, '🍕': Pizza, '🍝': Soup, '🍫': CakeSlice, '🧁': CakeSlice, '🍪': Cookie }
-export const FoodIcon = ({ emoji, size = 18 }) => {
-  const I = EMOJI_ICONS[emoji] || UtensilsCrossed
-  if (EMOJI_ICONS[emoji]) return <I size={size} strokeWidth={2.25} />
-  return <span className="food-emoji" style={{ fontSize: size }} aria-hidden="true">{emoji || '🍽️'}</span>
+const FOOD_CATEGORY_MAP = {
+  protein: { Icon: Egg, color: 'var(--acc-food)' },
+  carb: { Icon: Wheat, color: 'var(--warn)' },
+  dairy: { Icon: Milk, color: 'var(--acc-os)' },
+  meat: { Icon: Beef, color: 'var(--down)' },
+  poultry: { Icon: Drumstick, color: 'var(--acc-fin)' },
+  fish: { Icon: Fish, color: 'var(--acc-fit)' },
+  veg: { Icon: Salad, color: 'var(--up)' },
+  fruit: { Icon: Apple, color: 'var(--fuel-carbs)' },
+  drink: { Icon: Coffee, color: 'var(--ink-2)' },
+  snack: { Icon: Cookie, color: 'var(--acc-os)' },
+  meal: { Icon: Sandwich, color: 'var(--acc-fin)' },
+  other: { Icon: UtensilsCrossed, color: 'var(--ink-2)' },
+}
+
+function foodCategory(item = {}) {
+  if (item.foodCategory && FOOD_CATEGORY_MAP[item.foodCategory]) return item.foodCategory
+  const name = (item.name || '').toLowerCase()
+  if (/egg|white/.test(name)) return 'protein'
+  if (/cottage|cheese|milk|latte/.test(name)) return 'dairy'
+  if (/chicken|tawook/.test(name)) return 'poultry'
+  if (/beef|steak/.test(name)) return 'meat'
+  if (/salmon|fish|shrimp/.test(name)) return 'fish'
+  if (/veggie|salad|zucchini|avocado/.test(name)) return 'veg'
+  if (/banana|apple|fruit/.test(name)) return 'fruit'
+  if (/coffee|latte|drink|shake|isolate/.test(name) || item.category === 'Drinks') return 'drink'
+  if (/brownie|cookie|choc|sweet/.test(name) || item.category === 'Snacks') return 'snack'
+  if (/bread|rice|potato|pasta|pizza/.test(name)) return 'carb'
+  if (item.category === 'Meals') return 'meal'
+  return 'other'
+}
+
+export const FoodIcon = ({ item, size = 20 }) => {
+  const { Icon } = FOOD_CATEGORY_MAP[foodCategory(item)]
+  return <Icon size={size} strokeWidth={2.25} />
 }
 
 const TREND_MACROS = [
-  { key: 'protein', label: 'P', color: 'var(--acc-food)', kcalPerG: 4 },
-  { key: 'carbs', label: 'C', color: '#FBBF24', kcalPerG: 4 },
-  { key: 'fat', label: 'F', color: '#A78BFA', kcalPerG: 9 },
+  { key: 'protein', label: 'P', color: 'var(--fuel-protein)', kcalPerG: 4 },
+  { key: 'carbs', label: 'C', color: 'var(--fuel-carbs)', kcalPerG: 4 },
+  { key: 'fat', label: 'F', color: 'var(--fuel-fat)', kcalPerG: 9 },
 ]
-
-const FOOD_GRADIENTS = [
-  ['#F8DDBB', '#F4A261'],
-  ['#CDECCF', '#5FB774'],
-  ['#FFE1D6', '#EF8354'],
-  ['#DDE8FF', '#7A9DF5'],
-  ['#F7E7A7', '#D6A735'],
-  ['#F2D6FF', '#A879D8'],
-]
-
-const presetTone = preset => FOOD_GRADIENTS[Math.abs([...preset.id].reduce((a, c) => a + c.charCodeAt(0), 0)) % FOOD_GRADIENTS.length]
 
 function FoodPlate({ preset, large = false }) {
-  const [from, to] = presetTone(preset)
+  const tone = FOOD_CATEGORY_MAP[foodCategory(preset)].color
   return (
-    <div className={`food-plate ${large ? 'food-plate-lg' : ''}`} style={{ '--plate-a': from, '--plate-b': to }} aria-hidden="true">
+    <div className={`food-plate ${large ? 'food-plate-lg' : ''}`} style={{ '--plate-tone': tone }} aria-hidden="true">
       <span className="food-plate-glow" />
-      <span className="food-plate-dish"><FoodIcon emoji={preset.emoji} size={large ? 24 : 17} /></span>
+      <span className="food-plate-dish"><FoodIcon item={preset} size={large ? 22 : 20} /></span>
     </div>
   )
 }
+
+const macroLine = entry => `${entry.protein || 0}P · ${entry.carbs ?? 0}C · ${entry.fat ?? 0}F`
 
 function macroPhrase(entry) {
   const protein = entry.protein || 0
@@ -61,30 +81,40 @@ function dayNote(entries, totals, remaining, isToday) {
   return `${Math.max(0, Math.round(TARGETS.protein - totals.protein))}g protein still open. Pick the next thing with purpose.`
 }
 
-function JournalEntry({ entry, preset, canRemove, onRemove }) {
+function JournalEntry({ entry, preset, canRemove, onRemove, count = 1, hideTime = false }) {
   return (
     <article className="food-journal-entry">
       <FoodPlate preset={preset || entry} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold t1 leading-tight truncate">{entry.name}</h3>
-            <p className="text-[11px] t3 mt-0.5 truncate">{macroPhrase(entry)} · {entry.time || 'logged'}</p>
+            <h3 className="text-[15px] font-semibold t1 leading-tight truncate">{entry.name}{count > 1 ? ` ×${count}` : ''}</h3>
+            <p className="text-[11px] t3 mt-0.5 truncate">{macroPhrase(entry)}{hideTime ? '' : ` · ${entry.time || 'logged'}`}</p>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[13px] font-bold t1">{entry.kcal}</div>
+            <div className="text-[13px] font-bold t1">{entry.kcal * count}</div>
             <div className="text-[9px] t3 uppercase tracking-[0.12em]">cal</div>
           </div>
         </div>
-        <div className="mono text-[10px] t3 mt-2">{entry.protein || 0}P · {entry.carbs ?? 0}C · {entry.fat ?? 0}F</div>
+        <div className="mono text-[10px] t3 mt-2">{count > 1 ? macroLine({ protein: (entry.protein || 0) * count, carbs: (entry.carbs || 0) * count, fat: (entry.fat || 0) * count }) : macroLine(entry)}</div>
       </div>
       {canRemove && (
-        <button onClick={onRemove} aria-label={`Remove ${entry.name}`} className="food-delete press">
+        <button onClick={onRemove} aria-label={`Remove ${entry.name}${count > 1 ? ' group' : ''}`} className="food-delete press">
           <X size={12} strokeWidth={2.6} />
         </button>
       )}
     </article>
   )
+}
+
+function groupConsecutiveEntries(entries) {
+  return entries.reduce((groups, entry) => {
+    const prev = groups.at(-1)
+    const same = prev && ['name', 'kcal', 'protein', 'carbs', 'fat', 'time'].every(key => (prev.entry[key] || 0) === (entry[key] || 0))
+    if (same) prev.items.push(entry)
+    else groups.push({ entry, items: [entry] })
+    return groups
+  }, [])
 }
 
 /** Last 7 days of fuel: stacked macro bars vs target, streak, averages. Built from the existing log. */
@@ -247,12 +277,13 @@ export default function Food() {
   const filteredPresets = presets.filter(p => p.category === activeCategory)
 
   const macros = [
-    { Icon: Beef, label: 'Protein', val: totals.protein, target: TARGETS.protein, color: 'var(--acc-food)' },
-    { Icon: Wheat, label: 'Carbs', val: totals.carbs, target: TARGETS.carbs, color: '#FBBF24' },
-    { Icon: Droplets, label: 'Fat', val: totals.fat, target: TARGETS.fat, color: '#A78BFA' },
+    { Icon: Beef, label: 'P', val: totals.protein, target: TARGETS.protein, color: 'var(--fuel-protein)' },
+    { Icon: Wheat, label: 'C', val: totals.carbs, target: TARGETS.carbs, color: 'var(--fuel-carbs)' },
+    { Icon: Droplets, label: 'F', val: totals.fat, target: TARGETS.fat, color: 'var(--fuel-fat)' },
   ]
 
   const presetByName = useMemo(() => new Map(presets.map(p => [p.name, p])), [presets])
+  const journalGroups = groupConsecutiveEntries(entries)
 
   const submitCustom = () => {
     const item = {
@@ -280,45 +311,35 @@ export default function Food() {
       </section>
 
       <section className="food-hero">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="mono text-[10px] tracking-[0.22em] uppercase t3">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</p>
-            <h1 className="text-[37px] font-semibold tracking-[-0.02em] t1 leading-none mt-1">{dayLabel}</h1>
-          </div>
-          <button onClick={() => setEditMode(!editMode)} className="food-round press" aria-label={editMode ? 'Done editing presets' : 'Edit presets'}>
-            {editMode ? <X size={17} /> : <MoreHorizontal size={18} />}
-          </button>
+        <div className="food-fuel-kicker">
+          <span className="food-fuel-dot" />
+          <span>Fuel</span>
+          <span className="food-fuel-sep">·</span>
+          <span>{isToday ? 'Today' : dayLabel}</span>
         </div>
 
-        <div className="mt-5 flex items-end justify-between gap-3">
-          <div className="flex items-baseline gap-2">
-            <Odometer value={totals.kcal} className="display text-[58px] font-bold t1 leading-none" />
-            <span className="text-[13px] t3 mb-2">of {TARGETS.kcal.toLocaleString()} cal</span>
+        <div className="food-fuel-body">
+          <div className="food-fuel-gauge">
+            <Gauge pct={progress} size={196} stroke={17} color={remaining < 0 ? 'var(--down)' : 'var(--fuel-protein)'} label="Calorie target progress">
+              <Odometer value={Math.max(0, remaining)} className="display food-fuel-kcal" />
+              <span className="food-fuel-label">Kcal left</span>
+            </Gauge>
           </div>
-          <div className="text-right mb-2">
-            <div className="text-[17px] font-semibold t1">{Math.round(totals.protein)}g</div>
-            <div className="mono text-[9px] tracking-[0.16em] uppercase t3">protein</div>
-          </div>
-        </div>
-
-        <div className="food-progress mt-3" aria-label={`${Math.round(progress * 100)}% of calorie target`}>
-          <span style={{ width: `${Math.max(4, progress * 100)}%`, background: remaining < 0 ? 'var(--down)' : 'var(--acc)' }} />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          {macros.map(({ Icon, label, val, target, color }) => (
-            <div key={label} className="food-macro">
-              <div className="flex items-center gap-1.5" style={{ color }}>
-                <Icon size={12} strokeWidth={2.5} />
-                <span className="mono text-[9px] tracking-[0.16em] uppercase">{label[0]}</span>
+          <div className="food-fuel-macros">
+            {macros.map(({ Icon, label, val, target, color }) => (
+              <div key={label} className="food-fuel-macro">
+                <div className="food-fuel-macro-top">
+                  <span className="food-fuel-macro-id" style={{ color }}>
+                    <Icon size={18} strokeWidth={2.35} />
+                    <span>{label}</span>
+                  </span>
+                  <span className="food-fuel-macro-value">{Math.round(val)}/{target}g</span>
+                </div>
+                <SegBar pct={val / target} color={color} cells={10} />
               </div>
-              <div className="mt-2 text-[13px] font-semibold t1">{Math.round(val)}<span className="text-[10px] t3 font-medium">/{target}g</span></div>
-              <SegBar pct={val / target} color={color} cells={5} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-
-        <p className="food-note mt-4">{dayNote(entries, totals, remaining, isToday)}</p>
 
         {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
@@ -363,7 +384,7 @@ export default function Food() {
                 </span>
               </div>
               <div className="text-[13px] font-bold leading-tight t1">{p.name}</div>
-              <div className="mono text-[10px] t3 mt-2">{p.kcal} kcal · {p.protein}P {p.carbs ?? 0}C {p.fat ?? 0}F</div>
+              <div className="mono text-[10px] t3 mt-2">{p.kcal} kcal · {macroLine(p)}</div>
             </button>
           ))}
         </div>
@@ -371,8 +392,8 @@ export default function Food() {
       )}
 
       <section className="food-logbook">
-        <div className="flex items-center justify-between px-1 mb-3">
-          <Label>Journal · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Label>
+        <div className="food-journal-head px-1 mb-3">
+          <Label>Journal · {entries.length}</Label>
           <span className="mono text-[10px] t3">{insight}</span>
         </div>
         {entries.length === 0 ? (
@@ -382,8 +403,16 @@ export default function Food() {
           </div>
         ) : (
           <div className="space-y-4">
-            {entries.map(e => (
-              <JournalEntry key={e.uid} entry={e} preset={presetByName.get(e.name)} canRemove={isToday} onRemove={() => removeEntry(e.uid)} />
+            {journalGroups.map((group, index) => (
+              <JournalEntry
+                key={group.items.map(e => e.uid).join('-')}
+                entry={group.entry}
+                preset={presetByName.get(group.entry.name)}
+                count={group.items.length}
+                hideTime={index > 0 && journalGroups[index - 1].entry.time === group.entry.time}
+                canRemove={isToday}
+                onRemove={() => group.items.forEach(e => removeEntry(e.uid))}
+              />
             ))}
             <p className="food-note">{dayNote(entries, totals, remaining, isToday)}</p>
           </div>

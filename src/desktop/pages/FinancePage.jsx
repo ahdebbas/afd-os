@@ -4,7 +4,7 @@ import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
 import { Card, Stat, DataTable, Meter, Badge, Button, NumberFlow } from '../primitives'
 
-const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', '#A78BFA', '#22D3EE', 'var(--d-warn)', 'var(--d-text-3)']
+const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', 'var(--d-warn)', 'var(--d-text-3)', 'var(--d-accent-line)', 'var(--d-border-strong)']
 
 const SYNC = {
   loading: 'Syncing…', live: 'Live', stale: 'Stale', error: 'Offline', idle: 'Offline',
@@ -114,7 +114,7 @@ export default function FinancePage() {
               <span className="d-t3">Share of net worth</span>
               <span className="d-num d-t1">{((property.value / total) * 100).toFixed(0)}%</span>
             </div>
-            <Meter className="mt-2" pct={property.value / total} color="#A78BFA" />
+            <Meter className="mt-2" pct={property.value / total} color="var(--d-accent)" />
           </Card>
         </div>
       </div>

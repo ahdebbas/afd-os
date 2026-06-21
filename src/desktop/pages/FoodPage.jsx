@@ -101,25 +101,18 @@ export default function FoodPage() {
           actions={!isToday && <Button size="sm" variant="ghost" onClick={() => setDate(todayKey())}>Today</Button>}>
           <div className="flex items-center gap-2">
             <IconButton icon={ChevronLeft} onClick={() => shiftWeek(-1)} aria-label="Previous week" />
-            <div className="flex-1 grid grid-cols-7 gap-1 p-1 rounded-[14px]" style={{ background: 'var(--d-panel-3)' }}>
+            <div className="d-week-strip flex-1">
               {weekDays.map(d => {
                 const key = dateKey(d)
                 const sel = key === date
                 const isFuture = key > todayKey()
                 const isToday2 = key === todayKey()
-                const wd = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()]
+                const wd = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
                 return (
                   <button key={key} disabled={isFuture} onClick={() => setDate(key)}
-                    className={`relative flex flex-col items-center justify-center h-[48px] rounded-[11px] transition-colors ${sel || isFuture ? '' : 'hover:bg-[var(--d-panel)]'}`}
-                    style={{
-                      background: sel ? 'var(--d-accent)' : undefined,
-                      color: sel ? 'var(--d-on-accent)' : isFuture ? 'var(--d-text-3)' : isToday2 ? 'var(--d-accent)' : 'var(--d-text)',
-                      opacity: isFuture ? 0.4 : 1,
-                      cursor: isFuture ? 'default' : 'pointer',
-                    }}>
-                    <span className="text-[10px] font-semibold leading-none" style={{ opacity: 0.65 }}>{wd}</span>
-                    <span className="text-[15px] font-semibold d-num leading-none mt-1">{d.getDate()}</span>
-                    {isToday2 && !sel && <span className="absolute bottom-1.5 w-1 h-1 rounded-full" style={{ background: 'var(--d-accent)' }} />}
+                    className={`d-week-day ${sel ? 'd-week-day-active' : ''} ${isToday2 ? 'd-week-day-today' : ''} ${isFuture ? 'd-week-day-disabled' : ''}`}>
+                    <span className="d-week-num">{d.getDate()}</span>
+                    <span className="d-week-wd">{wd}</span>
                   </button>
                 )
               })}

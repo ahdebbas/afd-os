@@ -41,10 +41,7 @@ const arcPath = (cx, cy, r, a0, a1) => {
   return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`
 }
 
-/**
- * 270° instrument gauge. Dashed track, glowing value arc, tip marker.
- * `pct` 0..1 — color defaults to the module accent via --acc.
- */
+/** 270° instrument gauge. `pct` 0..1 — color defaults to the module accent via --acc. */
 export function Gauge({ pct, size = 170, stroke = 11, color = 'var(--acc)', label, children }) {
   const clamped = Math.max(0, Math.min(1, pct))
   const r = (size - stroke - 8) / 2
@@ -52,20 +49,17 @@ export function Gauge({ pct, size = 170, stroke = 11, color = 'var(--acc)', labe
   const START = -135
   const SWEEP = 270
   const d = arcPath(c, c, r, START, START + SWEEP)
-  const [tx, ty] = polar(c, c, r, START + SWEEP * clamped)
 
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}
       role="progressbar" aria-valuenow={Math.round(clamped * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <path d={d} fill="none" stroke="var(--track)" strokeWidth={stroke * 0.55} strokeLinecap="butt"
-          pathLength="100" strokeDasharray="0.35 1.3" />
+          pathLength="100" />
         {/* gap 200 > pathLength so the dash never repeats (a repeat paints a phantom dot at the arc end) */}
         <path d={d} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
           pathLength="100" strokeDasharray={`${clamped * 100} 200`}
-          className="gauge-val" style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
-        <circle cx={tx} cy={ty} r={stroke / 2 + 2.5} fill="var(--surface)" stroke={color} strokeWidth="2.5"
-          style={{ filter: `drop-shadow(0 0 5px ${color})` }} />
+          className="gauge-val" />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
     </div>
@@ -86,11 +80,10 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
 }
 
 /**
- * Week day-selector strip. Raised flip-card on the active day, a status tick above each.
- * `status(dateKey)` → 'win' (goal met, accent tick) | 'today' (amber tick) | 'miss' | 'empty'.
+ * Week day-selector strip. Compact raised capsule on the active day.
  * Future days are dimmed and non-interactive.
  */
-export function DayStrip({ value, onChange, status = () => 'empty' }) {
+export function DayStrip({ value, onChange }) {
   const todayKey = dateKey()
   // Rolling 7-day window ending today (today is rightmost), so the previous
   // six days are always visible and selectable regardless of the weekday.
@@ -108,20 +101,15 @@ export function DayStrip({ value, onChange, status = () => 'empty' }) {
   })
 
   return (
-    <div className="flex justify-between gap-1.5" role="group" aria-label="Select day">
+    <div className="day-strip" role="group" aria-label="Select day">
       {days.map(d => {
-        const st = status(d.key)
         const selected = d.key === value
-        const tick = st === 'win' || st === 'today' ? 'var(--acc)' : 'transparent'
         return (
           <button key={d.key} onClick={() => !d.isFuture && onChange(d.key)}
             disabled={d.isFuture} aria-pressed={selected} aria-label={`${d.wd} ${d.num}`}
-            className={`press relative flex-1 flex flex-col items-center rounded-2xl py-2.5 border border-transparent ${selected ? 'panel-2' : ''} ${d.isFuture ? 'opacity-35' : ''}`}
-            style={selected ? { borderColor: 'var(--line)' } : undefined}>
-            <span className="h-[3px] w-4 rounded-full mb-2"
-              style={{ background: tick, boxShadow: st === 'win' || st === 'today' ? '0 0 6px var(--acc)' : 'none' }} aria-hidden="true" />
-            <span className={`mono text-[9px] tracking-[0.1em] ${selected ? 't2' : 't3'}`}>{d.wd}</span>
-            <span className={`display text-[20px] font-bold leading-none mt-1 ${selected ? 't1' : d.isToday ? 'acc' : 't2'}`}>{d.num}</span>
+            className={`day-chip press ${selected ? 'day-chip-active' : ''} ${d.isToday ? 'day-chip-today' : ''} ${d.isFuture ? 'day-chip-disabled' : ''}`}>
+            <span className="day-num">{d.num}</span>
+            <span className="day-wd">{d.wd.slice(0, 3)}</span>
           </button>
         )
       })}
@@ -200,7 +188,7 @@ export function TrendChart({ data, color = 'var(--acc)', unit = '' }) {
 /** Monospace section label with leading tick. */
 export function Label({ children, className = '' }) {
   return (
-    <p className={`mono text-[10px] tracking-[0.22em] uppercase t3 flex items-center gap-2 ${className}`}>
+    <p className={`mono text-[10px] tracking-[0.08em] uppercase t3 flex items-center gap-2 ${className}`}>
       <span className="w-1 h-1 rounded-full" style={{ background: 'var(--acc)' }} />
       {children}
     </p>
