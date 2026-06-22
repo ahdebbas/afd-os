@@ -917,10 +917,10 @@ html.dark .today-screen-scroll::before {
   gap: 8px;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--ink-2);
   white-space: nowrap;
 }
 .today-eyebrow::before {
@@ -951,21 +951,21 @@ html.dark .today-eyebrow::before {
   display: flex;
   align-items: center;
   gap: 18px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 .today-fuel-kicker > span:last-child {
-  color: var(--ink-3);
+  color: var(--ink-2);
   letter-spacing: 0.02em;
 }
 .today-fuel-hero-body {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(124px, 1.05fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   margin-top: 16px;
 }
 .today-fuel-gauge {
@@ -1318,7 +1318,7 @@ html.dark .today-spark-ring { display: block; }
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--acc-fit);
+  background: var(--acc);
 }
 .today-market-row {
   display: flex;
@@ -1406,39 +1406,163 @@ html.dark .today-spark-ring { display: block; }
   border-radius: 999px;
   color: #FFFFFF;
   background: linear-gradient(165deg,
-    color-mix(in srgb, var(--acc-fit) 82%, #fff 18%),
-    var(--acc-fit));
+    color-mix(in srgb, var(--acc) 82%, #fff 18%),
+    var(--acc));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 4px 12px color-mix(in srgb, var(--acc-fit) 32%, transparent);
+    0 4px 12px color-mix(in srgb, var(--acc) 32%, transparent);
   transition: transform 0.18s ease;
 }
 .today-tile-int:active .today-start-btn { transform: scale(0.94); }
 html.dark .today-start-btn { color: #04060C; }
-.today-finance-brief .today-brief-row { padding-bottom: 0; }
-.today-allocation-bar {
+
+/* Fitness card — week badge, burn chart, body metrics */
+.today-fit-card { display: grid; gap: 16px; }
+.today-fit-card .today-market-head { padding: 0; }
+.today-micro-label {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.today-week-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.today-week-pill strong { font-size: 12px; font-weight: 700; }
+.today-week-pill > span { color: color-mix(in srgb, var(--acc) 70%, var(--ink-3)); }
+
+.today-burnchart { display: grid; gap: 10px; }
+.today-burnchart-head {
   display: flex;
-  gap: 3px;
-  width: 100%;
-  height: 11px;
-  margin-top: 16px;
-  padding: 2px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ink) 6%, var(--glass-edge));
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-.today-allocation-bar span {
+.today-burnchart-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.today-burnchart-today svg { color: var(--acc); }
+.today-burnchart-today strong { color: var(--ink); font-size: 13px; font-weight: 700; }
+.today-burn-delta {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+.today-burn-delta.up { color: var(--up); background: color-mix(in srgb, var(--up) 15%, transparent); }
+.today-burn-delta.down { color: var(--down); background: color-mix(in srgb, var(--down) 15%, transparent); }
+
+.today-burnbars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+.today-burnbar { display: grid; gap: 6px; justify-items: center; }
+.today-burnbar-val {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.today-burnbar.on .today-burnbar-val { color: var(--acc); font-weight: 700; }
+.today-burnbar-track {
   position: relative;
-  min-width: 6px;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--asset-tone) 88%, #fff 12%),
-    var(--asset-tone));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  width: 62%;
+  max-width: 20px;
+  height: 56px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  overflow: hidden;
 }
+.today-burnbar-fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--acc) 26%, transparent);
+}
+.today-burnbar.on .today-burnbar-fill {
+  background: var(--acc);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--acc) 45%, transparent);
+}
+.today-burnbar-day {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.today-burnbar.on .today-burnbar-day { color: var(--acc); font-weight: 700; }
+
+.today-fit-body {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.today-fit-metric {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background:
+    linear-gradient(155deg, var(--glass-sheen), transparent 62%),
+    color-mix(in srgb, var(--surface) 48%, transparent);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    0 6px 16px -10px color-mix(in srgb, var(--ink) 34%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.today-fit-metric-label {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.today-fit-metric strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.today-fit-metric strong i {
+  margin-left: 2px;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+.today-fit-trend {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.today-fit-trend.good { color: var(--up); }
+.today-fit-trend.bad { color: var(--down); }
+.today-finance-brief .today-brief-row { padding-bottom: 0; }
 .today-net-headline {
   display: flex;
   align-items: center;
@@ -1476,9 +1600,15 @@ html.dark .today-start-btn { color: #04060C; }
   min-width: 0;
   padding: 13px 13px 14px;
   border-radius: 16px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ink) 5%, transparent);
+  background:
+    linear-gradient(155deg, var(--glass-sheen), transparent 62%),
+    color-mix(in srgb, var(--surface) 48%, transparent);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    0 6px 16px -10px color-mix(in srgb, var(--ink) 34%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   overflow: hidden;
 }
 .today-finance-label,

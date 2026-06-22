@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Beef, Droplets, Dumbbell, Moon, Play, Settings2, Sun, Wallet, Wheat } from 'lucide-react'
+import { Beef, Droplets, Dumbbell, Flame, Moon, Play, Settings2, Sun, Wallet, Wheat } from 'lucide-react'
 import { useFood } from '../store'
 import { ETF_SYMBOL, FINANCE, FITNESS, TARGETS, nextWorkoutIdx, sarwaTotal, usd } from '../data'
 import { Gauge, Odometer } from '../ui'
 import { useQuotes } from '../quotes'
 import { usePersistentState } from '../hooks'
-import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
+import { dateKey, todayKey } from '../dates'
+import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 import { WhoopEnergyPanel } from '../whoopInsights'
 
 const formatDate = () => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '').replace(' ', ' · ').toUpperCase()
@@ -18,12 +19,13 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [whoop, setWhoop] = useState(null)
+  const [cycles, setCycles] = useState(null)
 
   useEffect(() => {
     let alive = true
     const loadWhoop = async () => {
-      const data = await fetchWhoopCalories()
-      if (alive) setWhoop(data)
+      const [data, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
+      if (alive) { setWhoop(data); setCycles(history) }
     }
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void loadWhoop()
@@ -56,9 +58,6 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
   const latestBody = bodyReadings[bodyReadings.length - 1] || { fatPct: 0 }
   const prevBody = bodyReadings[bodyReadings.length - 2]
   const bodyTrend = prevBody?.fatPct != null ? latestBody.fatPct - prevBody.fatPct : null
-  const bodyProgress = latestBody.fatPct
-    ? Math.max(0, Math.min(1, (20 - latestBody.fatPct) / (20 - FITNESS.goal.fatPct)))
-    : 0
 
   const msftQuote = quotes?.MSFT
   const msftPrice = msftQuote?.price ?? FINANCE.msft.price
@@ -74,6 +73,36 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
   ].map(item => ({ ...item, share: total > 0 ? item.value / total : 0 }))
   const fuelPct = Math.min(1, totals.kcal / TARGETS.kcal)
   const remaining = Math.max(0, TARGETS.kcal - totals.kcal)
+
+  // WHOOP burn history → last 7 days for the mini chart (today uses the live intraday burn).
+  const burnReady = whoop?.connected && whoop.kcal != null
+  const burnBase = burnReady ? (whoop.weeklyAvg ?? whoop.yesterday ?? null) : null
+  const burnDelta = burnReady && burnBase != null ? whoop.kcal - burnBase : null
+  const burnByDate = {}
+  if (cycles?.connected) (cycles.cycles || []).forEach(c => { burnByDate[c.date] = c.kcal })
+  const burnDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    const key = dateKey(d)
+    const isToday = key === todayKey()
+    const kcalBurned = isToday && burnReady ? Math.round(whoop.kcal) : (burnByDate[key] ?? null)
+    return { key, isToday, kcal: kcalBurned, label: d.toLocaleDateString('en-US', { weekday: 'narrow' }) }
+  })
+  const hasBurn = burnDays.some(d => d.kcal != null)
+  const maxBurn = Math.max(1, ...burnDays.map(d => d.kcal || 0))
+  const todayBurn = burnDays[6]?.kcal ?? null
+  const kcalCompact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 9950 ? 0 : 1)}k` : `${Math.round(n)}`)
+
+  // Workouts logged this week (Monday → today).
+  const weekMonday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dateKey(d) })()
+  const workoutsThisWeek = sessions.filter(s => s.date >= weekMonday && s.date <= todayKey()).length
+
+  // Body composition snapshot (latest InBody vs the previous reading).
+  const bodyMetrics = [
+    { label: 'Weight', value: latestBody.weight, unit: 'kg', delta: prevBody?.weight != null ? latestBody.weight - prevBody.weight : null, lowerBetter: true },
+    { label: 'Muscle', value: latestBody.smm, unit: 'kg', delta: prevBody?.smm != null ? latestBody.smm - prevBody.smm : null, lowerBetter: false },
+    { label: 'Body fat', value: latestBody.fatPct, unit: '%', delta: bodyTrend, lowerBetter: true },
+  ]
 
   const macros = [
     { Icon: Beef, label: 'P', val: totals.protein, target: TARGETS.protein, color: 'var(--acc-food)' },
@@ -104,7 +133,7 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
         </div>
         <div className="today-fuel-hero-body">
           <div className="today-fuel-gauge">
-            <Gauge pct={fuelPct} size={196} stroke={17} color={totals.kcal > TARGETS.kcal ? 'var(--down)' : 'var(--acc-food)'} label="Calorie target progress">
+            <Gauge pct={fuelPct} size={152} stroke={15} color={totals.kcal > TARGETS.kcal ? 'var(--down)' : 'var(--acc-food)'} label="Calorie target progress">
               <Odometer value={remaining} className="display today-fuel-left" />
               <span className="today-fuel-label">Kcal left</span>
             </Gauge>
@@ -126,21 +155,58 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
       </section>
 
       <div className="today-compact-stack">
-        <button onClick={() => goTo('fitness')} className="today-card today-brief-card today-tile-int" style={{ '--acc': 'var(--acc-fit)' }}>
+        <button onClick={() => goTo('fitness')} className="today-card today-brief-card today-fit-card today-tile-int" style={{ '--acc': 'var(--acc-fin)' }}>
           <div className="today-market-head">
             <span className="today-eyebrow">Fitness · today</span>
-            <span className="today-body-kpi">
-              <span className="today-body-kpi-row">
-                <span className="today-body-current">{latestBody.fatPct || '—'}%</span>
-                <span className="today-body-goal">goal {FITNESS.goal.fatPct}%</span>
-                {bodyTrend != null && Math.abs(bodyTrend) >= 0.05 && (
-                  <span className={`today-body-trend ${bodyTrend < 0 ? 'toward' : 'away'}`}>{bodyTrend > 0 ? '+' : ''}{bodyTrend.toFixed(1)}</span>
-                )}
-              </span>
-              <span className="today-body-progress" aria-hidden="true"><span style={{ width: `${bodyProgress * 100}%` }} /></span>
+            <span className="today-week-pill">
+              <Dumbbell size={12} strokeWidth={2.4} />
+              <strong>{workoutsThisWeek}</strong>
+              <span>{workoutsThisWeek === 1 ? 'workout' : 'workouts'} this week</span>
             </span>
           </div>
-          <span className="today-brief-row">
+
+          {hasBurn && (
+            <div className="today-burnchart">
+              <div className="today-burnchart-head">
+                <span className="today-micro-label">Burn · last 7 days</span>
+                <span className="today-burnchart-today">
+                  <Flame size={13} strokeWidth={2.4} />
+                  <strong>{todayBurn != null ? todayBurn.toLocaleString() : '—'}</strong> kcal today
+                  {burnDelta != null && (
+                    <span className={`today-burn-delta ${burnDelta >= 0 ? 'up' : 'down'}`}>{burnDelta >= 0 ? '+' : ''}{Math.round(burnDelta).toLocaleString()}</span>
+                  )}
+                </span>
+              </div>
+              <div className="today-burnbars" aria-hidden="true">
+                {burnDays.map(d => (
+                  <div key={d.key} className={`today-burnbar ${d.isToday ? 'on' : ''} ${d.kcal == null ? 'empty' : ''}`}>
+                    <span className="today-burnbar-val">{d.kcal != null ? kcalCompact(d.kcal) : '–'}</span>
+                    <span className="today-burnbar-track">
+                      <span className="today-burnbar-fill" style={{ height: `${d.kcal != null ? Math.max(6, Math.round((d.kcal / maxBurn) * 100)) : 0}%` }} />
+                    </span>
+                    <span className="today-burnbar-day">{d.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <span className="today-fit-body">
+            {bodyMetrics.map(m => {
+              const good = m.delta == null ? null : (m.lowerBetter ? m.delta < 0 : m.delta > 0)
+              return (
+                <span key={m.label} className="today-fit-metric">
+                  <span className="today-fit-metric-label">{m.label}</span>
+                  <strong>{m.value != null ? m.value : '—'}<i>{m.unit}</i></strong>
+                  {m.delta != null && Math.abs(m.delta) >= 0.05 && (
+                    <span className={`today-fit-trend ${good ? 'good' : 'bad'}`}>{m.delta > 0 ? '+' : ''}{m.delta.toFixed(1)}</span>
+                  )}
+                </span>
+              )
+            })}
+          </span>
+
+          <span className="today-brief-row today-fit-brief">
             <span className="today-icon-well"><Dumbbell size={16} strokeWidth={2.2} /></span>
             <span className="today-brief-copy">
               <span className="today-brief-main">{nextWorkoutName}</span>
@@ -162,11 +228,6 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
                 <span className={`today-net-delta ${msftChange >= 0 ? 'up' : 'down'}`}>{msftChange >= 0 ? '↑' : '↓'} {Math.abs(msftChange).toFixed(2)}%</span>
               </span>
             </span>
-          </span>
-          <span className="today-allocation-bar" aria-hidden="true">
-            {financeBreakdown.map(item => (
-              <span key={item.label} style={{ '--asset-tone': item.tone, flexGrow: Math.max(item.share, 0.018) }} />
-            ))}
           </span>
           <span className="today-finance-grid">
             {financeBreakdown.map(item => (
