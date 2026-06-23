@@ -78,19 +78,41 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
   const burnReady = whoop?.connected && whoop.kcal != null
   const burnBase = burnReady ? (whoop.weeklyAvg ?? whoop.yesterday ?? null) : null
   const burnDelta = burnReady && burnBase != null ? whoop.kcal - burnBase : null
-  const burnByDate = {}
-  if (cycles?.connected) (cycles.cycles || []).forEach(c => { burnByDate[c.date] = c.kcal })
-  const burnDays = Array.from({ length: 7 }, (_, i) => {
+  // WHOOP reports one cycle per physiological day (sleep-to-sleep), which doesn't line
+  // up with calendar midnight — so we plot the last 7 cycles by their own date rather
+  // than forcing a fixed weekday grid (which would blank out the boundary day). The most
+  // recent cycle may be `partial` (in progress); it's the "current" bar and uses the
+  // fresher live intraday burn.
+  // WHOOP returns burn per cycle (≈ one per calendar day), but stamps each cycle's date
+  // from its UTC start — which lands a day early for east-of-UTC timezones (Beirut, +3),
+  // shifting every weekday label back one day. The cycles are consecutive and the newest
+  // (`partial`) one is today, so anchor the latest bar to today and walk backwards. This
+  // gives correct weekday labels that match the WHOOP app, with today as the live bar.
+  const sortedCycles = cycles?.connected ? [...(cycles.cycles || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)) : []
+  const recentCycles = sortedCycles.slice(-7)
+  const lastIsPartial = recentCycles.length > 0 && !!recentCycles[recentCycles.length - 1].partial
+  // If the live/partial cycle is present it's today; otherwise the newest completed cycle
+  // is yesterday and a live "today" bar is appended below.
+  const endOffset = lastIsPartial ? 0 : 1
+  const burnDays = recentCycles.map((c, i) => {
     const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
+    d.setDate(d.getDate() - (recentCycles.length - 1 - i) - endOffset)
     const key = dateKey(d)
-    const isToday = key === todayKey()
-    const kcalBurned = isToday && burnReady ? Math.round(whoop.kcal) : (burnByDate[key] ?? null)
-    return { key, isToday, kcal: kcalBurned, label: d.toLocaleDateString('en-US', { weekday: 'narrow' }) }
+    return {
+      key,
+      isToday: key === todayKey(),
+      kcal: c.partial && burnReady ? Math.round(whoop.kcal) : c.kcal,
+      label: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+    }
   })
+  // Fallback: live burn exists but today's cycle hasn't surfaced yet — append a live bar.
+  if (burnReady && !burnDays.some(d => d.isToday)) {
+    burnDays.push({ key: todayKey(), isToday: true, kcal: Math.round(whoop.kcal), label: new Date().toLocaleDateString('en-US', { weekday: 'narrow' }) })
+    if (burnDays.length > 7) burnDays.shift()
+  }
   const hasBurn = burnDays.some(d => d.kcal != null)
   const maxBurn = Math.max(1, ...burnDays.map(d => d.kcal || 0))
-  const todayBurn = burnDays[6]?.kcal ?? null
+  const todayBurn = burnDays.find(d => d.isToday)?.kcal ?? burnDays[burnDays.length - 1]?.kcal ?? null
   const kcalCompact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 9950 ? 0 : 1)}k` : `${Math.round(n)}`)
 
   // Workouts logged this week (Monday → today).

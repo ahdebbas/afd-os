@@ -117,51 +117,88 @@ html.dark body::before {
 
 /* ---------- Shared mobile date strip ---------- */
 .day-strip {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
-  padding: 5px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 88%, #EDEBE5 12%);
-  border: 1px solid var(--line);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72), 0 12px 28px rgba(20, 22, 28, 0.05);
+  display: flex;
+  gap: 8px;
+  padding: 4px 2px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Fade the left edge so earlier days peek as the rail scrolls; today stays crisp at right. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+  mask-image: linear-gradient(to right, transparent, #000 32px);
 }
+.day-strip::-webkit-scrollbar { display: none; }
 .day-chip {
   position: relative;
-  min-width: 0;
-  height: 48px;
-  border-radius: 12px;
+  flex: 0 0 auto;
+  width: 46px;
+  scroll-snap-align: end;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: 7px;
   color: var(--ink-3);
-  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  transition: transform 0.16s ease;
 }
-.day-chip-active {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--surface) 94%, var(--acc-os) 6%);
-  border: 1px solid color-mix(in srgb, var(--acc-os) 54%, transparent);
-  box-shadow: 0 8px 18px rgba(20, 22, 28, 0.08), inset 0 1px 0 rgba(255,255,255,0.82);
-}
-.day-chip-active .day-num { color: var(--ink); font-weight: 820; }
-.day-chip-active .day-wd { color: var(--acc-os); opacity: 1; }
-.day-chip-today:not(.day-chip-active) .day-num { color: var(--ink); }
-.day-chip-disabled { opacity: 0.35; cursor: default; }
-.day-num {
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 760;
-  font-variant-numeric: tabular-nums;
-}
+.day-chip:active { transform: scale(0.94); }
 .day-wd {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 6.5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.62;
+  color: var(--ink-3);
+}
+.day-disc {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 16px -11px rgba(20, 22, 28, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.day-num {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 760;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.day-chip-today:not(.day-chip-active) .day-disc {
+  border-color: color-mix(in srgb, var(--acc-os) 48%, var(--line));
+}
+.day-chip-active .day-disc {
+  background: var(--acc-os);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px -9px color-mix(in srgb, var(--acc-os) 60%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.day-chip-active .day-num { color: #fff; font-weight: 820; }
+.day-chip-active .day-wd { color: var(--acc-os); }
+.day-chip-disabled { opacity: 0.4; cursor: default; }
+.day-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 2px solid var(--bg);
+}
+.day-badge-win { background: var(--up); }
+.day-badge-miss { background: var(--down); }
+html.dark .day-disc {
+  box-shadow: 0 6px 16px -11px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* ---------- Mobile food journal ---------- */

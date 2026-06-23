@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { dateKey } from './dates'
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -80,16 +80,17 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
 }
 
 /**
- * Week day-selector strip. Compact raised capsule on the active day.
- * Future days are dimmed and non-interactive.
+ * Week day-selector strip. A horizontally scrollable rail of circular day discs that
+ * opens scrolled to today (rightmost). The active day is a filled accent disc; days with
+ * a logged win/miss show a small status badge. Future days are dimmed and non-interactive.
  */
-export function DayStrip({ value, onChange }) {
+export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
+  const scrollRef = useRef(null)
   const todayKey = dateKey()
-  // Rolling 7-day window ending today (today is rightmost), so the previous
-  // six days are always visible and selectable regardless of the weekday.
-  const days = Array.from({ length: 7 }, (_, i) => {
+  // Rolling window ending today (today is rightmost), so earlier days scroll/peek to the left.
+  const days = Array.from({ length: dayCount }, (_, i) => {
     const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
+    d.setDate(d.getDate() - (dayCount - 1 - i))
     const key = dateKey(d)
     return {
       key,
@@ -97,19 +98,35 @@ export function DayStrip({ value, onChange }) {
       num: d.getDate(),
       isToday: key === todayKey,
       isFuture: key > todayKey,
+      state: typeof status === 'function' ? status(key) : 'empty',
     }
   })
 
+  // Land on today: open scrolled to the right edge like a calendar that just snapped to now.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [])
+
   return (
-    <div className="day-strip" role="group" aria-label="Select day">
+    <div className="day-strip" ref={scrollRef} role="group" aria-label="Select day">
       {days.map(d => {
         const selected = d.key === value
+        const showBadge = d.state === 'win' || d.state === 'miss'
         return (
           <button key={d.key} onClick={() => !d.isFuture && onChange(d.key)}
-            disabled={d.isFuture} aria-pressed={selected} aria-label={`${d.wd} ${d.num}`}
+            disabled={d.isFuture} aria-pressed={selected}
+            aria-label={`${d.wd} ${d.num}${d.state === 'win' ? ', complete' : d.state === 'miss' ? ', missed' : ''}`}
             className={`day-chip press ${selected ? 'day-chip-active' : ''} ${d.isToday ? 'day-chip-today' : ''} ${d.isFuture ? 'day-chip-disabled' : ''}`}>
-            <span className="day-num">{d.num}</span>
             <span className="day-wd">{d.wd.slice(0, 3)}</span>
+            <span className="day-disc">
+              <span className="day-num">{d.num}</span>
+              {showBadge && (
+                <span className={`day-badge day-badge-${d.state}`} aria-hidden="true">
+                  {d.state === 'win' && <Check size={9} strokeWidth={3.5} />}
+                </span>
+              )}
+            </span>
           </button>
         )
       })}
