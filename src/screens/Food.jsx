@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, Milk, Salad, Sandwich, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
+import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, Milk, Salad, Sandwich, Scale, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
@@ -63,6 +63,20 @@ function FoodPlate({ preset, large = false }) {
 
 const macroLine = entry => `${entry.protein || 0}P · ${entry.carbs ?? 0}C · ${entry.fat ?? 0}F`
 
+// Portion multipliers for logging a fraction (or multiple) of a plate.
+const PORTION_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2]
+const FRAC_GLYPH = { 0.25: '¼', 0.5: '½', 0.75: '¾', 1: '1', 1.5: '1½', 2: '2' }
+const fracLabel = f => FRAC_GLYPH[f] || `${+(+f).toFixed(2)}×`
+// Scale a plate's macros by a portion factor, rounding to whole numbers.
+const scalePreset = (p, f) => ({
+  ...p,
+  kcal: Math.round((p.kcal || 0) * f),
+  protein: Math.round((p.protein || 0) * f),
+  carbs: Math.round((p.carbs || 0) * f),
+  fat: Math.round((p.fat || 0) * f),
+  portion: f,
+})
+
 function macroPhrase(entry) {
   const protein = entry.protein || 0
   const carbs = entry.carbs || 0
@@ -88,7 +102,7 @@ function JournalEntry({ entry, preset, canRemove, onRemove, count = 1, hideTime 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold t1 leading-tight truncate">{entry.name}{count > 1 ? ` ×${count}` : ''}</h3>
+            <h3 className="text-[15px] font-semibold t1 leading-tight truncate">{entry.name}{entry.portion && entry.portion !== 1 ? ` · ${fracLabel(entry.portion)}` : ''}{count > 1 ? ` ×${count}` : ''}</h3>
             <p className="text-[11px] t3 mt-0.5 truncate">{macroPhrase(entry)}{hideTime ? '' : ` · ${entry.time || 'logged'}`}</p>
           </div>
           <div className="text-right shrink-0">
@@ -262,6 +276,9 @@ export default function Food() {
 
   const [editMode, setEditMode] = useState(false)
   const [activeCategory, setActiveCategory] = useState('Breakfast')
+  // Portion picker: which plate is being scaled, plus the custom multiplier text.
+  const [portionFor, setPortionFor] = useState(null)
+  const [portionVal, setPortionVal] = useState('')
   const blankForm = { name: '', kcal: '', protein: '', carbs: '', fat: '', category: 'Meals', save: false, editId: null }
   const [form, setForm] = useState(blankForm)
 
@@ -284,6 +301,14 @@ export default function Food() {
 
   const presetByName = useMemo(() => new Map(presets.map(p => [p.name, p])), [presets])
   const journalGroups = groupConsecutiveEntries(entries)
+
+  // Log a scaled portion of a plate, then close the picker.
+  const addPortion = (p, f) => {
+    if (!(f > 0)) return
+    addEntry(scalePreset(p, f))
+    setPortionFor(null)
+    setPortionVal('')
+  }
 
   const submitCustom = () => {
     const item = {
@@ -384,7 +409,16 @@ export default function Food() {
                 </span>
               </div>
               <div className="text-[13px] font-bold leading-tight t1">{p.name}</div>
-              <div className="mono text-[10px] t3 mt-2">{p.kcal} kcal · {macroLine(p)}</div>
+              <div className="food-preset-foot mono text-[10px] t3 mt-2">
+                <span className="truncate">{p.kcal} kcal · {macroLine(p)}</span>
+                {!editMode && (
+                  <span role="button" tabIndex={0}
+                    onClick={e => { e.stopPropagation(); setShowForm(false); setPortionVal(''); setPortionFor(p) }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowForm(false); setPortionVal(''); setPortionFor(p) } }}
+                    aria-label={`Choose portion for ${p.name}`}
+                    className="food-portion-btn press"><Scale size={11} strokeWidth={2.5} /></span>
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -457,9 +491,40 @@ export default function Food() {
         </div>
       )}
 
+      {isToday && portionFor && (
+        <div className="food-form-sheet food-portion-sheet">
+          <div className="food-portion-head">
+            <div className="min-w-0">
+              <p className="text-[14px] font-semibold t1 truncate">{portionFor.name}</p>
+              <p className="mono text-[10px] t3 mt-0.5 truncate">{portionFor.kcal} kcal · {macroLine(portionFor)} · per 1</p>
+            </div>
+            <button onClick={() => { setPortionFor(null); setPortionVal('') }} aria-label="Close portion picker" className="food-delete press">
+              <X size={12} strokeWidth={2.6} />
+            </button>
+          </div>
+          <div className="food-portion-chips">
+            {PORTION_OPTIONS.map(f => (
+              <button key={f} onClick={() => addPortion(portionFor, f)} className="food-portion-chip press" aria-label={`Add ${fracLabel(f)} portion`}>
+                <span className="food-portion-chip-frac">{fracLabel(f)}</span>
+                <span className="food-portion-chip-kcal">{Math.round(portionFor.kcal * f)}</span>
+              </button>
+            ))}
+          </div>
+          <div className="food-portion-custom">
+            <input type="number" inputMode="decimal" step="0.1" min="0" value={portionVal}
+              onChange={e => setPortionVal(e.target.value)} placeholder="e.g. 0.7"
+              aria-label="Custom portion multiplier"
+              onKeyDown={e => { if (e.key === 'Enter') addPortion(portionFor, parseFloat(portionVal)) }}
+              className="field rounded-2xl px-4 py-3 text-sm outline-none mono flex-1" />
+            <span className="mono text-[11px] t2 whitespace-nowrap">{parseFloat(portionVal) > 0 ? `${Math.round(portionFor.kcal * parseFloat(portionVal))} kcal` : '— kcal'}</span>
+            <button onClick={() => addPortion(portionFor, parseFloat(portionVal))} disabled={!(parseFloat(portionVal) > 0)} className="food-portion-add press">Add</button>
+          </div>
+        </div>
+      )}
+
       {isToday && (
         <div className="food-composer">
-          <button onClick={() => { setShowForm(!showForm); setEditMode(false); setForm(blankForm) }} className="food-composer-plus press" aria-label="Add custom food">
+          <button onClick={() => { setShowForm(!showForm); setEditMode(false); setPortionFor(null); setForm(blankForm) }} className="food-composer-plus press" aria-label="Add custom food">
             {showForm ? <X size={17} /> : <Plus size={17} />}
           </button>
           <button onClick={() => { setShowForm(true); setEditMode(false); setForm(blankForm) }} className="food-composer-field press">What did you eat?</button>

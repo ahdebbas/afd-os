@@ -684,6 +684,74 @@ html.dark .food-journal {
 }
 .food-plates-rail::-webkit-scrollbar { display: none; }
 .food-plates-rail .food-preset-card { scroll-snap-align: start; }
+.food-preset-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.food-portion-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 13%, transparent);
+}
+.food-portion-sheet { gap: 12px; }
+.food-portion-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.food-portion-chips {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.food-portion-chip {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  padding: 10px 4px;
+  border-radius: 14px;
+  background: var(--chip);
+  border: 1px solid var(--line);
+}
+.food-portion-chip:active { background: color-mix(in srgb, var(--acc) 12%, var(--chip)); }
+.food-portion-chip-frac {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+.food-portion-chip-kcal {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.food-portion-custom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.food-portion-add {
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: var(--acc);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+.food-portion-add:disabled { opacity: 0.4; }
 .food-logbook { background-image: linear-gradient(180deg, rgba(255,255,255,0.05), transparent 30%); }
 .food-journal-entry {
   position: relative;
