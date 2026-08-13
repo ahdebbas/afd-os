@@ -1,8 +1,9 @@
-import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { RefreshCw, Settings2, Check } from 'lucide-react'
 import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, sarwaTotal, usd } from '../../data'
 import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
-import { Card, Stat, DataTable, Meter, Badge, Button, NumberFlow } from '../primitives'
+import { Card, Stat, DataTable, Meter, Badge, Button, IconButton, NumberFlow } from '../primitives'
 
 const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', 'var(--d-warn)', 'var(--d-text-3)', 'var(--d-accent-line)', 'var(--d-border-strong)']
 
@@ -11,10 +12,17 @@ const SYNC = {
 }
 
 export default function FinancePage() {
-  const [FINANCE] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const [FINANCE, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
   const { msft, sarwa, property } = FINANCE
+  const [editMode, setEditMode] = useState(false)
   const q = useQuotes()
   const { status, syncedAt, refresh } = useQuotesMeta()
+
+  // Update a Sarwa holding's unit count (edit mode); value re-derives from live quotes.
+  const setUnits = (ticker, val) => setFinance({
+    ...FINANCE,
+    sarwa: { ...sarwa, holdings: sarwa.holdings.map(h => h.ticker === ticker ? { ...h, units: val } : h) },
+  })
 
   const live = q?.MSFT
   const price = live?.price ?? msft.price
@@ -48,7 +56,13 @@ export default function FinancePage() {
     { key: 'name', label: 'Name', render: r => <span className="d-t2">{r.name}</span> },
     { key: 'price', label: 'Price', align: 'right', render: r => <span className="d-num d-t2">{r.quote ? `$${r.quote.price.toFixed(2)}` : '—'}</span> },
     { key: 'alloc', label: 'Alloc', align: 'right', render: r => <span className="d-num d-t2">{r.alloc.toFixed(1)}%</span> },
-    { key: 'value', label: 'Value', align: 'right', render: r => <span className="d-num d-t1 font-medium">{usd(r.value)}</span> },
+    { key: 'value', label: editMode ? 'Units' : 'Value', align: 'right', render: r => editMode && r.units != null
+      ? <input value={r.units} type="number" min="0" step="any"
+          onChange={e => setUnits(r.ticker, e.target.value === '' ? 0 : +e.target.value)}
+          aria-label={`${r.ticker} units`}
+          className="d-num text-right w-24 px-2 py-1 rounded"
+          style={{ background: 'var(--d-panel-3)', border: '1px solid var(--d-border)', color: 'var(--d-text)' }} />
+      : <span className="d-num d-t1 font-medium">{usd(r.value)}</span> },
     { key: 'perf', label: 'Return', align: 'right', render: r => r.perf == null
       ? <span className="d-t3">—</span>
       : <Badge tone={r.perf >= 0 ? 'up' : 'down'}>{r.perf >= 0 ? '+' : ''}{r.perf.toFixed(2)}%</Badge> },
@@ -82,7 +96,8 @@ export default function FinancePage() {
       </Card>
 
       <div className="grid grid-cols-[1fr_360px] gap-4">
-        <Card eyebrow="Sarwa · halal" title="Holdings" bodyClass="!p-0">
+        <Card eyebrow="Sarwa · halal" title="Holdings" bodyClass="!p-0"
+          actions={<IconButton icon={editMode ? Check : Settings2} onClick={() => setEditMode(!editMode)} aria-label={editMode ? 'Done editing units' : 'Edit units'} />}>
           <DataTable columns={columns} rows={rows} getRowKey={r => r.ticker} />
         </Card>
 

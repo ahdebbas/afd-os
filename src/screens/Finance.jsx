@@ -37,6 +37,12 @@ export default function Finance() {
   const msftUp = dayChangePct >= 0
   const Trend = msftUp ? TrendingUp : TrendingDown
 
+  // Update a Sarwa holding's unit count (edit mode); value re-derives from live quotes.
+  const setUnits = (ticker, val) => setFinance({
+    ...FINANCE,
+    sarwa: { ...sarwa, holdings: sarwa.holdings.map(h => h.ticker === ticker ? { ...h, units: val } : h) },
+  })
+
   return (
     <div className="space-y-4" style={{ '--acc': 'var(--acc-fin)' }}>
       {/* Net worth */}
@@ -112,7 +118,12 @@ export default function Finance() {
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-3">
           <Label>Sarwa · halal</Label>
-          <span className={`mono text-[10px] ${etfLive ? 'acc' : 't3'}`}>{etfLive ? 'live · today' : `as of ${sarwa.lastUpdated}`}</span>
+          <div className="flex items-center gap-2">
+            <span className={`mono text-[10px] ${etfLive ? 'acc' : 't3'}`}>{etfLive ? 'live · today' : `as of ${sarwa.lastUpdated}`}</span>
+            <button onClick={() => setEditMode(!editMode)} className="press chip rounded-md w-6 h-6 flex items-center justify-center" aria-label={editMode ? 'Done editing units' : 'Edit units'}>
+              {editMode ? <Check size={12} strokeWidth={2.5}/> : <Settings2 size={12} />}
+            </button>
+          </div>
         </div>
         <p className="display text-[36px] leading-none font-bold t1">{usd(sarwaValue)}</p>
 
@@ -142,15 +153,24 @@ export default function Finance() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold t1">{usd(hv)}</div>
-                {h.units != null && (() => {
-                  const perf = holdingPerf(h, q)
-                  return (
-                  <div className={`mono text-[10px] inline-flex items-center gap-1 ${perf >= 0 ? 'up' : 'down'}`}>
-                    {perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
-                    {perf >= 0 ? '+' : ''}{perf.toFixed(2)}%
-                  </div>
-                )})()}
+                {editMode && h.units != null ? (
+                  <input value={h.units} type="number" inputMode="decimal" min="0" step="any"
+                    onChange={e => setUnits(h.ticker, e.target.value === '' ? 0 : +e.target.value)}
+                    aria-label={`${h.ticker} units`}
+                    className="field w-24 px-1.5 py-1 rounded text-sm text-right mono" />
+                ) : (
+                  <>
+                    <div className="text-sm font-bold t1">{usd(hv)}</div>
+                    {h.units != null && (() => {
+                      const perf = holdingPerf(h, q)
+                      return (
+                      <div className={`mono text-[10px] inline-flex items-center gap-1 ${perf >= 0 ? 'up' : 'down'}`}>
+                        {perf >= 0 ? <TrendingUp size={10} strokeWidth={2.5} /> : <TrendingDown size={10} strokeWidth={2.5} />}
+                        {perf >= 0 ? '+' : ''}{perf.toFixed(2)}%
+                      </div>
+                    )})()}
+                  </>
+                )}
               </div>
             </div>
           )})}
