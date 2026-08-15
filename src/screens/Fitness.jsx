@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRight } from 'lucide-react'
+import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRight, ChevronDown } from 'lucide-react'
 import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
@@ -98,6 +98,7 @@ export default function Fitness() {
   const [flashPR, setFlashPR] = useState(null)
   const [exForm, setExForm] = useState({ open: false, name: '', sets: '' })
   const [metric, setMetric] = useState('weight')
+  const [monthExpanded, setMonthExpanded] = useState(false)
   const [inForm, setInForm] = useState({ open: false, date: '', weight: '', smm: '', fatMass: '', fatPct: '' })
 
   // WHOOP burn + intraday pacing (today only). Null until loaded.
@@ -343,6 +344,64 @@ export default function Fitness() {
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
           <span className="mono text-[10px] t2"><span className={weekCount >= 4 ? 'acc' : 't1'}>{weekCount}</span> / 4 sessions</span>
         </div>
+        <button onClick={() => setMonthExpanded(v => !v)} aria-expanded={monthExpanded}
+          className="press w-full mt-2 pt-2 hairline-t flex items-center justify-between">
+          <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This month</span>
+          <span className="flex items-center gap-1.5 mono text-[10px] t2">
+            {monthlyRecap.sessionsCount} sessions
+            <ChevronDown size={13} strokeWidth={2.5} className={`t3 transition-transform ${monthExpanded ? 'rotate-180' : ''}`} />
+          </span>
+        </button>
+        {monthExpanded && (
+          <div className="mt-3 pt-3 hairline-t">
+            <p className="mono text-[10px] t3">{monthlyRecap.paceNote}</p>
+
+            {monthlyRecap.splitBreakdown.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {monthlyRecap.splitBreakdown.map(s => (
+                  <div key={s.name} className="chip rounded-2xl px-3 py-2.5">
+                    <div className="mono text-[8px] tracking-[0.1em] uppercase t3 truncate">{s.name}</div>
+                    <div className="text-[15px] font-bold t1 mt-0.5">{s.count}×</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {monthlyRecap.topGains.length > 0 && (
+              <div className="mt-4">
+                <span className="mono text-[9px] tracking-[0.16em] uppercase t3">Biggest gains</span>
+                <div className="mt-2">
+                  {monthlyRecap.topGains.map((g, i) => (
+                    <div key={g.exercise} className={`flex items-center justify-between py-2 ${i > 0 ? 'hairline-t' : ''}`}>
+                      <span className="text-sm t1 truncate pr-2">{g.exercise}</span>
+                      <span className="mono text-[12px] font-semibold up">+{g.delta}kg</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {monthlyRecap.heaviestLift && (
+              <div className="acc-chip rounded-2xl px-4 py-3 mt-4">
+                <div className="mono text-[9px] tracking-[0.14em] uppercase">Heaviest lift</div>
+                <div className="text-sm font-bold mt-0.5">{monthlyRecap.heaviestLift.exercise} · {monthlyRecap.heaviestLift.weight}kg</div>
+              </div>
+            )}
+
+            <div className="chip rounded-2xl px-4 py-3 mt-4">
+              <div className="mono text-[9px] tracking-[0.14em] uppercase t3">Body change this month</div>
+              {monthlyRecap.bodyChange?.type === 'delta' ? (
+                <p className="text-sm t1 mt-1">
+                  {monthlyRecap.bodyChange.fatPctDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.fatPctDelta}% body fat · {monthlyRecap.bodyChange.weightDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.weightDelta}kg
+                </p>
+              ) : monthlyRecap.bodyChange?.type === 'first' ? (
+                <p className="text-sm t1 mt-1">First reading this month · {monthlyRecap.bodyChange.fatPct}% body fat, {monthlyRecap.bodyChange.weight}kg</p>
+              ) : (
+                <p className="text-sm t3 mt-1">No InBody reading logged this month yet.</p>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Workout — rotation + inline weights (backlog any day) */}
@@ -594,64 +653,6 @@ export default function Fitness() {
             ))}
           </div>
         )}
-      </section>
-
-      {/* Monthly recap — deterministic, no AI. Every stat traces to a logged session/InBody reading. */}
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-1">
-          <Label>Monthly recap</Label>
-          <span className="mono text-[10px] t3">{monthlyRecap.monthLabel}</span>
-        </div>
-        <div className="flex items-end gap-3 mt-3">
-          <span className="display text-[44px] leading-none font-bold t1">{monthlyRecap.sessionsCount}</span>
-          <span className="mono text-[10px] tracking-[0.14em] uppercase t3 mb-1.5">sessions logged</span>
-        </div>
-        <p className="mono text-[10px] t3 mt-1.5">{monthlyRecap.paceNote}</p>
-
-        {monthlyRecap.splitBreakdown.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            {monthlyRecap.splitBreakdown.map(s => (
-              <div key={s.name} className="chip rounded-2xl px-3 py-2.5">
-                <div className="mono text-[8px] tracking-[0.1em] uppercase t3 truncate">{s.name}</div>
-                <div className="text-[15px] font-bold t1 mt-0.5">{s.count}×</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {monthlyRecap.topGains.length > 0 && (
-          <div className="mt-5">
-            <span className="mono text-[9px] tracking-[0.16em] uppercase t3">Biggest gains</span>
-            <div className="mt-2">
-              {monthlyRecap.topGains.map((g, i) => (
-                <div key={g.exercise} className={`flex items-center justify-between py-2 ${i > 0 ? 'hairline-t' : ''}`}>
-                  <span className="text-sm t1 truncate pr-2">{g.exercise}</span>
-                  <span className="mono text-[12px] font-semibold up">+{g.delta}kg</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {monthlyRecap.heaviestLift && (
-          <div className="acc-chip rounded-2xl px-4 py-3 mt-5">
-            <div className="mono text-[9px] tracking-[0.14em] uppercase">Heaviest lift</div>
-            <div className="text-sm font-bold mt-0.5">{monthlyRecap.heaviestLift.exercise} · {monthlyRecap.heaviestLift.weight}kg</div>
-          </div>
-        )}
-
-        <div className="chip rounded-2xl px-4 py-3 mt-5">
-          <div className="mono text-[9px] tracking-[0.14em] uppercase t3">Body change this month</div>
-          {monthlyRecap.bodyChange?.type === 'delta' ? (
-            <p className="text-sm t1 mt-1">
-              {monthlyRecap.bodyChange.fatPctDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.fatPctDelta}% body fat · {monthlyRecap.bodyChange.weightDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.weightDelta}kg
-            </p>
-          ) : monthlyRecap.bodyChange?.type === 'first' ? (
-            <p className="text-sm t1 mt-1">First reading this month · {monthlyRecap.bodyChange.fatPct}% body fat, {monthlyRecap.bodyChange.weight}kg</p>
-          ) : (
-            <p className="text-sm t3 mt-1">No InBody reading logged this month yet.</p>
-          )}
-        </div>
       </section>
 
       {/* Constraints */}
