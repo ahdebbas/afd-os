@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, RefreshCw, ArrowRight } from 'lucide-react'
+import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRight } from 'lucide-react'
 import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
@@ -9,6 +9,7 @@ import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 import { useFood } from '../store'
 import { WhoopEnergyPanel } from '../whoopInsights'
 import { netEnergyData } from '../whoopEnergy'
+import { buildMonthlyWorkoutRecap } from '../monthlyWorkoutRecap'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -60,12 +61,18 @@ function WeightCell({ weight, flash, onCommit }) {
   )
 }
 
-function ExerciseRow({ exercise, index, weight, flash, onCommit }) {
+function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCommit }) {
   return (
-    <div className={`flex justify-between items-start gap-2 py-2.5 ${index > 0 ? 'hairline-t' : ''}`}>
+    <div className={`workout-exercise-row flex justify-between items-start gap-2 py-2.5 ${index > 0 ? 'hairline-t' : ''} ${completed ? 'workout-exercise-complete' : ''}`}>
       <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
-        <span className="mono text-[9px] w-3 flex-shrink-0 mt-1 t2">{String(index + 1).padStart(2, '0')}</span>
-        <span className="leading-snug">{exercise.name}</span>
+        <button onClick={onToggle} aria-pressed={completed}
+          aria-label={`${completed ? 'Mark incomplete' : 'Mark complete'}: ${exercise.name}`}
+          className={`press grid place-items-center w-6 h-6 rounded-full flex-shrink-0 ${completed ? 'workout-exercise-check' : 'chip t2'}`}>
+          {completed
+            ? <Check size={13} strokeWidth={3} aria-hidden="true" />
+            : <span className="mono text-[9px]">{String(index + 1).padStart(2, '0')}</span>}
+        </button>
+        <span className={`leading-snug pt-0.5 ${completed ? 'workout-exercise-name-complete' : ''}`}>{exercise.name}</span>
       </span>
       <div className="flex items-center justify-end gap-2 flex-shrink-0">
         <span className="mono text-[10px] t2 w-20 text-right pt-1.5">{exercise.sets}</span>
@@ -85,6 +92,8 @@ export default function Fitness() {
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [weights, setWeights] = usePersistentState('afd-weights', DEFAULT_WEIGHTS,
     v => v && typeof v === 'object' && !Array.isArray(v))
+  const [exerciseProgress, setExerciseProgress] = usePersistentState('afd-fit-exercise-progress', {},
+    v => v && typeof v === 'object' && !Array.isArray(v))
   const [inbody, setInbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [flashPR, setFlashPR] = useState(null)
   const [exForm, setExForm] = useState({ open: false, name: '', sets: '' })
@@ -94,28 +103,20 @@ export default function Fitness() {
   // WHOOP burn + intraday pacing (today only). Null until loaded.
   const [whoop, setWhoop] = useState(null)
   const [cycles, setCycles] = useState(null)
-  const [whoopLoadedAt, setWhoopLoadedAt] = useState(null)
-  const [refreshingWhoop, setRefreshingWhoop] = useState(false)
   const { logs: foodLogs } = useFood()
-  const refreshWhoop = async ({ silent = false } = {}) => {
-    if (!silent) setRefreshingWhoop(true)
-    try {
-      const [burn, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
-      setWhoop(burn)
-      setCycles(history)
-      setWhoopLoadedAt(new Date())
-    } finally {
-      if (!silent) setRefreshingWhoop(false)
-    }
+  const refreshWhoop = async () => {
+    const [burn, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
+    setWhoop(burn)
+    setCycles(history)
   }
   useEffect(() => {
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') void refreshWhoop({ silent: true })
+      if (document.visibilityState === 'visible') void refreshWhoop()
     }
 
     void Promise.resolve().then(() => refreshWhoop())
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible') void refreshWhoop({ silent: true })
+      if (document.visibilityState === 'visible') void refreshWhoop()
     }, WHOOP_POLL_MS)
     window.addEventListener('focus', onVisibility)
     document.addEventListener('visibilitychange', onVisibility)
@@ -166,6 +167,14 @@ export default function Fitness() {
     if (prevActive.current !== activeIdx) { setDay(activeIdx); prevActive.current = activeIdx }
   }, [activeIdx])
 
+  const progressKey = `${selDate}:${program[day].name}`
+  const completedExercises = exerciseProgress[progressKey] || []
+  const toggleExercise = name => setExerciseProgress(prev => {
+    const current = prev[progressKey] || []
+    const next = current.includes(name) ? current.filter(item => item !== name) : [...current, name]
+    return { ...prev, [progressKey]: next }
+  })
+
   // Best weight per exercise across current values + every logged snapshot.
   const bestFor = name => {
     let best = +weights[name] || 0
@@ -180,6 +189,8 @@ export default function Fitness() {
     sessions.forEach(s => Object.entries(s.weights || {}).forEach(([n, w]) => consider(n, +w || 0)))
     return Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 6)
   }, [weights, sessions])
+
+  const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody }), [sessions, inbody])
 
   const setGlobalWeight = (name, val) => setWeights(prev => {
     const next = { ...prev }
@@ -380,6 +391,8 @@ export default function Fitness() {
             index={i}
             weight={effWeight(e.name)}
             flash={flashPR === e.name}
+            completed={completedExercises.includes(e.name)}
+            onToggle={() => toggleExercise(e.name)}
             onCommit={val => setWeight(e.name, val)}
           />
         ))}
@@ -512,54 +525,6 @@ export default function Fitness() {
         </div>
       </section>
 
-      {/* Energy balance · 7d — real maintenance, net deficit, predicted vs actual */}
-      {energy && (() => {
-        const losingPredicted = energy.predictedKg > 0
-        const losingActual = energy.actualKg != null && energy.actualKg < 0
-        const tracking = energy.actualKg != null && losingPredicted === losingActual
-        const kpis = [
-          { label: 'Avg burn', value: energy.maintenance.toLocaleString(), sub: `${energy.burnDays} WHOOP days` },
-          { label: 'Avg intake', value: energy.avgIntake ? energy.avgIntake.toLocaleString() : '—', sub: `${energy.loggedDays} food days` },
-          { label: 'Weekly fat', value: `${energy.predictedKg >= 0 ? '−' : '+'}${Math.abs(energy.predictedKg).toFixed(1)}`, sub: 'kg projected' },
-        ]
-        return (
-          <section className="panel p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Label><Zap size={12} className="inline-block mr-0.5 -mt-0.5" /> Energy balance · 7d</Label>
-              <button onClick={refreshWhoop} disabled={refreshingWhoop}
-                className="press chip rounded-lg px-2.5 py-1.5 mono text-[9px] tracking-[0.14em] uppercase t3 disabled:opacity-40 inline-flex items-center gap-1">
-                <RefreshCw size={10} className={refreshingWhoop ? 'animate-spin' : ''} /> Refresh
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {kpis.map(k => (
-                <div key={k.label} className="text-center">
-                  <div className="display text-[22px] leading-none font-bold t1">{k.value}</div>
-                  <div className="mono text-[8px] tracking-[0.14em] uppercase t3 mt-1.5">{k.label}</div>
-                  <div className="mono text-[8px] t3 mt-0.5">{k.sub}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 hairline-t space-y-1.5">
-              <p className="mono text-[10px] t2 leading-relaxed">{energy.insight}</p>
-              {energy.actualKg != null ? (
-                <p className="mono text-[10px] t3">
-                  reconcile · predicted {energy.predictedKg >= 0 ? '−' : '+'}{Math.abs(energy.predictedKg).toFixed(1)}kg/week fat
-                  {' '}vs InBody {energy.actualKg <= 0 ? '−' : '+'}{Math.abs(energy.actualKg).toFixed(1)}kg{' '}
-                  <span className={tracking ? 'acc' : 'down'}>{tracking ? 'tracking' : 'check'}</span>
-                </p>
-              ) : (
-                <p className="mono text-[10px] t3">add ≥2 InBody readings to validate against actual change</p>
-              )}
-              <p className="mono text-[10px] t3">
-                goal {goal.fatPct}% · {energy.etaDate ? <>ETA ≈ <span className="t1">{longDate(energy.etaDate)}</span></> : 'ETA — (need more data)'}
-              </p>
-              {whoopLoadedAt && <p className="mono text-[9px] t3">WHOOP refreshed {whoopLoadedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>}
-            </div>
-          </section>
-        )
-      })()}
-
       {energy && (
         <section className="panel p-6">
           <div className="flex items-center justify-between mb-4">
@@ -629,6 +594,64 @@ export default function Fitness() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Monthly recap — deterministic, no AI. Every stat traces to a logged session/InBody reading. */}
+      <section className="panel p-6">
+        <div className="flex items-center justify-between mb-1">
+          <Label>Monthly recap</Label>
+          <span className="mono text-[10px] t3">{monthlyRecap.monthLabel}</span>
+        </div>
+        <div className="flex items-end gap-3 mt-3">
+          <span className="display text-[44px] leading-none font-bold t1">{monthlyRecap.sessionsCount}</span>
+          <span className="mono text-[10px] tracking-[0.14em] uppercase t3 mb-1.5">sessions logged</span>
+        </div>
+        <p className="mono text-[10px] t3 mt-1.5">{monthlyRecap.paceNote}</p>
+
+        {monthlyRecap.splitBreakdown.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {monthlyRecap.splitBreakdown.map(s => (
+              <div key={s.name} className="chip rounded-2xl px-3 py-2.5">
+                <div className="mono text-[8px] tracking-[0.1em] uppercase t3 truncate">{s.name}</div>
+                <div className="text-[15px] font-bold t1 mt-0.5">{s.count}×</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {monthlyRecap.topGains.length > 0 && (
+          <div className="mt-5">
+            <span className="mono text-[9px] tracking-[0.16em] uppercase t3">Biggest gains</span>
+            <div className="mt-2">
+              {monthlyRecap.topGains.map((g, i) => (
+                <div key={g.exercise} className={`flex items-center justify-between py-2 ${i > 0 ? 'hairline-t' : ''}`}>
+                  <span className="text-sm t1 truncate pr-2">{g.exercise}</span>
+                  <span className="mono text-[12px] font-semibold up">+{g.delta}kg</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {monthlyRecap.heaviestLift && (
+          <div className="acc-chip rounded-2xl px-4 py-3 mt-5">
+            <div className="mono text-[9px] tracking-[0.14em] uppercase">Heaviest lift</div>
+            <div className="text-sm font-bold mt-0.5">{monthlyRecap.heaviestLift.exercise} · {monthlyRecap.heaviestLift.weight}kg</div>
+          </div>
+        )}
+
+        <div className="chip rounded-2xl px-4 py-3 mt-5">
+          <div className="mono text-[9px] tracking-[0.14em] uppercase t3">Body change this month</div>
+          {monthlyRecap.bodyChange?.type === 'delta' ? (
+            <p className="text-sm t1 mt-1">
+              {monthlyRecap.bodyChange.fatPctDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.fatPctDelta}% body fat · {monthlyRecap.bodyChange.weightDelta >= 0 ? '+' : ''}{monthlyRecap.bodyChange.weightDelta}kg
+            </p>
+          ) : monthlyRecap.bodyChange?.type === 'first' ? (
+            <p className="text-sm t1 mt-1">First reading this month · {monthlyRecap.bodyChange.fatPct}% body fat, {monthlyRecap.bodyChange.weight}kg</p>
+          ) : (
+            <p className="text-sm t3 mt-1">No InBody reading logged this month yet.</p>
+          )}
+        </div>
       </section>
 
       {/* Constraints */}

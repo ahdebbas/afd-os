@@ -11,6 +11,7 @@ const BACKUP_KEYS = [
   'afd-inbody',
   'afd-program-v2',
   'afd-finance',
+  'afd-finance-snapshots',
   'afd-fit-day',
   'afd-food-day',
   'afd-tab',

@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check, Activity } from 'lucide-react'
 import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, sarwaTotal, usd } from '../data'
 import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
+import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from '../financePerformance'
 
 const COLORS = ['var(--acc-fin)', 'var(--acc-food)', 'var(--acc-fit)', 'var(--warn)', 'var(--ink-3)', 'var(--track)']
 
@@ -17,6 +18,7 @@ const SYNC = {
 
 export default function Finance() {
   const [FINANCE, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const [snapshots, setSnapshots] = usePersistentState('afd-finance-snapshots', [], Array.isArray)
   const [editMode, setEditMode] = useState(false)
   const { msft, sarwa } = FINANCE
   const q = useQuotes()
@@ -36,6 +38,22 @@ export default function Finance() {
   const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
   const msftUp = dayChangePct >= 0
   const Trend = msftUp ? TrendingUp : TrendingDown
+  const financeSnapshot = useMemo(() => buildFinanceSnapshot({
+    finance: FINANCE, quotes: q, quoteStatus: status, syncedAt,
+  }), [FINANCE, q, status, syncedAt])
+  const marketSnapshot = useMemo(() => toMarketSnapshot(financeSnapshot), [financeSnapshot])
+  const capitalPulse = useMemo(() => buildCapitalPulse(snapshots, marketSnapshot), [snapshots, marketSnapshot])
+
+  useEffect(() => {
+    if (status !== 'live' || !syncedAt) return
+    const timer = window.setTimeout(() => {
+      setSnapshots(previous => [
+        ...previous.filter(item => item.date !== marketSnapshot.date),
+        marketSnapshot,
+      ].sort((a, b) => a.date.localeCompare(b.date)).slice(-400))
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [marketSnapshot, setSnapshots, status, syncedAt])
 
   // Update a Sarwa holding's unit count (edit mode); value re-derives from live quotes.
   const setUnits = (ticker, val) => setFinance({
@@ -69,6 +87,37 @@ export default function Finance() {
           )}
           <RefreshCw size={11} strokeWidth={2.5} className={`t3 ${status === 'loading' ? 'animate-spin' : ''}`} />
         </button>
+      </section>
+
+      <section className="panel capital-pulse">
+        <div className="capital-pulse-head">
+          <Label><Activity size={12} className="inline-block mr-1 -mt-0.5" /> Capital pulse</Label>
+          <span className="capital-pulse-days">{capitalPulse.recordedDays} market day{capitalPulse.recordedDays === 1 ? '' : 's'}</span>
+        </div>
+        <div className="capital-pulse-body">
+          <div>
+            <h2>{capitalPulse.headline}</h2>
+            <p>{capitalPulse.summary}</p>
+          </div>
+          {capitalPulse.comparisons.length > 0 && (
+            <div className="capital-pulse-periods" aria-label="Market asset changes by period">
+              {capitalPulse.comparisons.map(comparison => (
+                <div key={comparison.label} className={comparison.totalChange >= 0 ? 'up' : 'down'}>
+                  <span>{comparison.label}</span>
+                  <strong>{comparison.totalChange >= 0 ? '+' : '-'}${Math.abs(comparison.totalChange).toLocaleString('en-US')}</strong>
+                  <small>{comparison.changePct == null ? '—' : `${comparison.changePct >= 0 ? '+' : ''}${comparison.changePct}%`}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {capitalPulse.primary && (
+          <div className="capital-pulse-breakdown">
+            <span>MSFT <strong>{capitalPulse.primary.msftChange >= 0 ? '+' : '-'}${Math.abs(capitalPulse.primary.msftChange).toLocaleString('en-US')}</strong></span>
+            <span>Sarwa <strong>{capitalPulse.primary.sarwaChange >= 0 ? '+' : '-'}${Math.abs(capitalPulse.primary.sarwaChange).toLocaleString('en-US')}</strong></span>
+            <span>MSFT share <strong>{capitalPulse.primary.concentrationChange >= 0 ? '+' : ''}{capitalPulse.primary.concentrationChange} pts</strong></span>
+          </div>
+        )}
       </section>
 
       {/* MSFT */}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Beef, Droplets, Dumbbell, Flame, Moon, Play, Settings2, Sun, Wallet, Wheat } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Beef, Droplets, Dumbbell, Flame, Moon, Play, RefreshCw, Settings2, Sparkles, Sun, Wallet, Wheat } from 'lucide-react'
 import { useFood } from '../store'
 import { ETF_SYMBOL, FINANCE, FITNESS, TARGETS, nextWorkoutIdx, sarwaTotal, usd } from '../data'
 import { Gauge, Odometer } from '../ui'
@@ -8,12 +8,14 @@ import { usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
 import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 import { WhoopEnergyPanel } from '../whoopInsights'
+import { buildBriefingContext, fallbackBriefing } from '../dailyBriefing'
+import { cachedBriefing, requestDailyBriefing } from '../dailyBriefingClient'
 
 const formatDate = () => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '').replace(' ', ' · ').toUpperCase()
 const shortWeekday = date => new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
 
 export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
-  const { totals } = useFood()
+  const { totals, logs } = useFood()
   const quotes = useQuotes()
   const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
@@ -131,12 +133,38 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
     { Icon: Wheat, label: 'C', val: totals.carbs, target: TARGETS.carbs, color: 'var(--warn)' },
     { Icon: Droplets, label: 'F', val: totals.fat, target: TARGETS.fat, color: 'var(--acc-os)' },
   ]
+  const briefingContext = useMemo(() => buildBriefingContext({
+    logs, totals, sessions, nextWorkout, inbody, whoop,
+  }), [logs, totals, sessions, nextWorkout, inbody, whoop])
+  const localBriefing = useMemo(() => fallbackBriefing(briefingContext), [briefingContext])
+  const [remoteBriefing, setRemoteBriefing] = useState(() => cachedBriefing(briefingContext))
+  const [briefingLoading, setBriefingLoading] = useState(true)
+  const briefing = remoteBriefing?.date === briefingContext.date && remoteBriefing?.phase === briefingContext.phase
+    ? remoteBriefing
+    : localBriefing
+
+  useEffect(() => {
+    let alive = true
+    void requestDailyBriefing(briefingContext)
+      .then(result => { if (alive) setRemoteBriefing(result) })
+      .catch(() => {})
+      .finally(() => { if (alive) setBriefingLoading(false) })
+    return () => { alive = false }
+  }, [briefingContext])
+
+  const refreshBriefing = () => {
+    setBriefingLoading(true)
+    void requestDailyBriefing(briefingContext, { force: true })
+      .then(setRemoteBriefing)
+      .catch(() => {})
+      .finally(() => setBriefingLoading(false))
+  }
 
   return (
     <div className="today-flagship">
       <header className="today-head">
         <div>
-          <span className="today-eyebrow" style={{ '--acc': 'var(--acc-os)' }}>Evening systems check</span>
+          <span className="today-eyebrow" style={{ '--acc': 'var(--acc-os)' }}>{briefing.phaseLabel}</span>
           <div className="today-date">{formatDate()}</div>
         </div>
         <div className="today-head-actions">
@@ -148,31 +176,25 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
         </div>
       </header>
 
-      <section onClick={() => goTo('food')} className="today-card today-fuel-hero today-tile-int" style={{ '--acc': 'var(--acc-food)' }}>
-        <div className="today-fuel-kicker">
-          <span className="today-eyebrow">Fuel</span>
-          <span>Today</span>
+      <section className={`today-card today-daily-briefing today-briefing-${briefing.tone}`} style={{ '--acc': 'var(--acc-os)' }}>
+        <div className="today-daily-briefing-head">
+          <span className="today-eyebrow"><Sparkles size={13} strokeWidth={2.2} /> Daily briefing</span>
+          <span className="today-daily-briefing-tools">
+            <span className="today-daily-briefing-source">{briefing.source === 'gemini' ? 'AI' : 'local'}</span>
+            <button onClick={refreshBriefing} disabled={briefingLoading} className="press today-briefing-refresh" aria-label="Refresh daily briefing">
+              <RefreshCw size={13} className={briefingLoading ? 'nl-busy' : ''} />
+            </button>
+          </span>
         </div>
-        <div className="today-fuel-hero-body">
-          <div className="today-fuel-gauge">
-            <Gauge pct={fuelPct} size={152} stroke={15} color={totals.kcal > TARGETS.kcal ? 'var(--down)' : 'var(--acc-food)'} label="Calorie target progress">
-              <Odometer value={remaining} className="display today-fuel-left" />
-              <span className="today-fuel-label">Kcal left</span>
-            </Gauge>
-          </div>
-          <div className="today-fuel-macros">
-            {macros.map(({ Icon, label, val, target, color }) => (
-              <div key={label} className="today-fuel-macro">
-                <div className="today-fuel-macro-top">
-                  <span className="today-fuel-macro-id" style={{ color }}><Icon size={18} strokeWidth={2.35} />{label}</span>
-                  <span className="today-fuel-macro-value">{Math.round(val) > 0 ? `${Math.round(val)}/${target}g` : '0g'}</span>
-                </div>
-                <div className="today-fuel-bar" style={{ '--macro-color': color }} aria-hidden="true">
-                  <span style={{ width: `${Math.min(100, Math.max(0, (val / target) * 100))}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+        <h1>{briefing.headline}</h1>
+        <p className="today-daily-briefing-summary">{briefing.summary}</p>
+        <div className="today-daily-priorities">
+          {briefing.priorities.map((priority, index) => (
+            <div key={priority} className="today-daily-priority">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <p>{priority}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -266,6 +288,34 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
       <div className="today-whoop" style={{ '--acc': 'var(--acc-fin)' }}>
         <WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} protein={totals.protein} compact />
       </div>
+
+      <section onClick={() => goTo('food')} className="today-card today-fuel-hero today-fuel-bottom today-tile-int" style={{ '--acc': 'var(--acc-food)' }}>
+        <div className="today-fuel-kicker">
+          <span className="today-eyebrow">Fuel</span>
+          <span>Today</span>
+        </div>
+        <div className="today-fuel-hero-body">
+          <div className="today-fuel-gauge">
+            <Gauge pct={fuelPct} size={152} stroke={15} color={totals.kcal > TARGETS.kcal ? 'var(--down)' : 'var(--acc-food)'} label="Calorie target progress">
+              <Odometer value={remaining} className="display today-fuel-left" />
+              <span className="today-fuel-label">Kcal left</span>
+            </Gauge>
+          </div>
+          <div className="today-fuel-macros">
+            {macros.map(({ Icon, label, val, target, color }) => (
+              <div key={label} className="today-fuel-macro">
+                <div className="today-fuel-macro-top">
+                  <span className="today-fuel-macro-id" style={{ color }}><Icon size={18} strokeWidth={2.35} />{label}</span>
+                  <span className="today-fuel-macro-value">{Math.round(val) > 0 ? `${Math.round(val)}/${target}g` : '0g'}</span>
+                </div>
+                <div className="today-fuel-bar" style={{ '--macro-color': color }} aria-hidden="true">
+                  <span style={{ width: `${Math.min(100, Math.max(0, (val / target) * 100))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

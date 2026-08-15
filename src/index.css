@@ -883,6 +883,23 @@ html.dark .food-journal {
 }
 html.dark .fitness-finish-primary { color: #04060C; }
 
+.workout-exercise-row {
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.workout-exercise-complete {
+  margin-inline: -10px;
+  padding-inline: 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--up) 9%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--up) 72%, transparent);
+}
+.workout-exercise-check {
+  color: var(--up);
+  background: color-mix(in srgb, var(--up) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--up) 34%, transparent);
+}
+.workout-exercise-name-complete { color: var(--up); }
+
 .backdrop {
   background: rgba(2, 4, 10, 0.55);
   backdrop-filter: blur(6px);
@@ -1051,6 +1068,168 @@ html.dark .today-eyebrow::before {
   padding: 20px;
   margin-bottom: 16px;
   cursor: pointer;
+}
+.today-daily-briefing {
+  min-height: 246px;
+  padding: 22px;
+  margin-bottom: 30px;
+  overflow: hidden;
+  position: relative;
+}
+.today-daily-briefing::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--acc);
+  opacity: 0.72;
+}
+.today-briefing-attention { --acc: var(--warn) !important; }
+.today-daily-briefing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.today-daily-briefing-source {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.today-daily-briefing-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.today-briefing-refresh {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink-2);
+  background: var(--chip);
+}
+.today-briefing-refresh:disabled { opacity: 0.48; cursor: wait; }
+.today-daily-briefing h1 {
+  max-width: 320px;
+  margin-top: 22px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 31px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+.today-daily-briefing-summary {
+  margin-top: 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.today-daily-priorities {
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.today-daily-priority {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.today-daily-priority > span {
+  color: var(--acc);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding-top: 2px;
+}
+.today-daily-priority p {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.today-fuel-bottom {
+  margin-top: 30px;
+  margin-bottom: 0;
+}
+
+/* ---------- Mobile capital pulse ---------- */
+.capital-pulse { padding: 20px; }
+.capital-pulse-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.capital-pulse-days {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.capital-pulse-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(110px, 0.75fr);
+  gap: 18px;
+  align-items: end;
+  margin-top: 16px;
+}
+.capital-pulse h2 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+.capital-pulse-body p {
+  margin-top: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.capital-pulse-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.capital-pulse-periods > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: var(--chip);
+  text-align: center;
+}
+.capital-pulse-periods span,
+.capital-pulse-periods small {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 7px;
+}
+.capital-pulse-periods strong { font-family: var(--font-mono); font-size: 9px; }
+.capital-pulse-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+.capital-pulse-breakdown span { display: grid; gap: 3px; }
+.capital-pulse-breakdown strong { color: var(--ink-2); font-size: 10px; }
+@media (max-width: 370px) {
+  .capital-pulse-body { grid-template-columns: 1fr; }
 }
 .today-fuel-kicker {
   display: flex;

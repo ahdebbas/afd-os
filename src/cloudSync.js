@@ -6,6 +6,7 @@ export const CLOUD_STATE_KEYS = [
   'afd-inbody',
   'afd-program',
   'afd-finance',
+  'afd-finance-snapshots',
   'afd-theme-dark',
   'afd-shell-mode',
 ]

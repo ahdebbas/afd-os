@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import process from 'node:process'
+import dailyBriefingHandler from './api/ai/daily-briefing.js'
 
 // ---------------------------------------------------------------------------
 // AI food parsing — local-only endpoint backed by headless Claude Code, which
@@ -74,6 +75,23 @@ const aiFood = () => ({
   configurePreviewServer(server) { server.middlewares.use(parseFoodHandler) },
 })
 
+const briefingApi = () => ({
+  name: 'afd-daily-briefing-api',
+  configureServer(server) {
+    server.middlewares.use('/api/ai/daily-briefing', (req, res) => {
+      let body = ''
+      req.on('data', chunk => { body += chunk })
+      req.on('end', () => {
+        try { req.body = body ? JSON.parse(body) : {} }
+        catch { req.body = null }
+        res.status = code => { res.statusCode = code; return res }
+        res.json = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)) }
+        void dailyBriefingHandler(req, res)
+      })
+    })
+  },
+})
+
 // Same-origin proxy to Yahoo Finance (no CORS headers on their end, no API key needed).
 // Works in `vite dev` and `vite preview`; a static host would need its own rewrite rule.
 const yahooProxy = {
@@ -94,11 +112,17 @@ const whoopProxy = {
 
 const devProxy = { ...yahooProxy, ...whoopProxy }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const serverEnv = loadEnv(mode, process.cwd(), '')
+  process.env.GEMINI_API_KEY ||= serverEnv.GEMINI_API_KEY
+  process.env.VITE_SUPABASE_URL ||= serverEnv.VITE_SUPABASE_URL
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||= serverEnv.VITE_SUPABASE_PUBLISHABLE_KEY
+  return {
   server: { proxy: devProxy },
   preview: { proxy: devProxy },
   plugins: [
     aiFood(),
+    briefingApi(),
     react(),
     tailwindcss(),
     VitePWA({
@@ -130,4 +154,5 @@ export default defineConfig({
       },
     }),
   ],
+  }
 })
