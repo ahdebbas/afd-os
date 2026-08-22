@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, Milk, Salad, Sandwich, Scale, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Apple, Beef, Camera, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, Salad, Sandwich, Scale, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
 import { dateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
+import { combineItems, prepareFoodPhoto, requestFoodImageAnalysis, requestFoodTextAnalysis } from '../nl'
+import { useOs } from '../os'
 import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
 import { WhoopBudgetFooter } from '../whoopInsights'
 
@@ -203,6 +205,7 @@ function History({ logs }) {
 
 export default function Food() {
   const { presets, logs, addEntry, removeEntry, addPreset, removePreset, updatePreset } = useFood()
+  const os = useOs()
   // Persisted so a reload mid-session resumes on the same day; snapped to today below if stale.
   const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
     v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
@@ -281,9 +284,86 @@ export default function Food() {
   const [portionVal, setPortionVal] = useState('')
   const blankForm = { name: '', kcal: '', protein: '', carbs: '', fat: '', category: 'Meals', save: false, editId: null }
   const [form, setForm] = useState(blankForm)
+  const [composerText, setComposerText] = useState('')
+  const [analysisStatus, setAnalysisStatus] = useState('idle')
+  const [analysisError, setAnalysisError] = useState('')
+  const cameraInputRef = useRef(null)
+  const analysisRequestRef = useRef({ id: 0, controller: null })
+
+  useEffect(() => () => analysisRequestRef.current.controller?.abort(), [])
+
+  const cancelFoodAnalysis = () => {
+    analysisRequestRef.current.controller?.abort()
+    analysisRequestRef.current = { id: analysisRequestRef.current.id + 1, controller: null }
+    setAnalysisStatus('idle')
+    setAnalysisError('')
+  }
+
+  const closeCustomForm = () => {
+    cancelFoodAnalysis()
+    setShowForm(false)
+    setForm(blankForm)
+  }
+
+  const runFoodAnalysis = async getItems => {
+    cancelFoodAnalysis()
+    const id = analysisRequestRef.current.id + 1
+    const controller = new AbortController()
+    analysisRequestRef.current = { id, controller }
+    setEditMode(false)
+    setPortionFor(null)
+    setForm(blankForm)
+    setShowForm(true)
+    setAnalysisStatus('loading')
+
+    try {
+      const meal = combineItems(await getItems(controller.signal))
+      if (analysisRequestRef.current.id !== id) return false
+      setForm({
+        ...blankForm,
+        name: meal.name,
+        kcal: String(meal.kcal),
+        protein: String(meal.protein),
+        carbs: String(meal.carbs),
+        fat: String(meal.fat),
+      })
+      setAnalysisStatus('success')
+      return true
+    } catch (error) {
+      if (error?.name === 'AbortError' || analysisRequestRef.current.id !== id) return false
+      const message = error?.message || 'Could not analyze this food'
+      setAnalysisStatus('error')
+      setAnalysisError(message)
+      os?.announce(message, 'var(--down)')
+      return false
+    } finally {
+      if (analysisRequestRef.current.id === id) analysisRequestRef.current.controller = null
+    }
+  }
+
+  const analyzePhoto = async event => {
+    const input = event.currentTarget
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    const description = composerText.trim()
+    const success = await runFoodAnalysis(async signal => {
+      const photo = await prepareFoodPhoto(file)
+      return requestFoodImageAnalysis({ ...photo, ...(description ? { text: description } : {}) }, { signal })
+    })
+    if (success) setComposerText('')
+  }
+
+  const analyzeText = async () => {
+    const description = composerText.trim()
+    if (!description) return
+    const success = await runFoodAnalysis(signal => requestFoodTextAnalysis(description, { signal }))
+    if (success) setComposerText('')
+  }
 
   // Open the form prefilled to edit an existing preset's macros/name/category.
   const openEdit = p => {
+    cancelFoodAnalysis()
     setForm({ name: p.name, kcal: String(p.kcal), protein: String(p.protein ?? ''), carbs: String(p.carbs ?? ''),
       fat: String(p.fat ?? ''), category: p.category || 'Meals', save: false, editId: p.id })
     setShowForm(true)
@@ -325,8 +405,12 @@ export default function Food() {
       addEntry({ ...item, emoji: '🍽️' })
       if (form.save) addPreset({ ...item, emoji: '🍽️' })
     }
-    setForm(blankForm)
-    setShowForm(false)
+    closeCustomForm()
+  }
+
+  const submitComposer = () => {
+    if (composerText.trim()) void analyzeText()
+    else if (showForm && form.kcal) submitCustom()
   }
 
   return (
@@ -334,6 +418,74 @@ export default function Food() {
       <section className="food-day-picker">
         <DayStrip value={date} onChange={setDate} status={dayStatus} />
       </section>
+
+      {isToday && (
+        <section className="food-entry-panel" aria-labelledby="food-entry-title">
+          <div className="food-entry-head">
+            <div>
+              <div id="food-entry-title"><Label>Log a meal</Label></div>
+              <p className="food-entry-hint">Describe it or take a photo</p>
+            </div>
+          </div>
+          <div className="food-composer">
+            <button onClick={() => { if (showForm) closeCustomForm(); else { cancelFoodAnalysis(); setShowForm(true); setEditMode(false); setPortionFor(null); setForm(blankForm) } }} className="food-composer-plus press" aria-label="Enter macros manually">
+              {showForm ? <X size={17} /> : <Plus size={17} />}
+            </button>
+            <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={analysisStatus === 'loading'}
+              className="food-composer-camera press" aria-label="Take a food photo" title="Take a food photo">
+              {analysisStatus === 'loading' ? <LoaderCircle size={16} className="food-photo-spinner" /> : <Camera size={16} />}
+            </button>
+            <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+              onChange={analyzePhoto} className="hidden" aria-label="Food photo" />
+            <input value={composerText} onChange={event => setComposerText(event.target.value)} maxLength={600}
+              onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); submitComposer() } }}
+              placeholder="What did you eat?" aria-label="Describe what you ate" className="food-composer-field" />
+            <button onClick={submitComposer}
+              disabled={analysisStatus === 'loading' || (!composerText.trim() && (!showForm || !form.kcal))}
+              className="food-composer-send press" aria-label={composerText.trim() ? 'Estimate nutrition' : 'Submit food'}>
+              <ArrowUp size={15} strokeWidth={3} />
+            </button>
+          </div>
+
+          {showForm && !form.editId && (
+            <div className="food-form-sheet food-review-form">
+              {analysisStatus === 'loading' && (
+                <p className="food-photo-status" role="status"><LoaderCircle size={13} className="food-photo-spinner" /> Estimating nutrition...</p>
+              )}
+              {analysisStatus === 'success' && (
+                <p className="food-photo-status" role="status">Estimate ready. Review before saving.</p>
+              )}
+              {analysisStatus === 'error' && (
+                <p className="food-photo-status food-photo-error" role="alert">{analysisError}</p>
+              )}
+              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="Food name" aria-label="Food name" className="field w-full rounded-2xl px-4 py-3 text-sm outline-none" />
+              <div className="grid grid-cols-4 gap-2">
+                {['kcal', 'protein', 'carbs', 'fat'].map(f => (
+                  <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })}
+                    placeholder={f} aria-label={f} type="number" inputMode="numeric"
+                    className="field rounded-2xl px-2 py-3 text-sm outline-none text-center mono" />
+                ))}
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {CATEGORIES.map(cat => (
+                  <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
+                    className={`press mono text-[10px] tracking-[0.12em] uppercase font-semibold rounded-full px-3 py-1.5 flex-shrink-0 ${
+                      form.category === cat ? 'acc-chip' : 'chip t2'
+                    }`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
+                <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
+                  className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
+                Save as preset
+              </label>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="food-hero">
         <div className="food-fuel-kicker">
@@ -373,7 +525,7 @@ export default function Food() {
       <section className="food-presets">
         <div className="flex items-center justify-between px-1 mb-3">
           <Label>Plates</Label>
-          <button onClick={() => { setEditMode(!editMode); setShowForm(false); setForm(blankForm) }} className="food-link press">
+          <button onClick={() => { setEditMode(!editMode); closeCustomForm() }} className="food-link press">
             {editMode ? 'Done' : 'Edit'}
           </button>
         </div>
@@ -413,8 +565,8 @@ export default function Food() {
                 <span className="truncate">{p.kcal} kcal · {macroLine(p)}</span>
                 {!editMode && (
                   <span role="button" tabIndex={0}
-                    onClick={e => { e.stopPropagation(); setShowForm(false); setPortionVal(''); setPortionFor(p) }}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowForm(false); setPortionVal(''); setPortionFor(p) } }}
+                    onClick={e => { e.stopPropagation(); closeCustomForm(); setPortionVal(''); setPortionFor(p) }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); closeCustomForm(); setPortionVal(''); setPortionFor(p) } }}
                     aria-label={`Choose portion for ${p.name}`}
                     className="food-portion-btn press"><Scale size={11} strokeWidth={2.5} /></span>
                 )}
@@ -433,7 +585,7 @@ export default function Food() {
         {entries.length === 0 ? (
           <div className="food-empty">
             <p className="text-[15px] font-semibold t1">Nothing logged yet</p>
-            <p className="text-[13px] t3 mt-1">{isToday ? 'Tap a quick plate or use the bottom input.' : 'No food logged this day.'}</p>
+            <p className="text-[13px] t3 mt-1">{isToday ? 'Tap a quick plate or use the meal logger above.' : 'No food logged this day.'}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -455,13 +607,11 @@ export default function Food() {
 
       <History logs={logs} />
 
-      {isToday && showForm && (
+      {isToday && showForm && form.editId && (
         <div className="food-form-sheet">
-          {form.editId && (
-            <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
-              <Pencil size={11} strokeWidth={2.5} /> Editing preset
-            </p>
-          )}
+          <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
+            <Pencil size={11} strokeWidth={2.5} /> Editing preset
+          </p>
           <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
             placeholder="Food name" aria-label="Food name" className="field w-full rounded-2xl px-4 py-3 text-sm outline-none" />
           <div className="grid grid-cols-4 gap-2">
@@ -481,13 +631,6 @@ export default function Food() {
               </button>
             ))}
           </div>
-          {!form.editId && (
-            <label className="flex items-center gap-2.5 text-sm t2 py-1 px-1 font-medium cursor-pointer">
-              <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })}
-                className="w-4 h-4" style={{ accentColor: 'var(--acc)' }} />
-              Save as preset
-            </label>
-          )}
         </div>
       )}
 
@@ -522,17 +665,6 @@ export default function Food() {
         </div>
       )}
 
-      {isToday && (
-        <div className="food-composer">
-          <button onClick={() => { setShowForm(!showForm); setEditMode(false); setPortionFor(null); setForm(blankForm) }} className="food-composer-plus press" aria-label="Add custom food">
-            {showForm ? <X size={17} /> : <Plus size={17} />}
-          </button>
-          <button onClick={() => { setShowForm(true); setEditMode(false); setForm(blankForm) }} className="food-composer-field press">What did you eat?</button>
-          <button onClick={submitCustom} disabled={!showForm || !form.kcal} className="food-composer-send press" aria-label="Submit food">
-            <ArrowUp size={15} strokeWidth={3} />
-          </button>
-        </div>
-      )}
     </div>
   )
 }

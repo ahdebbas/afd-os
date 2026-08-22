@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import process from 'node:process'
 import dailyBriefingHandler from './api/ai/daily-briefing.js'
+import foodImageHandler from './api/ai/parse-food-image.js'
 
 // ---------------------------------------------------------------------------
 // AI food parsing — local-only endpoint backed by headless Claude Code, which
@@ -92,6 +93,23 @@ const briefingApi = () => ({
   },
 })
 
+const foodImageApi = () => ({
+  name: 'afd-food-image-api',
+  configureServer(server) {
+    server.middlewares.use('/api/ai/parse-food-image', (req, res) => {
+      let body = ''
+      req.on('data', chunk => { body += chunk })
+      req.on('end', () => {
+        try { req.body = body ? JSON.parse(body) : {} }
+        catch { req.body = null }
+        res.status = code => { res.statusCode = code; return res }
+        res.json = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)) }
+        void foodImageHandler(req, res)
+      })
+    })
+  },
+})
+
 // Same-origin proxy to Yahoo Finance (no CORS headers on their end, no API key needed).
 // Works in `vite dev` and `vite preview`; a static host would need its own rewrite rule.
 const yahooProxy = {
@@ -123,6 +141,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     aiFood(),
     briefingApi(),
+    foodImageApi(),
     react(),
     tailwindcss(),
     VitePWA({
