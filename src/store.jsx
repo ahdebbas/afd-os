@@ -59,7 +59,8 @@ export function FoodProvider({ children }) {
     setPresets(prev => {
       const defaultIds = new Set(DEFAULT_PRESETS.map(d => d.id))
       const custom = prev.filter(p => !defaultIds.has(p.id))
-      return [...DEFAULT_PRESETS, ...custom]
+      const next = [...DEFAULT_PRESETS, ...custom]
+      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

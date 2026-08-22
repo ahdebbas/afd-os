@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
-import { CLOUD_STATE_KEYS, clearCloudSyncSink, setCloudSyncSink } from './cloudSync'
-import { hasSupabaseConfig, supabase } from './supabase'
+import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, queueCloudState, setCloudSyncSink } from './cloudSync'
+import { getCachedSupabaseUserId, hasSupabaseConfig, supabase } from './supabase'
 
 const CloudCtx = createContext(null)
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+const CLOUD_USER_KEY = 'afd-cloud-user-id'
 
 function TurnstileCaptcha({ onToken, resetSignal }) {
   const boxRef = useRef(null)
@@ -149,6 +150,7 @@ function HydratingScreen() {
 }
 
 export function CloudProvider({ children }) {
+  const sessionUserRef = useRef(null)
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [cloudReady, setCloudReady] = useState(false)
@@ -157,18 +159,28 @@ export function CloudProvider({ children }) {
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState(null)
   const [authMessage, setAuthMessage] = useState(null)
+  const userId = session?.user?.id ?? null
+  const cachedUserId = localStorage.getItem(CLOUD_USER_KEY) || getCachedSupabaseUserId()
+  const hasCachedState = Boolean(cachedUserId && (!userId || cachedUserId === userId))
 
   useEffect(() => {
     if (!supabase) return
     let mounted = true
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
+      sessionUserRef.current = data.session?.user?.id ?? null
       setSession(data.session)
+      setAuthLoading(false)
+    }).catch(error => {
+      if (!mounted) return
+      setAuthError(error?.message || 'Could not restore your session')
       setAuthLoading(false)
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const nextUserId = nextSession?.user?.id ?? null
+      if (sessionUserRef.current !== nextUserId) setCloudReady(false)
+      sessionUserRef.current = nextUserId
       setSession(nextSession)
-      setCloudReady(false)
     })
     return () => {
       mounted = false
@@ -177,44 +189,23 @@ export function CloudProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!supabase || !session?.user) {
+    if (!supabase || !userId) {
       clearCloudSyncSink()
       return
     }
 
     let cancelled = false
+    const hydrationUserId = localStorage.getItem(CLOUD_USER_KEY) || getCachedSupabaseUserId()
+    const localSnapshot = new Map(CLOUD_STATE_KEYS.map(key => [key, localStorage.getItem(key)]))
 
-    const hydrate = async () => {
-      setSyncStatus('syncing')
-      setSyncError(null)
-      const { data, error } = await supabase
-        .from('app_state')
-        .select('key,value,updated_at')
-        .order('key')
-
-      if (cancelled) return
-      if (error) {
-        setSyncError(error.message)
-        setSyncStatus('error')
-        setCloudReady(true)
-        return
-      }
-
-      const rows = new Map((data || []).map(row => [row.key, row.value]))
-      for (const key of CLOUD_STATE_KEYS) {
-        if (rows.has(key)) localStorage.setItem(key, JSON.stringify(rows.get(key)))
-        else localStorage.removeItem(key)
-      }
-
-      setCloudReady(true)
-      setSyncStatus('synced')
-
+    const connectSync = () => {
+      clearCloudSyncSink()
       setCloudSyncSink(async batch => {
         if (!batch.length) return
         setSyncStatus('syncing')
         setSyncError(null)
         const rows = batch.map(item => ({
-          user_id: session.user.id,
+          user_id: userId,
           key: item.key,
           value: item.value,
         }))
@@ -230,12 +221,58 @@ export function CloudProvider({ children }) {
       })
     }
 
-    hydrate()
+    const hydrate = async () => {
+      setSyncStatus('syncing')
+      setSyncError(null)
+      let data
+      let error
+      try {
+        const result = await supabase
+          .from('app_state')
+          .select('key,value,updated_at')
+          .order('key')
+        data = result.data
+        error = result.error
+      } catch (requestError) {
+        error = requestError
+      }
+
+      if (cancelled) return
+      if (error) {
+        setSyncError(error?.message || 'Could not load cloud state')
+        setSyncStatus('error')
+        setCloudReady(true)
+        connectSync()
+        return
+      }
+
+      const rows = new Map((data || []).map(row => [row.key, row.value]))
+      const changedDuringHydration = []
+      for (const key of CLOUD_STATE_KEYS) {
+        const localChanged = localStorage.getItem(key) !== localSnapshot.get(key)
+        if (hydrationUserId === userId && localChanged) {
+          changedDuringHydration.push(key)
+          continue
+        }
+        applyCloudState(key, rows.get(key), rows.has(key))
+      }
+
+      localStorage.setItem(CLOUD_USER_KEY, userId)
+      setCloudReady(true)
+      setSyncStatus('synced')
+      connectSync()
+      for (const key of changedDuringHydration) {
+        const value = localStorage.getItem(key)
+        if (value != null) queueCloudState(key, JSON.parse(value))
+      }
+    }
+
+    void hydrate()
     return () => {
       cancelled = true
       clearCloudSyncSink()
     }
-  }, [session])
+  }, [userId])
 
   const signIn = async (email, password, captchaToken) => {
     setAuthBusy(true)
@@ -276,6 +313,7 @@ export function CloudProvider({ children }) {
   const signOut = async () => {
     clearCloudSyncSink()
     for (const key of CLOUD_STATE_KEYS) localStorage.removeItem(key)
+    localStorage.removeItem(CLOUD_USER_KEY)
     await supabase.auth.signOut()
   }
 
@@ -294,11 +332,11 @@ export function CloudProvider({ children }) {
   }), [session, cloudReady, syncStatus, syncError, authBusy, authError, authMessage])
 
   if (!hasSupabaseConfig) return <ConfigMissing />
-  if (authLoading) return <HydratingScreen />
+  if (authLoading && !hasCachedState) return <HydratingScreen />
 
   return (
     <CloudCtx.Provider value={value}>
-      {!session ? <AuthScreen /> : !cloudReady ? <HydratingScreen /> : children}
+      {authLoading ? children : !session ? <AuthScreen /> : !cloudReady && !hasCachedState ? <HydratingScreen /> : children}
     </CloudCtx.Provider>
   )
 }

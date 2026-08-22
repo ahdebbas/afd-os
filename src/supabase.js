@@ -14,3 +14,14 @@ export const supabase = hasSupabaseConfig
       },
     })
   : null
+
+export function getCachedSupabaseUserId() {
+  if (!supabaseUrl) return null
+  try {
+    const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
+    const session = JSON.parse(localStorage.getItem(`sb-${projectRef}-auth-token`))
+    return session?.user?.id ?? null
+  } catch {
+    return null
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Apple, Beef, Camera, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, Salad, Sandwich, Scale, Upload, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
+import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, Salad, Sandwich, Scale, Upload, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
@@ -287,7 +287,6 @@ export default function Food() {
   const [composerText, setComposerText] = useState('')
   const [analysisStatus, setAnalysisStatus] = useState('idle')
   const [analysisError, setAnalysisError] = useState('')
-  const cameraInputRef = useRef(null)
   const photoLibraryInputRef = useRef(null)
   const analysisRequestRef = useRef({ id: 0, controller: null })
 
@@ -432,17 +431,13 @@ export default function Food() {
               <p className="food-entry-hint">Describe it or take a photo</p>
             </div>
             <button type="button" onClick={() => photoLibraryInputRef.current?.click()} disabled={analysisStatus === 'loading'}
-              className="food-entry-upload press" aria-label="Upload a food screenshot" title="Upload a food screenshot">
-              <Upload size={14} /> <span>Screenshot</span>
+              className="food-entry-upload press" aria-label="Upload a food photo" title="Upload a food photo">
+              <Upload size={14} /> <span>Photo</span>
             </button>
           </div>
           <div className="food-composer">
             <button onClick={() => { if (showForm) closeCustomForm(); else { cancelFoodAnalysis(); setShowForm(true); setEditMode(false); setPortionFor(null); setForm(blankForm) } }} className="food-composer-plus press" aria-label="Enter macros manually">
               {showForm ? <X size={17} /> : <Plus size={17} />}
-            </button>
-            <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={analysisStatus === 'loading'}
-              className="food-composer-camera press" aria-label="Take a food photo" title="Take a food photo">
-              {analysisStatus === 'loading' ? <LoaderCircle size={16} className="food-photo-spinner" /> : <Camera size={16} />}
             </button>
             <input value={composerText} onChange={event => setComposerText(event.target.value)} maxLength={600}
               onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); submitComposer() } }}
@@ -452,10 +447,8 @@ export default function Food() {
               className="food-composer-send press" aria-label={composerText.trim() ? 'Estimate nutrition' : 'Submit food'}>
               <ArrowUp size={15} strokeWidth={3} />
             </button>
-            <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
-              onChange={analyzePhoto} className="hidden" aria-label="Food photo" />
             <input ref={photoLibraryInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-              onChange={analyzePhoto} className="hidden" aria-label="Food screenshot or photo" />
+              onChange={analyzePhoto} className="hidden" aria-label="Food photo" />
           </div>
 
           {showForm && !form.editId && (

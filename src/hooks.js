@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { queueCloudState } from './cloudSync'
+import { CLOUD_STATE_EVENT, queueCloudState } from './cloudSync'
 
 const reducedMotion = () =>
   typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -10,6 +10,7 @@ const reducedMotion = () =>
  * and an optional `validate` lets callers reject malformed shapes.
  */
 export function usePersistentState(key, fallback, validate) {
+  const cloudUpdateRef = useRef(false)
   const [state, setState] = useState(() => {
     try {
       const raw = localStorage.getItem(key)
@@ -21,13 +22,33 @@ export function usePersistentState(key, fallback, validate) {
       return fallback
     }
   })
+  const previousStateRef = useRef(state)
 
   useEffect(() => {
+    if (Object.is(previousStateRef.current, state)) return
+    previousStateRef.current = state
     try {
       localStorage.setItem(key, JSON.stringify(state))
-      queueCloudState(key, state)
+      if (cloudUpdateRef.current) cloudUpdateRef.current = false
+      else queueCloudState(key, state)
     } catch { /* storage full or unavailable — keep in-memory value */ }
   }, [key, state])
+
+  useEffect(() => {
+    const applyCloudUpdate = event => {
+      if (event.detail?.key !== key) return
+      const next = event.detail.present ? event.detail.value : fallback
+      if (validate && !validate(next)) return
+      setState(current => {
+        const resolved = next ?? fallback
+        if (Object.is(current, resolved)) return current
+        cloudUpdateRef.current = true
+        return resolved
+      })
+    }
+    window.addEventListener(CLOUD_STATE_EVENT, applyCloudUpdate)
+    return () => window.removeEventListener(CLOUD_STATE_EVENT, applyCloudUpdate)
+  }, [fallback, key, validate])
 
   return [state, setState]
 }

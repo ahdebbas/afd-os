@@ -11,11 +11,20 @@ export const CLOUD_STATE_KEYS = [
   'afd-shell-mode',
 ]
 
+export const CLOUD_STATE_EVENT = 'afd-cloud-state'
+
 let syncSink = null
 let debounceTimer = null
 const pending = new Map()
 
 const canSyncKey = key => CLOUD_STATE_KEYS.includes(key)
+
+export function applyCloudState(key, value, present = true) {
+  if (!canSyncKey(key)) return
+  if (present) localStorage.setItem(key, JSON.stringify(value))
+  else localStorage.removeItem(key)
+  window.dispatchEvent(new CustomEvent(CLOUD_STATE_EVENT, { detail: { key, value, present } }))
+}
 
 export function setCloudSyncSink(sink) {
   syncSink = sink

@@ -857,7 +857,6 @@ html.dark .food-journal {
   -webkit-backdrop-filter: none;
 }
 .food-composer-plus,
-.food-composer-camera,
 .food-composer-send {
   width: 44px;
   height: 44px;
@@ -867,11 +866,6 @@ html.dark .food-journal {
   flex: 0 0 auto;
 }
 .food-composer-plus { background: var(--chip); color: var(--ink); }
-.food-composer-camera {
-  background: color-mix(in srgb, var(--acc-food) 16%, var(--chip));
-  color: var(--acc-food);
-}
-.food-composer-camera:disabled { opacity: 0.65; cursor: wait; }
 .food-composer-field {
   flex: 1;
   min-width: 0;
