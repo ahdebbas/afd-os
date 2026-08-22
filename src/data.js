@@ -76,27 +76,42 @@ export const DEFAULT_WEIGHTS = {
 }
 
 export const FINANCE = {
+  version: 2,
   property: { name: 'Beirut apartment', location: 'Beirut, Lebanon', value: 420000 },
   msft: { shares: 552, price: 411.74, dayChangePct: -1.44, low52: 356.28, high52: 555.45, priceDate: 'Jun 9, 2026' },
   sarwa: {
-    total: 31154.18,
-    lastUpdated: 'Jun 13, 2026',
+    total: 30876.99,
+    lastUpdated: 'Aug 22, 2026',
     // Exact unit counts from Sarwa, so value = units × live price tracks the daily quote.
     // `cost` is the position's cost basis (total invested); perf is derived live from
     // value vs. cost so it updates with the price instead of being a manual snapshot.
     // Cash (USD) has no units/symbol — it falls back to its fixed value/perf.
     holdings: [
-      { ticker: 'ISDW', name: 'Developed Mkts (Halal)', alloc: 60.2, value: 18746.86, cost: 16708.43, perf: 12.20, units: 279.8039 },
-      { ticker: 'ISDU', name: 'US Stocks (Halal)',      alloc: 24.8, value: 7721.80,  cost: 6552.23,  perf: 17.85, units: 75.9272 },
-      { ticker: 'ISDE', name: 'Emerging Mkts (Halal)', alloc: 6.4,  value: 1997.03,  cost: 1525.07,  perf: 30.96, units: 52.6921 },
-      { ticker: 'QQQ',  name: 'Invesco QQQ Trust',      alloc: 3.8,  value: 1192.96,  cost: 996.96,   perf: 19.66, units: 1.65 },
-      { ticker: 'IGLN', name: 'Gold',                  alloc: 3.7,  value: 1150.38,  cost: 1342.33,  perf: -14.30, units: 14.0569 },
+      { ticker: 'ISDW', name: 'Developed Markets Stocks (Halal)', alloc: 62.9, value: 19396.01, cost: 16709.17, perf: 16.08, units: 279.8039 },
+      { ticker: 'ISDU', name: 'US Stocks (Halal)',                alloc: 25.8, value: 7966.28,  cost: 6552.29,  perf: 21.58, units: 75.9272 },
+      { ticker: 'ISDE', name: 'Emerging Markets Stocks (Halal)',  alloc: 6.2,  value: 1913.25,  cost: 1524.99,  perf: 25.46, units: 52.6921 },
+      { ticker: 'IGLN', name: 'Gold',                             alloc: 4.1,  value: 1256.30,  cost: 1342.20,  perf: -6.40, units: 14.0569 },
       { ticker: 'USD',  name: 'Cash (USD)',            alloc: 1.1,  value: 345.15,   perf: 0 },
     ],
   },
 }
 
-export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L', QQQ: 'QQQ' }
+export function reconcileFinance(finance) {
+  if (finance?.version === FINANCE.version) return finance
+  const savedHoldings = new Map((finance?.sarwa?.holdings || []).map(holding => [holding.ticker, holding]))
+  const holdings = FINANCE.sarwa.holdings.map(holding => {
+    const savedUnits = savedHoldings.get(holding.ticker)?.units
+    return savedUnits == null ? holding : { ...holding, units: savedUnits }
+  })
+  return {
+    ...FINANCE,
+    ...finance,
+    version: FINANCE.version,
+    sarwa: { ...FINANCE.sarwa, ...finance?.sarwa, total: FINANCE.sarwa.total, lastUpdated: FINANCE.sarwa.lastUpdated, holdings },
+  }
+}
+
+export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L' }
 
 // Live value of a Sarwa holding given the quotes map; falls back to the recorded value.
 export const holdingValue = (h, q) => {

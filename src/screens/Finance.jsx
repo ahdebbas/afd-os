@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check, Activity } from 'lucide-react'
-import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, sarwaTotal, usd } from '../data'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reconcileFinance, sarwaTotal, usd } from '../data'
 import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
@@ -43,6 +43,10 @@ export default function Finance() {
   }), [FINANCE, q, status, syncedAt])
   const marketSnapshot = useMemo(() => toMarketSnapshot(financeSnapshot), [financeSnapshot])
   const capitalPulse = useMemo(() => buildCapitalPulse(snapshots, marketSnapshot), [snapshots, marketSnapshot])
+
+  useEffect(() => {
+    setFinance(reconcileFinance)
+  }, [setFinance])
 
   useEffect(() => {
     if (status !== 'live' || !syncedAt) return

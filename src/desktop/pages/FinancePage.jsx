@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RefreshCw, Settings2, Check } from 'lucide-react'
-import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, sarwaTotal, usd } from '../../data'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
 import { Card, Stat, DataTable, Meter, Badge, Button, IconButton, NumberFlow } from '../primitives'
@@ -17,6 +17,10 @@ export default function FinancePage() {
   const [editMode, setEditMode] = useState(false)
   const q = useQuotes()
   const { status, syncedAt, refresh } = useQuotesMeta()
+
+  useEffect(() => {
+    setFinance(reconcileFinance)
+  }, [setFinance])
 
   // Update a Sarwa holding's unit count (edit mode); value re-derives from live quotes.
   const setUnits = (ticker, val) => setFinance({
