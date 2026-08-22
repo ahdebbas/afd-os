@@ -187,15 +187,14 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
           </span>
         </div>
         <h1>{briefing.headline}</h1>
-        <p className="today-daily-briefing-summary">{briefing.summary}</p>
-        <div className="today-daily-priorities">
-          {briefing.priorities.map((priority, index) => (
-            <div key={priority} className="today-daily-priority">
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <p>{priority}</p>
-            </div>
+        <ul className="today-daily-bullets">
+          {briefing.bullets.map((bullet, index) => (
+            <li key={`${index}-${bullet}`} className="today-daily-bullet">
+              <span aria-hidden="true" />
+              <span>{bullet}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       <div className="today-compact-stack">

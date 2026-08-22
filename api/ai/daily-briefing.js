@@ -57,33 +57,28 @@ const responseSchema = {
   type: 'OBJECT',
   properties: {
     headline: { type: 'STRING' },
-    summary: { type: 'STRING' },
-    priorities: { type: 'ARRAY', items: { type: 'STRING' }, minItems: 1, maxItems: 3 },
+    bullets: { type: 'ARRAY', items: { type: 'STRING' }, minItems: 3, maxItems: 5 },
     tone: { type: 'STRING', enum: ['steady', 'attention', 'recovery'] },
-    dataNotes: { type: 'ARRAY', items: { type: 'STRING' }, maxItems: 3 },
   },
-  required: ['headline', 'summary', 'priorities', 'tone'],
+  required: ['headline', 'bullets', 'tone'],
 }
 
 function normalizeBriefing(value, context) {
   if (!value || typeof value !== 'object') throw new Error('Gemini returned invalid briefing data')
-  let priorities = Array.isArray(value.priorities)
-    ? value.priorities.map(item => String(item).trim().slice(0, 180)).filter(Boolean).slice(0, 3)
+  let bullets = Array.isArray(value.bullets)
+    ? value.bullets.map(item => String(item).trim().slice(0, 180)).filter(Boolean).slice(0, 5)
     : []
-  if (!priorities.length) throw new Error('Gemini returned no priorities')
+    if (bullets.length < 3) throw new Error('Gemini returned too few briefing bullets')
   if (context.training.inactivity === 'high') {
-    priorities = [`${context.training.lastWorkoutDays} days since your last workout. Make ${context.training.nextWorkout} the priority.`, ...priorities].slice(0, 3)
+      bullets = [...bullets.slice(0, 4), `${context.training.lastWorkoutDays} days since your last workout; make ${context.training.nextWorkout} the priority.`]
   } else if (context.training.inactivity === 'attention') {
-    priorities = [`Training has been quiet for ${context.training.lastWorkoutDays} days. ${context.training.nextWorkout} is ready when you are.`, ...priorities].slice(0, 3)
+      bullets = [...bullets.slice(0, 4), `Training has been quiet for ${context.training.lastWorkoutDays} days; ${context.training.nextWorkout} is ready.`]
   }
   return {
     headline: String(value.headline || '').trim().slice(0, 90),
-    summary: String(value.summary || '').trim().slice(0, 280),
-    priorities,
+    bullets,
     tone: ['steady', 'attention', 'recovery'].includes(value.tone) ? value.tone : 'steady',
-    dataNotes: Array.isArray(value.dataNotes)
-      ? value.dataNotes.map(item => String(item).trim().slice(0, 100)).filter(Boolean).slice(0, 3)
-      : [],
+    phaseLabel: context.phase === 'morning' ? 'Morning briefing' : context.phase === 'day' ? 'Day update' : 'Evening check-in',
     source: 'gemini',
   }
 }
@@ -102,14 +97,16 @@ export default async function handler(req, res) {
     const context = validateContext(req.body?.context)
     if (!context) return res.status(400).json({ error: 'Invalid briefing context' })
     const inactivityRule = context.training.inactivity === 'high'
-      ? 'Workout inactivity MUST be the first priority.'
+      ? 'Include workout inactivity in one bullet after the two calorie bullets.'
       : context.training.inactivity === 'attention'
-        ? 'Mention workout inactivity in a priority.'
+        ? 'Mention workout inactivity in one bullet after the two calorie bullets.'
         : ''
     const prompt = `Create a concise ${context.phase} health-and-training briefing from the JSON summary below.
 Use only supplied facts. Do not diagnose, prescribe, invent measurements, change calorie targets, or mention finance.
-Keep the summary to two short sentences and each priority to one practical sentence.
-Do not repeat tactical real-time calorie advice; focus on the day plan and training rhythm.
+  Return only 3 to 5 short, scannable bullets; do not write a summary paragraph.
+  The first bullet MUST state today's calories logged versus target and calories remaining or over.
+  The second bullet MUST analyze recent calorie tracking using loggedDays, avgKcal, yesterdayKcal, and kcalTarget when available.
+  Use the remaining bullets for protein and training. Keep each bullet to one short sentence.
 ${inactivityRule}
 Context: ${JSON.stringify(context)}`
 

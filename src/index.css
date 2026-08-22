@@ -1182,35 +1182,30 @@ html.dark .today-eyebrow::before {
   line-height: 1.02;
   letter-spacing: 0;
 }
-.today-daily-briefing-summary {
-  margin-top: 10px;
-  color: var(--ink-2);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.today-daily-priorities {
+.today-daily-bullets {
   display: grid;
   gap: 0;
   margin-top: 18px;
   border-top: 1px solid var(--line);
 }
-.today-daily-priority {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
+.today-daily-bullet {
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
   padding: 11px 0;
   border-bottom: 1px solid var(--line);
-}
-.today-daily-priority > span {
-  color: var(--acc);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  padding-top: 2px;
-}
-.today-daily-priority p {
   color: var(--ink-2);
   font-size: 12px;
   line-height: 1.4;
+}
+.today-daily-bullet > span:first-child {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--acc);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--acc) 50%, transparent);
 }
 .today-fuel-bottom {
   margin-top: 30px;

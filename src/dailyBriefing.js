@@ -85,16 +85,32 @@ export function buildBriefingContext({ logs, totals, sessions, nextWorkout, inbo
 export function fallbackBriefing(context) {
   const { phase, food, training } = context
   const phaseLabel = phase === 'morning' ? 'Morning briefing' : phase === 'day' ? 'Day update' : 'Evening check-in'
-  const priorities = []
+  const bullets = []
+  const calorieBalance = food.kcalTarget - food.todayKcal
 
-  if (training.inactivity === 'high') priorities.push(`${training.lastWorkoutDays} days since your last workout. Make ${training.nextWorkout} the priority.`)
-  else if (training.inactivity === 'attention') priorities.push(`Training has been quiet for ${training.lastWorkoutDays} days. ${training.nextWorkout} is ready when you are.`)
-  else if (training.inactivity === 'no_history') priorities.push(`Start the rotation with ${training.nextWorkout}.`)
-  else priorities.push(`Next up: ${training.nextWorkout}.`)
+  bullets.push(calorieBalance >= 0
+    ? `${food.todayKcal.toLocaleString()} of ${food.kcalTarget.toLocaleString()} kcal logged; ${calorieBalance.toLocaleString()} kcal remain.`
+    : `${food.todayKcal.toLocaleString()} kcal logged; ${Math.abs(calorieBalance).toLocaleString()} kcal over target.`)
 
-  if (food.todayProtein === 0) priorities.push('Start protein early so the target stays manageable.')
-  else if (food.todayProtein < food.proteinTarget * 0.5 && phase !== 'morning') priorities.push(`${Math.max(0, food.proteinTarget - food.todayProtein)}g protein remains today.`)
-  else priorities.push('Keep meals aligned with today’s protein target.')
+  if (food.loggedDays && food.avgKcal != null) {
+    const averageDelta = food.avgKcal - food.kcalTarget
+    const comparison = averageDelta === 0
+      ? 'on target'
+      : `${Math.abs(averageDelta).toLocaleString()} kcal ${averageDelta > 0 ? 'above' : 'below'} target`
+    const yesterday = food.yesterdayKcal > 0 ? `; yesterday was ${food.yesterdayKcal.toLocaleString()} kcal` : ''
+    bullets.push(`Recent average: ${food.avgKcal.toLocaleString()} kcal across ${food.loggedDays} logged day${food.loggedDays === 1 ? '' : 's'} (${comparison})${yesterday}.`)
+  } else {
+    bullets.push('Not enough recent calorie logs yet to establish an intake pattern.')
+  }
+
+  if (training.inactivity === 'high') bullets.push(`${training.lastWorkoutDays} days since your last workout; make ${training.nextWorkout} the priority.`)
+  else if (training.inactivity === 'attention') bullets.push(`Training has been quiet for ${training.lastWorkoutDays} days; ${training.nextWorkout} is ready.`)
+  else if (training.inactivity === 'no_history') bullets.push(`Start the rotation with ${training.nextWorkout}.`)
+  else bullets.push(`Next up: ${training.nextWorkout}.`)
+
+  if (food.todayProtein === 0) bullets.push('Start protein early so the target stays manageable.')
+  else if (food.todayProtein < food.proteinTarget * 0.5 && phase !== 'morning') bullets.push(`${Math.max(0, food.proteinTarget - food.todayProtein)}g protein remains today.`)
+  else bullets.push('Keep meals aligned with today’s protein target.')
 
   const headline = training.inactivity === 'high'
     ? 'Time to restart your training rhythm'
@@ -106,8 +122,7 @@ export function fallbackBriefing(context) {
 
   return {
     headline,
-    summary: `${training.sessionsThisWeek} workout${training.sessionsThisWeek === 1 ? '' : 's'} logged this week. ${food.todayKcal.toLocaleString()} of ${food.kcalTarget.toLocaleString()} kcal logged today.`,
-    priorities: priorities.slice(0, 3),
+    bullets: bullets.slice(0, 5),
     tone: training.inactivity === 'high' ? 'attention' : 'steady',
     phaseLabel,
     source: 'local',

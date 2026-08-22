@@ -12,14 +12,14 @@ const readCache = () => {
 
 export function cachedBriefing(context) {
   const cached = readCache()
-  if (!cached || cached.date !== context.date || cached.phase !== context.phase) return null
+  if (!cached || !Array.isArray(cached.bullets) || cached.date !== context.date || cached.phase !== context.phase) return null
   return cached
 }
 
 export async function requestDailyBriefing(context, { force = false } = {}) {
   const cached = cachedBriefing(context)
   const contextFingerprint = fingerprint(context)
-  const fresh = cached && Date.now() - new Date(cached.generatedAt).getTime() < COOLDOWN_MS
+  const fresh = cached && cached.fingerprint === contextFingerprint && Date.now() - new Date(cached.generatedAt).getTime() < COOLDOWN_MS
   if (!force && fresh) return cached
 
   const { data } = await supabase.auth.getSession()
