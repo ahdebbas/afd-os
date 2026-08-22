@@ -83,8 +83,9 @@ export default async function handler(req, res) {
     }
     catch (error) { return res.status(400).json({ error: error.message }) }
 
-    const prompt = `${image ? 'Identify the visible foods and estimate the pictured portions.' : 'Parse the food description and estimate the stated portions.'}
+    const prompt = `${image ? 'Identify foods shown or named in the image or screenshot and estimate the pictured portions.' : 'Parse the food description and estimate the stated portions.'}
 Return each distinct food component with integer calories, protein, carbohydrates, and fat in grams.
+  When a screenshot contains explicit nutrition values, use those values instead of estimating them.
   Use short names. Make reasonable estimates when portions are unclear. Do not include plates, utensils, packaging, or non-food objects.
   ${description ? `User description: ${JSON.stringify(description)}` : ''}`
 

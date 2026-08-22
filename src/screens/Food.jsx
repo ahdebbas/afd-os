@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Apple, Beef, Camera, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, Salad, Sandwich, Scale, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
+import { Apple, Beef, Camera, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, Salad, Sandwich, Scale, Upload, UtensilsCrossed, Wheat, Droplets, X, Plus, Pencil, ArrowUp } from 'lucide-react'
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
@@ -278,7 +278,7 @@ export default function Food() {
   })()
 
   const [editMode, setEditMode] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('Breakfast')
+  const [activeCategory, setActiveCategory] = useState('Meals')
   // Portion picker: which plate is being scaled, plus the custom multiplier text.
   const [portionFor, setPortionFor] = useState(null)
   const [portionVal, setPortionVal] = useState('')
@@ -288,6 +288,7 @@ export default function Food() {
   const [analysisStatus, setAnalysisStatus] = useState('idle')
   const [analysisError, setAnalysisError] = useState('')
   const cameraInputRef = useRef(null)
+  const photoLibraryInputRef = useRef(null)
   const analysisRequestRef = useRef({ id: 0, controller: null })
 
   useEffect(() => () => analysisRequestRef.current.controller?.abort(), [])
@@ -403,7 +404,11 @@ export default function Food() {
       updatePreset(form.editId, item) // edit existing preset, don't log it
     } else {
       addEntry({ ...item, emoji: '🍽️' })
-      if (form.save) addPreset({ ...item, emoji: '🍽️' })
+      if (form.save) {
+        addPreset({ ...item, emoji: '🍽️' })
+        setActiveCategory(item.category)
+        os?.announce(`Preset saved to ${item.category}`, 'var(--acc-food)')
+      }
     }
     closeCustomForm()
   }
@@ -426,6 +431,10 @@ export default function Food() {
               <div id="food-entry-title"><Label>Log a meal</Label></div>
               <p className="food-entry-hint">Describe it or take a photo</p>
             </div>
+            <button type="button" onClick={() => photoLibraryInputRef.current?.click()} disabled={analysisStatus === 'loading'}
+              className="food-entry-upload press" aria-label="Upload a food screenshot" title="Upload a food screenshot">
+              <Upload size={14} /> <span>Screenshot</span>
+            </button>
           </div>
           <div className="food-composer">
             <button onClick={() => { if (showForm) closeCustomForm(); else { cancelFoodAnalysis(); setShowForm(true); setEditMode(false); setPortionFor(null); setForm(blankForm) } }} className="food-composer-plus press" aria-label="Enter macros manually">
@@ -435,8 +444,6 @@ export default function Food() {
               className="food-composer-camera press" aria-label="Take a food photo" title="Take a food photo">
               {analysisStatus === 'loading' ? <LoaderCircle size={16} className="food-photo-spinner" /> : <Camera size={16} />}
             </button>
-            <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
-              onChange={analyzePhoto} className="hidden" aria-label="Food photo" />
             <input value={composerText} onChange={event => setComposerText(event.target.value)} maxLength={600}
               onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); submitComposer() } }}
               placeholder="What did you eat?" aria-label="Describe what you ate" className="food-composer-field" />
@@ -445,6 +452,10 @@ export default function Food() {
               className="food-composer-send press" aria-label={composerText.trim() ? 'Estimate nutrition' : 'Submit food'}>
               <ArrowUp size={15} strokeWidth={3} />
             </button>
+            <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+              onChange={analyzePhoto} className="hidden" aria-label="Food photo" />
+            <input ref={photoLibraryInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+              onChange={analyzePhoto} className="hidden" aria-label="Food screenshot or photo" />
           </div>
 
           {showForm && !form.editId && (

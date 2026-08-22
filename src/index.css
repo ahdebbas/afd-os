@@ -797,6 +797,19 @@ html.dark .food-journal {
   color: var(--ink-3);
   font-size: 12px;
 }
+.food-entry-upload {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--chip);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+.food-entry-upload:disabled { opacity: 0.65; cursor: wait; }
 .food-composer {
   position: relative;
   width: 100%;
