@@ -12,12 +12,50 @@ export const CLOUD_STATE_KEYS = [
 ]
 
 export const CLOUD_STATE_EVENT = 'afd-cloud-state'
+const CLOUD_DIRTY_KEYS = 'afd-cloud-dirty-keys'
 
 let syncSink = null
 let debounceTimer = null
 const pending = new Map()
 
 const canSyncKey = key => CLOUD_STATE_KEYS.includes(key)
+
+const readDirtyKeys = () => {
+  try {
+    const keys = JSON.parse(localStorage.getItem(CLOUD_DIRTY_KEYS) || '[]')
+    return new Set(Array.isArray(keys) ? keys.filter(canSyncKey) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+const writeDirtyKeys = keys => {
+  try {
+    if (keys.size) localStorage.setItem(CLOUD_DIRTY_KEYS, JSON.stringify([...keys]))
+    else localStorage.removeItem(CLOUD_DIRTY_KEYS)
+  } catch { /* best-effort metadata; app state remains available locally */ }
+}
+
+const markCloudStateDirty = key => {
+  const keys = readDirtyKeys()
+  keys.add(key)
+  writeDirtyKeys(keys)
+}
+
+export const isCloudStateDirty = key => readDirtyKeys().has(key)
+
+export const shouldPreserveHydrationChange = (hydrationUserId, userId, localChanged, unsynced = false) =>
+  (localChanged || unsynced) && (!hydrationUserId || hydrationUserId === userId)
+
+export function discardCloudStateDirty(key) {
+  const keys = readDirtyKeys()
+  keys.delete(key)
+  writeDirtyKeys(keys)
+}
+
+export function confirmCloudStateSynced(key, value) {
+  if (localStorage.getItem(key) === JSON.stringify(value)) discardCloudStateDirty(key)
+}
 
 export function applyCloudState(key, value, present = true) {
   if (!canSyncKey(key)) return
@@ -40,6 +78,7 @@ export function clearCloudSyncSink() {
 
 export function queueCloudState(key, value) {
   if (!canSyncKey(key)) return
+  markCloudStateDirty(key)
   pending.set(key, value)
   flushCloudSyncSoon()
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
-import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, queueCloudState, setCloudSyncSink } from './cloudSync'
+import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, confirmCloudStateSynced, discardCloudStateDirty, isCloudStateDirty, queueCloudState, setCloudSyncSink, shouldPreserveHydrationChange } from './cloudSync'
 import { getCachedSupabaseUserId, hasSupabaseConfig, supabase } from './supabase'
 
 const CloudCtx = createContext(null)
@@ -217,6 +217,7 @@ export function CloudProvider({ children }) {
           setSyncStatus('error')
           return
         }
+        for (const item of batch) confirmCloudStateSynced(item.key, item.value)
         setSyncStatus('synced')
       })
     }
@@ -250,11 +251,12 @@ export function CloudProvider({ children }) {
       const changedDuringHydration = []
       for (const key of CLOUD_STATE_KEYS) {
         const localChanged = localStorage.getItem(key) !== localSnapshot.get(key)
-        if (hydrationUserId === userId && localChanged) {
+        if (shouldPreserveHydrationChange(hydrationUserId, userId, localChanged, isCloudStateDirty(key))) {
           changedDuringHydration.push(key)
           continue
         }
         applyCloudState(key, rows.get(key), rows.has(key))
+        discardCloudStateDirty(key)
       }
 
       localStorage.setItem(CLOUD_USER_KEY, userId)
