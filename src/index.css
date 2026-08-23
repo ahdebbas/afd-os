@@ -938,6 +938,12 @@ html.dark .fitness-finish-primary { color: #04060C; }
 .workout-exercise-row {
   transition: background 0.18s ease, box-shadow 0.18s ease;
 }
+.workout-exercise-toggle { border: 1px solid transparent; }
+.workout-exercise-pending {
+  color: var(--ink-2);
+  background: var(--field);
+  border-color: color-mix(in srgb, var(--ink-2) 42%, transparent);
+}
 .workout-exercise-complete {
   margin-inline: -10px;
   padding-inline: 10px;
@@ -950,7 +956,24 @@ html.dark .fitness-finish-primary { color: #04060C; }
   background: color-mix(in srgb, var(--up) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--up) 34%, transparent);
 }
-.workout-exercise-name-complete { color: var(--up); }
+.workout-exercise-name-complete { color: color-mix(in srgb, var(--up) 76%, var(--ink-2)); }
+.workout-exercise-target { transition: color 0.18s ease, opacity 0.18s ease; }
+.workout-exercise-target-complete { opacity: 0.56; }
+.workout-progress-count {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  background: var(--field);
+  border: 1px solid var(--line);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.workout-progress-complete {
+  color: var(--up);
+  background: color-mix(in srgb, var(--up) 10%, transparent);
+  border-color: color-mix(in srgb, var(--up) 30%, transparent);
+}
 
 .backdrop {
   background: rgba(2, 4, 10, 0.55);

@@ -67,7 +67,7 @@ function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCo
       <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
         <button onClick={onToggle} aria-pressed={completed}
           aria-label={`${completed ? 'Mark incomplete' : 'Mark complete'}: ${exercise.name}`}
-          className={`press grid place-items-center w-6 h-6 rounded-full flex-shrink-0 ${completed ? 'workout-exercise-check' : 'chip t2'}`}>
+          className={`press workout-exercise-toggle grid place-items-center w-6 h-6 rounded-full flex-shrink-0 ${completed ? 'workout-exercise-check' : 'workout-exercise-pending'}`}>
           {completed
             ? <Check size={13} strokeWidth={3} aria-hidden="true" />
             : <span className="mono text-[9px]">{String(index + 1).padStart(2, '0')}</span>}
@@ -75,7 +75,7 @@ function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCo
         <span className={`leading-snug pt-0.5 ${completed ? 'workout-exercise-name-complete' : ''}`}>{exercise.name}</span>
       </span>
       <div className="flex items-center justify-end gap-2 flex-shrink-0">
-        <span className="mono text-[10px] t2 w-20 text-right pt-1.5">{exercise.sets}</span>
+        <span className={`workout-exercise-target mono text-[10px] t2 w-20 text-right pt-1.5 ${completed ? 'workout-exercise-target-complete' : ''}`}>{exercise.sets}</span>
         <WeightCell weight={weight} flash={flash} onCommit={onCommit} />
       </div>
     </div>
@@ -170,6 +170,7 @@ export default function Fitness() {
 
   const progressKey = `${selDate}:${program[day].name}`
   const completedExercises = exerciseProgress[progressKey] || []
+  const completedExerciseCount = program[day].exercises.filter(exercise => completedExercises.includes(exercise.name)).length
   const toggleExercise = name => setExerciseProgress(prev => {
     const current = prev[progressKey] || []
     const next = current.includes(name) ? current.filter(item => item !== name) : [...current, name]
@@ -437,7 +438,12 @@ export default function Fitness() {
 
         {/* Exercise table */}
         <div className="flex items-center justify-between pb-2 mono text-[9px] tracking-[0.16em] uppercase t3">
-          <span>Exercise</span>
+          <div className="flex items-center gap-2">
+            <span>Exercise</span>
+            <span className={`workout-progress-count ${completedExerciseCount === program[day].exercises.length && program[day].exercises.length > 0 ? 'workout-progress-complete' : ''}`}>
+              {completedExerciseCount} of {program[day].exercises.length} done
+            </span>
+          </div>
           <div className="flex items-center gap-3">
             <span className="w-20 text-right">Target</span>
             <span className="w-[66px] text-center">Weight</span>
