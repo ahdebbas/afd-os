@@ -22,6 +22,7 @@
   --field: rgba(28, 26, 23, 0.04);
   --acc-os: #3B4FA8;
   --acc-fin: #2E5BC7;
+  --acc-cash: #9A6516;
   --acc-food: #157A57;
   --acc-fit: #0B7488;
   --asset-equity: #3E6AD0;
@@ -57,6 +58,7 @@ html.dark {
   --field: rgba(0, 0, 0, 0.35);
   --acc-os: #8FA2D8;
   --acc-fin: #6E93CC;
+  --acc-cash: #D6A84E;
   --acc-food: #46B58C;
   --acc-fit: #4FAFC0;
   --asset-equity: #D7DCE4;

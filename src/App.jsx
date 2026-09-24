@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LayoutGrid, Wallet, UtensilsCrossed, Dumbbell, Sun, Moon, Check, Sparkles, Settings, Download, Upload, ArrowUp, Target } from 'lucide-react'
+import { LayoutGrid, Wallet, Landmark, UtensilsCrossed, Dumbbell, Sun, Moon, Check, Sparkles, Settings, Download, Upload, ArrowUp, Target } from 'lucide-react'
 import { OsProvider, useOs } from './os'
 import { QuotesProvider } from './quotes'
 import { FoodProvider, useFood } from './store'
@@ -8,6 +8,7 @@ import { Sheet } from './ui'
 import { FoodIcon } from './screens/Food'
 import Today from './screens/Today'
 import Finance from './screens/Finance'
+import Cash from './screens/Cash'
 import Food from './screens/Food'
 import Fitness from './screens/Fitness'
 import { useClock, usePersistentState } from './hooks'
@@ -17,12 +18,14 @@ import DesktopApp from './desktop/DesktopApp'
 const TABS = [
   { id: 'today', label: 'Today', Icon: LayoutGrid, acc: 'var(--acc-os)', ambient: '#8FA2D8' },
   { id: 'finance', label: 'Finance', Icon: Wallet, acc: 'var(--acc-fin)', ambient: '#6E93CC' },
+  { id: 'cash', label: 'Cash', Icon: Landmark, acc: 'var(--acc-cash)', ambient: '#C59A56' },
   { id: 'food', label: 'Food', Icon: UtensilsCrossed, acc: 'var(--acc-food)', ambient: '#46B58C' },
   { id: 'fitness', label: 'Fitness', Icon: Dumbbell, acc: 'var(--acc-fit)', ambient: '#4FAFC0' },
 ]
 function ModuleScreen({ tabId, onTabChange, onOpenLog, onOpenSettings, dark, onToggleTheme }) {
   if (tabId === 'today') return <Today goTo={onTabChange} openLog={onOpenLog} onOpenSettings={onOpenSettings} dark={dark} onToggleTheme={onToggleTheme} />
   if (tabId === 'finance') return <Finance />
+  if (tabId === 'cash') return <Cash />
   if (tabId === 'food') return <Food />
   return <Fitness />
 }
@@ -170,7 +173,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
               </button>
             ))}
           </div>
-          <p className="mono text-[9px] t3 mt-2">Desktop shortcuts: Cmd/Ctrl+1..4 modules, Cmd/Ctrl+L quick log, Cmd/Ctrl+, settings.</p>
+          <p className="mono text-[9px] t3 mt-2">Desktop shortcuts: Cmd/Ctrl+1..5 modules, Cmd/Ctrl+L quick log, Cmd/Ctrl+, settings.</p>
         </div>
         <button onClick={() => setAdaptive(v => !v)} role="switch" aria-checked={adaptive}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
@@ -419,7 +422,7 @@ function Shell() {
       )) return
 
       const mod = e.metaKey || e.ctrlKey
-      if (isDesktop && mod && /^[1-4]$/.test(e.key)) {
+      if (isDesktop && mod && /^[1-5]$/.test(e.key)) {
         const next = TABS[Number(e.key) - 1]
         if (next) handleTabChange(next.id)
         e.preventDefault()

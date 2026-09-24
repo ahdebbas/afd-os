@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  LayoutGrid, UtensilsCrossed, Dumbbell, Wallet, Search, Plus, Settings,
+  LayoutGrid, UtensilsCrossed, Dumbbell, Wallet, Landmark, Search, Plus, Settings,
   Sun, Moon, Monitor, CornerDownLeft, Command as CommandIcon,
 } from 'lucide-react'
 import { IconButton } from './primitives'
@@ -8,12 +8,14 @@ import OverviewPage from './pages/OverviewPage'
 import FoodPage from './pages/FoodPage'
 import FitnessPage from './pages/FitnessPage'
 import FinancePage from './pages/FinancePage'
+import CashPage from './pages/CashPage'
 
 const NAV = [
   { id: 'today', label: 'Overview', Icon: LayoutGrid, hint: '⌘1' },
-  { id: 'food', label: 'Food', Icon: UtensilsCrossed, hint: '⌘3' },
-  { id: 'fitness', label: 'Fitness', Icon: Dumbbell, hint: '⌘4' },
   { id: 'finance', label: 'Finance', Icon: Wallet, hint: '⌘2' },
+  { id: 'cash', label: 'Cash', Icon: Landmark, hint: '⌘3' },
+  { id: 'food', label: 'Food', Icon: UtensilsCrossed, hint: '⌘4' },
+  { id: 'fitness', label: 'Fitness', Icon: Dumbbell, hint: '⌘5' },
 ]
 
 const PAGES = {
@@ -21,6 +23,7 @@ const PAGES = {
   food: FoodPage,
   fitness: FitnessPage,
   finance: FinancePage,
+  cash: CashPage,
 }
 
 function CommandPalette({ onClose, actions }) {
