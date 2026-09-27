@@ -97,7 +97,9 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
   const recommend = recommendedIntake(projected)
   const recIntakeLeft = recommend != null ? recommend - eaten : null
   const proteinLeft = Math.max(0, Math.round(TARGETS.protein - protein))
-  const actionText = recommend == null
+  const actionText = eaten <= 0
+    ? null
+    : recommend == null
     ? 'Need more hours of burn data before giving an intake recommendation.'
     : recIntakeLeft == null
       ? null
@@ -118,8 +120,8 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
       <p className="mono text-[10px] mt-3 t2 leading-relaxed">
         {eaten > 0 ? (
           <>
-            <span className={netDeficit ? 'acc' : 'down'}>{netDeficit ? `${kcal(snap.net)} kcal net deficit` : `${kcal(Math.abs(snap.net))} kcal net surplus`}</span>
-            {' '}after intake. Burn and pace are from WHOOP.
+            <span>{kcal(Math.abs(snap.net))} kcal {netDeficit ? 'below' : 'above'} burn based on logged food.</span>
+            {' '}Intake may be incomplete.
           </>
         ) : (
           <>
@@ -136,8 +138,8 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
           <div className="mono text-[10px] t3 mt-1.5">{paceKnown ? 'Pace' : 'Pace building'}</div>
         </div>
         <div className="chip rounded-2xl p-3 text-center">
-          <div className={`display text-[22px] leading-none font-bold ${netDeficit ? 'acc' : 'down'}`}>{kcal(Math.abs(snap.net))}</div>
-          <div className="mono text-[10px] t3 mt-1.5">{netDeficit ? 'Deficit' : 'Surplus'}</div>
+          <div className="display text-[22px] leading-none font-bold t1">{eaten > 0 ? kcal(Math.abs(snap.net)) : '—'}</div>
+          <div className="mono text-[10px] t3 mt-1.5">{eaten > 0 ? 'Logged balance' : 'Intake unknown'}</div>
         </div>
       </div>
       <div className="mt-3 panel-2 rounded-2xl px-3.5 py-3 space-y-2.5">
@@ -187,11 +189,11 @@ export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
   }
 
   const netDeficit = snap.net >= 0
-  const flag = fuelingFlag({ whoop, eaten, protein, projectedBurn: projectBurn(whoop) })
+  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, projectedBurn: projectBurn(whoop) }) : null
   const kpis = [
-    { label: 'Eaten', value: kcal(eaten), cls: 't1' },
+    { label: 'Logged', value: eaten > 0 ? kcal(eaten) : '—', cls: 't1' },
     { label: 'Burned', value: kcal(snap.burned), cls: 't1' },
-    { label: netDeficit ? 'Deficit' : 'Surplus', value: kcal(Math.abs(snap.net)), cls: netDeficit ? 'acc' : 'down' },
+    { label: eaten > 0 ? (netDeficit ? 'Below burn' : 'Above burn') : 'Intake unknown', value: eaten > 0 ? kcal(Math.abs(snap.net)) : '—', cls: 't1' },
   ]
   return (
     <div className="mt-5 pt-4 hairline-t">
@@ -206,8 +208,7 @@ export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
         ))}
       </div>
       <p className="mono text-[9px] t3 text-center mt-3 leading-relaxed">
-        {snap.capLeft >= 0 ? `${kcal(snap.capLeft)} kcal left before the food cap` : `${kcal(Math.abs(snap.capLeft))} kcal above the food cap`}
-        {' '}· WHOOP only explains net position.
+        {eaten > 0 ? 'Based on logged food; intake may be incomplete.' : 'No intake logged. Food balance is unknown.'}
       </p>
       {flag && (
         <p className={`mono text-[9px] text-center mt-2 leading-relaxed flex items-center justify-center gap-1.5 ${flag.kind === 'protein' ? 't2' : 'down'}`}>

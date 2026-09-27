@@ -1,23 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Clock, Target, TrendingDown, TrendingUp, TriangleAlert, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Clock, Target, TrendingDown, TrendingUp, TriangleAlert, Zap } from 'lucide-react'
 import { useFood } from '../../store'
-import { useQuotes } from '../../quotes'
+import TodayPulse from '../../TodayPulse'
 import { usePersistentState } from '../../hooks'
-import { dateKey } from '../../dates'
-import { DEFICIT_GOAL, FITNESS, FINANCE, TARGETS, ETF_SYMBOL, sarwaTotal, nextWorkoutIdx, usd } from '../../data'
+import { DEFICIT_GOAL, TARGETS } from '../../data'
 import { connectWhoop, fetchWhoopCalories, WHOOP_POLL_MS } from '../../whoop'
 import { fuelingFlag, projectBurn, recommendedIntake } from '../../whoopEnergy'
-import { Card, Ring, Meter, NumberFlow, Badge, Button } from '../primitives'
-
-function MacroRow({ label, val, target, color }) {
-  return (
-    <div className="grid grid-cols-[64px_minmax(0,1fr)_72px] items-center gap-3">
-      <span className="text-[12px] d-t2">{label}</span>
-      <Meter pct={target ? val / target : 0} color={color} />
-      <span className="text-[12px] d-t3 d-num text-right">{Math.round(val)}<span className="d-t3">/{target}g</span></span>
-    </div>
-  )
-}
+import { Card, Button } from '../primitives'
 
 const kcal = n => Math.round(n).toLocaleString('en-US')
 
@@ -85,7 +74,7 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
   const projected = projectBurn(whoop)
   const recommend = recommendedIntake(projected)
   const recLeft = recommend != null ? recommend - eaten : null
-  const flag = fuelingFlag({ whoop, eaten, protein, projectedBurn: projected })
+  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, projectedBurn: projected }) : null
   const vsYesterday = whoop.yesterday == null ? null : snap.burned - whoop.yesterday
   const vsWeekly = whoop.weeklyAvg == null ? null : snap.burned - whoop.weeklyAvg
   const paceKnown = snap.paceDelta != null
@@ -94,7 +83,9 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
   const sampleText = snap.lastSampleAt
     ? `${snap.stale ? 'stale' : 'sampled'} ${snap.lastSampleAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     : 'sampling pending'
-  const actionText = recommend == null
+  const actionText = eaten <= 0
+    ? 'Intake unknown. No meals logged today.'
+    : recommend == null
     ? 'Need more hours of burn data before giving an intake recommendation.'
     : recLeft >= 0
       ? `You can still eat about ${kcal(recLeft)} kcal and stay on plan.`
@@ -110,13 +101,12 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
             <span className="text-[11px] d-t3 mb-1">kcal burned</span>
           </div>
           <p className="text-[13px] d-t2 mt-3 leading-relaxed">
-            <span className={netDeficit ? 'd-up' : 'd-down'}>{netDeficit ? `${kcal(snap.net)} kcal net deficit` : `${kcal(Math.abs(snap.net))} kcal net surplus`}</span>
-            {' '}after {kcal(eaten)} eaten. Food cap is {kcal(TARGETS.kcal)} kcal.
+            {eaten > 0 ? `${kcal(Math.abs(snap.net))} kcal ${netDeficit ? 'below' : 'above'} burn based on logged food. Intake may be incomplete.` : 'No intake logged. Food balance is unknown.'}
           </p>
 
           <div className="grid grid-cols-3 gap-2 mt-4">
             <MiniKpi label={snap.capLeft >= 0 ? 'cap left' : 'over cap'} value={kcal(Math.abs(snap.capLeft))} tone={snap.capLeft >= 0 ? 't1' : 'down'} />
-            <MiniKpi label={netDeficit ? 'deficit' : 'surplus'} value={kcal(Math.abs(snap.net))} tone={netDeficit ? 'up' : 'down'} />
+            <MiniKpi label={eaten > 0 ? 'logged balance' : 'intake unknown'} value={eaten > 0 ? kcal(Math.abs(snap.net)) : '—'} />
             <MiniKpi label="tonight" value={projected != null ? `~${kcal(projected)}` : '—'} />
           </div>
         </div>
@@ -163,35 +153,7 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
 }
 
 export default function OverviewPage({ onNavigate }) {
-  const { totals, remaining, proteinLeft, entries } = useFood()
-  const q = useQuotes()
-
-  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
-  const latestBody = [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)).at(-1) || { fatPct: 0 }
-  const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
-  const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
-  const nextWorkout = program[nextWorkoutIdx(program, sessions)]?.name
-  const toGoal = (latestBody.fatPct - FITNESS.goal.fatPct).toFixed(1)
-
-  const weekCount = useMemo(() => {
-    let c = 0
-    for (let i = 0; i < 7; i++) {
-      const d = new Date()
-      const dow = (d.getDay() + 6) % 7
-      d.setDate(d.getDate() - dow + i)
-      if (sessions.find(s => s.date === dateKey(d))) c++
-    }
-    return c
-  }, [sessions])
-
-  const msftPrice = q?.MSFT?.price ?? FINANCE.msft.price
-  const msftChange = q?.MSFT ? q.MSFT.changePct : FINANCE.msft.dayChangePct
-  const etfLive = FINANCE.sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
-  const sarwaValue = etfLive ? sarwaTotal(FINANCE.sarwa, q) : FINANCE.sarwa.total
-  const msftValue = FINANCE.msft.shares * msftPrice
-  const total = msftValue + sarwaValue + FINANCE.property.value
-  const msftUp = msftChange >= 0
-
+  const { totals } = useFood()
   const [whoop, setWhoop] = useState(null)
   useEffect(() => {
     let alive = true
@@ -201,94 +163,13 @@ export default function OverviewPage({ onNavigate }) {
     return () => { alive = false; clearInterval(id) }
   }, [])
 
-  const todayEntries = entries || []
-  const kcalPct = totals.kcal / TARGETS.kcal
-
-  const statusLine = remaining > 0
-    ? `${remaining.toLocaleString()} kcal and ${Math.max(0, proteinLeft)}g protein left today.`
-    : 'Fuel target met for today.'
-
   return (
     <div className="d-enter space-y-4">
-      <p className="text-[14px] d-t2">{statusLine}</p>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card eyebrow="Food · today" title="Fuel"
-          actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => onNavigate('food')}>Open</Button>}>
-          <div className="flex items-center gap-4">
-            <Ring pct={kcalPct} size={104} stroke={9} color={remaining < 0 ? 'var(--d-down)' : 'var(--d-accent)'}>
-              <div>
-                <NumberFlow value={Math.max(0, remaining)} className="text-[26px] font-semibold d-t1 leading-none" />
-                <div className="text-[10px] d-t3 mt-1">{remaining >= 0 ? 'kcal left' : 'over'}</div>
-              </div>
-            </Ring>
-            <div className="flex-1 space-y-2.5 min-w-0">
-              <MacroRow label="Protein" val={totals.protein} target={TARGETS.protein} color="var(--d-accent)" />
-              <MacroRow label="Carbs" val={totals.carbs} target={TARGETS.carbs} color="var(--d-warn)" />
-              <MacroRow label="Fat" val={totals.fat} target={TARGETS.fat} color="var(--d-up)" />
-            </div>
-          </div>
-        </Card>
-
-        <Card eyebrow="Fitness" title="Training"
-          actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => onNavigate('fitness')}>Open</Button>}>
-          <div className="flex items-center gap-4">
-            <Ring pct={Math.max(0.04, Math.min(1, (20 - latestBody.fatPct) / (20 - FITNESS.goal.fatPct)))} size={104} stroke={9} color="var(--d-accent)">
-              <div>
-                <span className="text-[24px] font-semibold d-t1 leading-none d-num">{latestBody.fatPct}<span className="text-[13px] d-t3">%</span></span>
-                <div className="text-[10px] d-t3 mt-1">body fat</div>
-              </div>
-            </Ring>
-            <div className="flex-1 min-w-0 space-y-2.5">
-              <div>
-                <div className="d-eyebrow">Next workout</div>
-                <div className="text-[15px] font-semibold d-t1 truncate">{nextWorkout || '—'}</div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge tone="accent">{toGoal}% to goal</Badge>
-                <Badge tone={weekCount >= 4 ? 'up' : 'neutral'}>{weekCount}/4 sessions</Badge>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card eyebrow="Finance" title="Capital"
-          actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => onNavigate('finance')}>Open</Button>}>
-          <NumberFlow value={total} format={usd} className="d-h1 d-t1 block leading-none" />
-          <div className="flex items-center gap-2 mt-2">
-            <Badge tone={msftUp ? 'up' : 'down'}>{msftUp ? '↑' : '↓'} {Math.abs(msftChange).toFixed(2)}% MSFT</Badge>
-            <span className="text-[12px] d-t3">{q?.MSFT ? 'live' : 'last close'}</span>
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-[12px]"><span className="d-t2">MSFT</span><span className="d-num d-t1">{usd(msftValue)}</span></div>
-            <div className="flex items-center justify-between text-[12px]"><span className="d-t2">Sarwa</span><span className="d-num d-t1">{usd(sarwaValue)}</span></div>
-            <div className="flex items-center justify-between text-[12px]"><span className="d-t2">Property</span><span className="d-num d-t1">{usd(FINANCE.property.value)}</span></div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-[1.5fr_0.9fr] gap-4">
+      <TodayPulse onNavigate={onNavigate} whoop={whoop} />
+      <details className="pulse-details">
+        <summary>Energy details</summary>
         <WhoopInsightsCard whoop={whoop} eaten={totals.kcal} protein={totals.protein} />
-
-        <Card eyebrow={`${todayEntries.length} ${todayEntries.length === 1 ? 'entry' : 'entries'}`} title="Today's log"
-          actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => onNavigate('food')}>Food</Button>}>
-          {todayEntries.length === 0 ? (
-            <p className="text-[13px] d-t3">Nothing logged yet.</p>
-          ) : (
-            <div className="space-y-0.5 -mx-1">
-              {todayEntries.slice(-5).reverse().map(e => (
-                <div key={e.uid} className="flex items-center justify-between px-1 py-1.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-[11px] d-t3 d-num w-10">{e.time}</span>
-                    <span className="text-[13px] d-t1 truncate">{e.name}</span>
-                  </div>
-                  <span className="text-[12px] d-num d-t2 shrink-0">{e.kcal} kcal</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+      </details>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { TARGETS } from './data'
 import { useOs } from './os'
 import { usePersistentState } from './hooks'
@@ -42,6 +42,7 @@ export function FoodProvider({ children }) {
   const os = useOs()
   const [presets, setPresets] = usePersistentState('afd-presets', DEFAULT_PRESETS, Array.isArray)
   const [logs, setLogs] = usePersistentState('afd-food-log', {}, v => v && typeof v === 'object' && !Array.isArray(v))
+  const [removed, setRemoved] = useState(null)
 
   const today = todayKey()
   const entries = useMemo(() => logs[today] || [], [logs, today])
@@ -91,10 +92,30 @@ export function FoodProvider({ children }) {
     setLogs(prev => ({ ...prev, [day]: [...(prev[day] || []), entry] }))
     os?.announce(`FUEL +${item.kcal} kcal · ${item.protein || 0}P`, 'var(--acc-food)', {
       label: 'Undo',
-      onClick: () => removeEntry(uid, day)
+      onClick: () => setLogs(previous => ({ ...previous, [day]: (previous[day] || []).filter(item => item.uid !== uid) }))
     })
   }
-  const removeEntry = (uid, day = todayKey()) => setLogs(prev => ({ ...prev, [day]: (prev[day] || []).filter(e => e.uid !== uid) }))
+  const removeEntry = (uid, day = todayKey()) => {
+    const ids = new Set(Array.isArray(uid) ? uid : [uid])
+    const items = (logs[day] || []).map((entry, index) => ({ entry, index })).filter(item => ids.has(item.entry.uid))
+    if (!items.length) return
+    setRemoved({ day, items })
+    setLogs(previous => ({ ...previous, [day]: (previous[day] || []).filter(entry => !ids.has(entry.uid)) }))
+  }
+  const undoRemoval = () => {
+    if (!removed) return
+    setLogs(previous => {
+      const entries = [...(previous[removed.day] || [])]
+      for (const { entry, index } of removed.items) {
+        if (!entries.some(item => item.uid === entry.uid)) entries.splice(index, 0, entry)
+      }
+      return { ...previous, [removed.day]: entries }
+    })
+    setRemoved(null)
+  }
+  const updateEntry = (uid, patch, day = todayKey()) => {
+    setLogs(previous => ({ ...previous, [day]: (previous[day] || []).map(entry => entry.uid === uid ? { ...entry, ...patch, uid: entry.uid } : entry) }))
+  }
   const addPreset = item => setPresets(prev => [...prev, { ...item, id: 'p' + Date.now() }])
   const removePreset = id => setPresets(prev => prev.filter(x => x.id !== id))
   const updatePreset = (id, patch) => setPresets(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
@@ -103,7 +124,7 @@ export function FoodProvider({ children }) {
     presets, entries, totals, logs,
     remaining: TARGETS.kcal - totals.kcal,
     proteinLeft: TARGETS.protein - totals.protein,
-    addEntry, removeEntry, addPreset, removePreset, updatePreset,
+    addEntry, removeEntry, updateEntry, removed, undoRemoval, addPreset, removePreset, updatePreset,
   }
   return <FoodCtx.Provider value={value}>{children}</FoodCtx.Provider>
 }

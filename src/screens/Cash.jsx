@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CalendarClock, Check, CheckCircle2, Circle, Pencil, Plus, Settings2, Trash2, WalletCards } from 'lucide-react'
 import { Label, Odometer, Sheet } from '../ui'
+import { CashAlerts, CoverageControl } from '../CashPlanning'
 import { usePersistentState } from '../hooks'
 import {
   DEFAULT_CASH_PULSE,
   buildCashProjection,
   formatCash,
   reconcileCashPulse,
+  monthKey,
   setCommitmentCoverage,
 } from '../cashPulse'
 
@@ -28,7 +31,7 @@ function PaymentForm({ kind, initial, onSave, onDelete, onClose }) {
       name: form.name.trim(),
       amount: Number(form.amount),
       ...(recurring
-        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active }
+        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active, startMonth: initial?.startMonth || monthKey() }
         : { dueDate: form.dueDate, coveredAt: initial?.coveredAt || null }),
     })
     onClose()
@@ -156,26 +159,27 @@ export default function Cash() {
           </button>
         </div>
         <p className="mono text-[10px] uppercase tracking-[0.12em] t3">Current cash</p>
-        <Odometer value={state.currentCash} format={value => formatCash(value, state.currency)} className="display text-[52px] font-bold tracking-tight t1" />
+        <Odometer value={state.currentCash} format={value => formatCash(value, state.currency)} className="cash-balance display font-bold t1" />
         <p className="mono text-[9px] t3 mt-1">
           {state.cashAsOf ? `Updated ${new Date(state.cashAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Set your available cash snapshot'}
         </p>
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="cash-summary mt-5">
           <div className="chip rounded-xl p-3 min-w-0">
-            <span className="mono text-[9px] uppercase t3 block">Runway</span>
+            <span className="text-[12px] t3 block">Monthly coverage</span>
             <strong className="display text-[25px] t1 block mt-1">{runway}<small className="text-[12px] t3 ml-1">mo</small></strong>
           </div>
           <div className="chip rounded-xl p-3 min-w-0">
-            <span className="mono text-[9px] uppercase t3 block">3-mo need</span>
-            <strong className="display text-[20px] t1 block mt-1 truncate">{formatCash(projection.nextMonthsNeed, state.currency)}</strong>
+            <span className="text-[12px] t3 block">Next 3 months</span>
+            <strong className="display text-[24px] t1 block mt-1">{formatCash(projection.nextMonthsNeed, state.currency)}</strong>
           </div>
           <div className="chip rounded-xl p-3 min-w-0">
-            <span className="mono text-[9px] uppercase t3 block">After</span>
-            <strong className={`display text-[20px] block mt-1 truncate ${projection.projectedCash < 0 ? 'down' : 'up'}`}>
+            <span className="text-[12px] t3 block">After payments + overdue</span>
+            <strong className={`display text-[24px] block mt-1 ${projection.projectedCash < 0 ? 'down' : 't1'}`}>
               {formatCash(projection.projectedCash, state.currency)}
             </strong>
           </div>
         </div>
+        <p className="text-[12px] t3 mt-3">Coverage at the normal monthly rate, excluding everyday spending. No income assumed.</p>
         {projection.shortfall > 0 && (
           <p className="mt-3 rounded-xl px-3 py-2.5 text-[12px] down" style={{ background: 'color-mix(in srgb, var(--down) 10%, transparent)' }}>
             Short by {formatCash(projection.shortfall, state.currency)} across the next three months.
@@ -183,6 +187,7 @@ export default function Cash() {
         )}
       </section>
 
+      <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={openBalance} />
       <section>
         <div className="flex items-center justify-between px-1 mb-3">
           <Label>Month coverage</Label>
@@ -194,7 +199,7 @@ export default function Cash() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <h2 className="text-[16px] font-bold t1">{month.label}</h2>
-                  <p className="mono text-[9px] uppercase t3 mt-0.5">{month.items.length} major payment{month.items.length === 1 ? '' : 's'}</p>
+                  <p className="text-[12px] t3 mt-0.5">{month.items.length} major payment{month.items.length === 1 ? '' : 's'}</p>
                 </div>
                 <div className="text-right">
                   <strong className="mono text-[13px] t1 block">{formatCash(month.needed, state.currency)}</strong>
@@ -210,7 +215,7 @@ export default function Cash() {
                   {item.covered ? <CheckCircle2 size={19} className="up shrink-0" /> : <Circle size={19} className="t3 shrink-0" />}
                   <span className="flex-1 min-w-0">
                     <span className={`block text-[13px] font-semibold truncate ${item.covered ? 't3' : 't1'}`}>{item.name}</span>
-                    <span className="mono text-[9px] uppercase t3">{item.type === 'one-off' ? 'One-off' : `Due ${item.dueDay}`}</span>
+                    <span className="text-[12px] t3">{item.covered ? 'Covered' : `Due ${item.dueDate}`}</span>
                   </span>
                   <span className={`mono text-[11px] ${item.covered ? 't3' : 't1'}`}>{formatCash(item.amount, state.currency)}</span>
                 </button>
@@ -233,6 +238,7 @@ export default function Cash() {
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold t1 truncate">{item.name}</p>
               <p className="mono text-[9px] uppercase t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}</p>
+              <CoverageControl item={item} state={state} setCash={setCash} />
             </div>
             <button onClick={() => setEditor({ kind: 'commitment', item })} className="press chip rounded-lg w-8 h-8 flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
               <Pencil size={13} />
@@ -263,7 +269,7 @@ export default function Cash() {
         ))}
       </section>
 
-      <Sheet open={balanceOpen} onClose={() => setBalanceOpen(false)} title="Current cash">
+      {createPortal(<div style={{ '--acc': 'var(--acc-cash)' }}><Sheet open={balanceOpen} onClose={() => setBalanceOpen(false)} title="Current cash">
         <form onSubmit={saveBalance} className="space-y-3">
           <p className="text-[12px] t2">Enter the cash available now. Covering payments will not change this number.</p>
           <div className="relative">
@@ -276,12 +282,12 @@ export default function Cash() {
             <Check size={15} /> Update snapshot
           </button>
         </form>
-      </Sheet>
+      </Sheet></div>, document.body)}
 
-      <Sheet open={Boolean(editor)} onClose={() => setEditor(null)} title={editor?.kind === 'one-off' ? 'Planned payment' : 'Monthly commitment'}>
+      {createPortal(<div style={{ '--acc': 'var(--acc-cash)' }}><Sheet open={Boolean(editor)} onClose={() => setEditor(null)} title={editor?.kind === 'one-off' ? 'Planned payment' : 'Monthly commitment'}>
         {editor && <PaymentForm key={`${editor.kind}-${editor.item?.id || 'new'}`} kind={editor.kind} initial={editor.item}
           onSave={savePayment} onDelete={deletePayment} onClose={() => setEditor(null)} />}
-      </Sheet>
+      </Sheet></div>, document.body)}
     </div>
   )
 }

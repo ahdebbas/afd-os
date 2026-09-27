@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CashAlerts, CoverageControl } from '../../CashPlanning'
 import { CalendarClock, Check, CheckCircle2, Circle, Pencil, Plus, Trash2, WalletCards } from 'lucide-react'
 import { usePersistentState } from '../../hooks'
 import {
@@ -6,6 +7,7 @@ import {
   buildCashProjection,
   formatCash,
   reconcileCashPulse,
+  monthKey,
   setCommitmentCoverage,
 } from '../../cashPulse'
 import { Badge, Button, Card, IconButton, NumberFlow, Stat } from '../primitives'
@@ -28,7 +30,7 @@ function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
       name: form.name.trim(),
       amount: Number(form.amount),
       ...(recurring
-        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active }
+        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active, startMonth: initial?.startMonth || monthKey() }
         : { dueDate: form.dueDate, coveredAt: initial?.coveredAt || null }),
     })
   }
@@ -70,6 +72,7 @@ function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
 export default function CashPage() {
   const [cash, setCash] = usePersistentState('afd-cash-pulse', DEFAULT_CASH_PULSE, cashValidator)
   const [balanceDraft, setBalanceDraft] = useState(null)
+  const balanceRef = useRef(null)
   const [editor, setEditor] = useState(null)
   const projection = useMemo(() => buildCashProjection(cash), [cash])
   const { state } = projection
@@ -125,15 +128,15 @@ export default function CashPage() {
   const runway = projection.runwayMonths == null ? '—' : projection.runwayMonths >= 100 ? '99+' : projection.runwayMonths.toFixed(1)
 
   return (
-    <div className="d-enter space-y-4">
+    <div className="d-enter cash-desktop space-y-4">
       <Card>
-        <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-7 items-end">
+        <div className="cash-desktop-summary">
           <div>
             <div className="d-eyebrow mb-1">Current cash</div>
             <div className="flex items-center gap-2">
               <div className="d-input flex items-center gap-2 !h-10 max-w-[250px]">
                 <span className="d-mono text-[11px] d-t3">{state.currency}</span>
-                <input value={balanceDraft ?? String(state.currentCash || '')} onFocus={() => setBalanceDraft(String(state.currentCash || ''))}
+                <input ref={balanceRef} value={balanceDraft ?? String(state.currentCash || '')} onFocus={() => setBalanceDraft(String(state.currentCash || ''))}
                   onChange={event => setBalanceDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') saveBalance() }}
                   type="number" min="0" step="any" className="min-w-0 flex-1 bg-transparent outline-none text-[19px] font-semibold d-num d-t1" aria-label="Current cash" />
               </div>
@@ -143,12 +146,13 @@ export default function CashPage() {
               {state.cashAsOf ? `Snapshot updated ${new Date(state.cashAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Manual snapshot · never auto-deducted'}
             </div>
           </div>
-          <Stat label="Runway" value={<>{runway}<span className="text-[14px] d-t3 ml-1">months</span></>} sub={`${formatCash(projection.recurringMonthly, state.currency)} recurring monthly`} />
+          <Stat label="Monthly coverage" value={<>{runway}<span className="text-[14px] d-t3 ml-1">months</span></>} sub={`${formatCash(projection.recurringMonthly, state.currency)} normal monthly rate`} />
           <Stat label="Next 3 months" value={<NumberFlow value={projection.nextMonthsNeed} format={value => formatCash(value, state.currency)} />} sub="uncovered commitments" />
-          <Stat label="Projected cash" value={<NumberFlow value={projection.projectedCash} format={value => formatCash(value, state.currency)} />} sub={projection.shortfall > 0 ? `${formatCash(projection.shortfall, state.currency)} short` : 'after known payments'} />
+          <Stat label="After payments + overdue" value={<NumberFlow value={projection.projectedCash} format={value => formatCash(value, state.currency)} />} sub={projection.shortfall > 0 ? `${formatCash(projection.shortfall, state.currency)} short` : 'No income or everyday spending assumed'} />
         </div>
       </Card>
 
+      <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={() => balanceRef.current?.focus()} />
       <div className="grid grid-cols-3 gap-4">
         {projection.months.map(month => (
           <Card key={month.key} eyebrow={`${month.items.length} major payment${month.items.length === 1 ? '' : 's'}`} title={month.label}
@@ -161,7 +165,7 @@ export default function CashPage() {
                 {item.covered ? <CheckCircle2 size={18} className="d-up shrink-0" /> : <Circle size={18} className="d-t3 shrink-0" />}
                 <span className="flex-1 min-w-0">
                   <span className={`block text-[13px] font-medium truncate ${item.covered ? 'd-t3' : 'd-t1'}`}>{item.name}</span>
-                  <span className="text-[11px] d-t3">{item.type === 'one-off' ? 'One-off' : `Due day ${item.dueDay}`}</span>
+                  <span className="text-[12px] d-t3">{item.covered ? 'Covered' : `Due ${item.dueDate}`}</span>
                 </span>
                 <span className={`d-num text-[12px] ${item.covered ? 'd-t3' : 'd-t1'}`}>{formatCash(item.amount, state.currency)}</span>
               </button>
@@ -181,6 +185,7 @@ export default function CashPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-medium d-t1 truncate">{item.name}</div>
                 <div className="text-[11px] d-t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due day ${item.dueDay}` : 'Amount not set'}</div>
+                <CoverageControl item={item} state={state} setCash={setCash} />
               </div>
               {!item.active && <Badge>Paused</Badge>}
               <IconButton icon={Pencil} onClick={() => setEditor({ kind: 'commitment', item })} aria-label={`Edit ${item.name}`} />

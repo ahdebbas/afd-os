@@ -414,6 +414,7 @@ function Shell() {
     const onKey = e => {
       if (logOpen || settingsOpen) return
       const el = e.target
+      if (el instanceof Element && el.closest('[role="dialog"]')) return
       if (el instanceof HTMLElement && (
         el.tagName === 'INPUT' ||
         el.tagName === 'TEXTAREA' ||

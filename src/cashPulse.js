@@ -23,8 +23,9 @@ export const DEFAULT_CASH_PULSE = {
   coverage: {},
 }
 
-const asAmount = value => Math.max(0, Number(value) || 0)
+const asAmount = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0
 const asDueDay = value => Math.max(1, Math.min(31, Math.round(Number(value) || 1)))
+const validMonth = value => typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
 
 export function monthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -50,7 +51,7 @@ export function formatCash(value, currency = 'QAR') {
   }).format(Number(value) || 0)
 }
 
-export function reconcileCashPulse(value) {
+export function reconcileCashPulse(value, now = new Date()) {
   const source = value && typeof value === 'object' ? value : {}
   const commitments = Array.isArray(source.commitments)
     ? source.commitments.filter(item => item && item.id).map(item => ({
@@ -59,8 +60,8 @@ export function reconcileCashPulse(value) {
         amount: asAmount(item.amount),
         dueDay: asDueDay(item.dueDay),
         active: item.active !== false,
-        startMonth: item.startMonth || null,
-        endMonth: item.endMonth || null,
+        startMonth: validMonth(item.startMonth) ? item.startMonth : monthKey(now),
+        endMonth: validMonth(item.endMonth) ? item.endMonth : null,
       }))
     : DEFAULT_CASH_PULSE.commitments
 
@@ -103,12 +104,29 @@ const activeInMonth = (commitment, month) => commitment.active
   && (!commitment.startMonth || commitment.startMonth <= month)
   && (!commitment.endMonth || commitment.endMonth >= month)
 
+export function coveredThrough(state, commitmentId, now = new Date()) {
+  let last = null
+  for (let offset = 0; offset < 120; offset++) {
+    const month = monthKey(addMonths(now, offset))
+    if (!isCommitmentCovered(state.coverage, commitmentId, month)) break
+    last = month
+  }
+  return last
+}
+
+export function setCoverageMonths(state, commitmentId, months, covered) {
+  return months.reduce((current, month) => setCommitmentCoverage(current, commitmentId, month, covered), state)
+}
+
 export function buildCashProjection(input, now = new Date(), monthCount = 3) {
-  const state = reconcileCashPulse(input)
+  const state = reconcileCashPulse(input, now)
   const months = Array.from({ length: monthCount }, (_, index) => monthKey(addMonths(now, index)))
   const monthSet = new Set(months)
+  const currentMonth = monthKey(now)
+  const today = `${currentMonth}-${String(now.getDate()).padStart(2, '0')}`
 
-  const calendar = months.map(month => {
+  const buildMonth = month => {
+    const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate()
     const recurring = state.commitments
       .filter(commitment => activeInMonth(commitment, month) && commitment.amount > 0)
       .map(commitment => ({
@@ -116,7 +134,9 @@ export function buildCashProjection(input, now = new Date(), monthCount = 3) {
         id: commitment.id,
         name: commitment.name,
         amount: commitment.amount,
-        dueDay: commitment.dueDay,
+        month,
+        dueDay: Math.min(commitment.dueDay, lastDay),
+        dueDate: `${month}-${String(Math.min(commitment.dueDay, lastDay)).padStart(2, '0')}`,
         covered: isCommitmentCovered(state.coverage, commitment.id, month),
       }))
     const oneOffs = state.oneOffs
@@ -126,6 +146,8 @@ export function buildCashProjection(input, now = new Date(), monthCount = 3) {
         id: item.id,
         name: item.name,
         amount: item.amount,
+        month,
+        dueDate: item.dueDate,
         dueDay: Number(item.dueDate.slice(8, 10)),
         covered: Boolean(item.coveredAt),
       }))
@@ -137,17 +159,36 @@ export function buildCashProjection(input, now = new Date(), monthCount = 3) {
       total: items.reduce((sum, item) => sum + item.amount, 0),
       needed: items.filter(item => !item.covered).reduce((sum, item) => sum + item.amount, 0),
     }
-  })
+  }
+  const calendar = months.map(buildMonth)
+  const firstMonth = state.commitments.filter(item => item.active && item.amount > 0)
+    .map(item => item.startMonth).filter(Boolean).sort()[0] || currentMonth
+  const priorRecurring = []
+  for (let date = new Date(`${firstMonth}-01T12:00:00`); monthKey(date) < currentMonth; date = addMonths(date, 1)) {
+    priorRecurring.push(...buildMonth(monthKey(date)).items.filter(item => item.type === 'recurring' && !item.covered))
+  }
+  const priorOneOffs = state.oneOffs.filter(item => !item.coveredAt && item.amount > 0 && item.dueDate.slice(0, 7) < currentMonth)
+    .map(item => ({ ...item, type: 'one-off', month: item.dueDate.slice(0, 7), covered: false }))
+  const carryover = [...priorRecurring, ...priorOneOffs].sort((first, second) => first.dueDate.localeCompare(second.dueDate))
+  const carryoverNeed = carryover.reduce((sum, item) => sum + item.amount, 0)
+  const uncovered = [...carryover, ...calendar.flatMap(month => month.items.filter(item => !item.covered))]
+    .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
 
-  const currentMonth = monthKey(now)
   const recurringMonthly = state.commitments
     .filter(commitment => activeInMonth(commitment, currentMonth))
     .reduce((sum, commitment) => sum + commitment.amount, 0)
   const nextMonthsNeed = calendar.reduce((sum, month) => sum + month.needed, 0)
-  const projectedCash = state.currentCash - nextMonthsNeed
+  const projectedCash = state.currentCash - nextMonthsNeed - carryoverNeed
+  const snapshotAgeDays = state.cashAsOf ? Math.max(0, Math.floor((now - new Date(state.cashAsOf)) / 86400000)) : null
 
   return {
     state,
+    carryover,
+    carryoverNeed,
+    nextPayment: uncovered[0] || null,
+    overdue: uncovered.filter(item => item.dueDate < today),
+    snapshotAgeDays,
+    snapshotStale: snapshotAgeDays == null || !Number.isFinite(snapshotAgeDays) || snapshotAgeDays >= 7,
     months: calendar,
     recurringMonthly,
     nextMonthsNeed,

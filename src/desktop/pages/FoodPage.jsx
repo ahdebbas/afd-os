@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Search, Pencil } from 'lucide-react'
+import { FoodEntryEditor, FoodUndo, RecentMeals } from '../../FoodActions'
 import { useFood } from '../../store'
 import { usePersistentState } from '../../hooks'
 import { dateKey, todayKey } from '../../dates'
@@ -26,6 +27,7 @@ export default function FoodPage() {
   const [category, setCategory] = useState(CATEGORIES[0])
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(BLANK)
+  const [editor, setEditor] = useState(null)
 
   const isToday = date === todayKey()
   const dayLabel = isToday ? 'Today' : new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -71,6 +73,7 @@ export default function FoodPage() {
     { key: 'time', label: 'Time', width: 64, render: e => <span className="d-num d-t3 text-[12px]">{e.time}</span> },
     { key: 'name', label: 'Item', render: e => <span className="d-t1">{e.name}</span> },
     { key: 'kcal', label: 'Kcal', align: 'right', render: e => <span className="d-num d-t1">{e.kcal}</span> },
+    { key: 'edit', label: '', width: 40, render: entry => <IconButton icon={Pencil} title={`Edit ${entry.name}`} aria-label={`Edit ${entry.name}`} onClick={() => setEditor({ entry, day: date })} /> },
     { key: 'rm', label: '', align: 'right', width: 40, render: e => (
       <button onClick={ev => { ev.stopPropagation(); removeEntry(e.uid, date) }} aria-label={`Remove ${e.name}`} className="d-icon-btn" style={{ width: 26, height: 26 }}><X size={13} /></button>
     ) },
@@ -78,6 +81,7 @@ export default function FoodPage() {
 
   return (
     <div className="d-enter space-y-4">
+      <FoodUndo />
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
         <Card eyebrow={isToday ? 'Today' : 'Selected day'} title={dayLabel}
           actions={<span className="text-[12px] d-t3 d-num">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>}>
@@ -122,6 +126,7 @@ export default function FoodPage() {
         </Card>
       </div>
 
+      <RecentMeals day={date} />
       <div className="grid grid-cols-[1fr_360px] gap-4 items-start">
         <div className="space-y-4">
           {/* Presets */}
@@ -171,6 +176,7 @@ export default function FoodPage() {
           </Card>
         </div>
       </div>
+      {editor && <FoodEntryEditor key={editor.entry.uid} entry={editor.entry} day={editor.day} onClose={() => setEditor(null)} />}
     </div>
   )
 }

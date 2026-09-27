@@ -133,7 +133,6 @@ export default function Fitness() {
   // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
   const [selDate, setSelDate] = usePersistentState('afd-fit-day', today,
     v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
-  useEffect(() => { if (selDate < today) setSelDate(today) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isToday = selDate === today
   const idxOf = s => sessionIdx(s, program)
 
@@ -171,6 +170,7 @@ export default function Fitness() {
   const progressKey = `${selDate}:${program[day].name}`
   const completedExercises = exerciseProgress[progressKey] || []
   const completedExerciseCount = program[day].exercises.filter(exercise => completedExercises.includes(exercise.name)).length
+  const nextExercise = program[day].exercises.find(exercise => !completedExercises.includes(exercise.name))
   const toggleExercise = name => setExerciseProgress(prev => {
     const current = prev[progressKey] || []
     const next = current.includes(name) ? current.filter(item => item !== name) : [...current, name]
@@ -339,7 +339,8 @@ export default function Fitness() {
   return (
     <div className="space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
       {/* Day selector */}
-      <section className="panel p-4">
+      <details className="fitness-calendar">
+        <summary>{isToday ? 'Today' : shortDate(selDate)} · {weekCount}/4 sessions this week <span>Calendar &amp; history</span></summary>
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
         <div className="mt-3 pt-3 hairline-t flex items-center justify-between">
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
@@ -403,10 +404,10 @@ export default function Fitness() {
             </div>
           </div>
         )}
-      </section>
+      </details>
 
       {/* Workout — rotation + inline weights (backlog any day) */}
-      <section className="panel p-6">
+      <section className="panel p-6 fitness-console">
         <div className="flex items-center justify-between mb-1">
           <Label><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> {isToday ? 'Today’s workout' : `${dayLabel} workout`}</Label>
           {lastLogged && (
@@ -414,6 +415,10 @@ export default function Fitness() {
           )}
         </div>
 
+        {!done && nextExercise && <div className="fitness-next-exercise">
+          <span>Next exercise</span><strong>{nextExercise.name}</strong>
+          <span>{nextExercise.sets}{lastWeights[nextExercise.name] != null ? ` · last recorded ${lastWeights[nextExercise.name]} kg` : ' · no recorded weight'}</span>
+        </div>}
         {/* Rotation strip */}
         <div className="grid grid-cols-4 gap-1 chip rounded-2xl p-1 mb-4">
           {program.map((d, i) => {
@@ -496,6 +501,8 @@ export default function Fitness() {
         </button>
       </section>
 
+      <details className="pulse-details fitness-details">
+        <summary>Body, energy &amp; personal records</summary>
       {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} protein={(foodLogs[today] || []).reduce((a, e) => a + (e.protein || 0), 0)} />}
 
       {/* Body module — InBody log */}
@@ -662,6 +669,7 @@ export default function Fitness() {
       </section>
 
       {/* Constraints */}
+      </details>
       <section className="panel px-5 py-4 flex gap-3 items-start border-l-4" style={{ borderLeftColor: 'var(--warn)' }}>
         <TriangleAlert size={17} strokeWidth={2.25} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--warn)' }} />
         <div className="text-[13px] leading-relaxed space-y-0.5" style={{ color: 'var(--warn)' }}>

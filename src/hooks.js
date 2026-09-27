@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CLOUD_STATE_EVENT, queueCloudState } from './cloudSync'
+const LOCAL_STATE_EVENT = 'afd-local-state'
 
 const reducedMotion = () =>
   typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -11,6 +12,7 @@ const reducedMotion = () =>
  */
 export function usePersistentState(key, fallback, validate) {
   const cloudUpdateRef = useRef(false)
+  const origin = useRef(Symbol(key))
   const [state, setState] = useState(() => {
     try {
       const raw = localStorage.getItem(key)
@@ -30,13 +32,17 @@ export function usePersistentState(key, fallback, validate) {
     try {
       localStorage.setItem(key, JSON.stringify(state))
       if (cloudUpdateRef.current) cloudUpdateRef.current = false
-      else queueCloudState(key, state)
+      else {
+        queueCloudState(key, state)
+        window.dispatchEvent(new CustomEvent(LOCAL_STATE_EVENT, { detail: { key, value: state, present: true, origin: origin.current } }))
+      }
     } catch { /* storage full or unavailable — keep in-memory value */ }
   }, [key, state])
 
   useEffect(() => {
     const applyCloudUpdate = event => {
       if (event.detail?.key !== key) return
+      if (event.detail.origin === origin.current) return
       const next = event.detail.present ? event.detail.value : fallback
       if (validate && !validate(next)) return
       setState(current => {
@@ -47,7 +53,11 @@ export function usePersistentState(key, fallback, validate) {
       })
     }
     window.addEventListener(CLOUD_STATE_EVENT, applyCloudUpdate)
-    return () => window.removeEventListener(CLOUD_STATE_EVENT, applyCloudUpdate)
+    window.addEventListener(LOCAL_STATE_EVENT, applyCloudUpdate)
+    return () => {
+      window.removeEventListener(CLOUD_STATE_EVENT, applyCloudUpdate)
+      window.removeEventListener(LOCAL_STATE_EVENT, applyCloudUpdate)
+    }
   }, [fallback, key, validate])
 
   return [state, setState]

@@ -9,6 +9,7 @@ import { combineItems, prepareFoodPhoto, requestFoodImageAnalysis, requestFoodTe
 import { useOs } from '../os'
 import { fetchWhoopCalories, WHOOP_POLL_MS } from '../whoop'
 import { WhoopBudgetFooter } from '../whoopInsights'
+import { FoodEntryEditor, FoodUndo, RecentMeals } from '../FoodActions'
 
 const FOOD_CATEGORY_MAP = {
   protein: { Icon: Egg, color: 'var(--acc-food)' },
@@ -97,7 +98,7 @@ function dayNote(entries, totals, remaining, isToday) {
   return `${Math.max(0, Math.round(TARGETS.protein - totals.protein))}g protein still open. Pick the next thing with purpose.`
 }
 
-function JournalEntry({ entry, preset, canRemove, onRemove, count = 1, hideTime = false }) {
+function JournalEntry({ entry, preset, canRemove, onRemove, onEdit, count = 1, hideTime = false }) {
   return (
     <article className="food-journal-entry">
       <FoodPlate preset={preset || entry} />
@@ -115,22 +116,15 @@ function JournalEntry({ entry, preset, canRemove, onRemove, count = 1, hideTime 
         <div className="mono text-[10px] t3 mt-2">{count > 1 ? macroLine({ protein: (entry.protein || 0) * count, carbs: (entry.carbs || 0) * count, fat: (entry.fat || 0) * count }) : macroLine(entry)}</div>
       </div>
       {canRemove && (
+        <button onClick={onEdit} title={`Edit ${entry.name}`} aria-label={`Edit ${entry.name}`} className="food-delete press"><Pencil size={15} /></button>
+      )}
+      {canRemove && (
         <button onClick={onRemove} aria-label={`Remove ${entry.name}${count > 1 ? ' group' : ''}`} className="food-delete press">
           <X size={12} strokeWidth={2.6} />
         </button>
       )}
     </article>
   )
-}
-
-function groupConsecutiveEntries(entries) {
-  return entries.reduce((groups, entry) => {
-    const prev = groups.at(-1)
-    const same = prev && ['name', 'kcal', 'protein', 'carbs', 'fat', 'time'].every(key => (prev.entry[key] || 0) === (entry[key] || 0))
-    if (same) prev.items.push(entry)
-    else groups.push({ entry, items: [entry] })
-    return groups
-  }, [])
 }
 
 /** Last 7 days of fuel: stacked macro bars vs target, streak, averages. Built from the existing log. */
@@ -209,8 +203,9 @@ export default function Food() {
   // Persisted so a reload mid-session resumes on the same day; snapped to today below if stale.
   const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
     v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
-  useEffect(() => { if (date < todayKey()) setDate(todayKey()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const isToday = date === todayKey()
+  const canEdit = date <= todayKey()
+  const [entryEditor, setEntryEditor] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   // WHOOP: calories burned for the current cycle. Pulled once on mount (today only).
@@ -380,12 +375,12 @@ export default function Food() {
   ]
 
   const presetByName = useMemo(() => new Map(presets.map(p => [p.name, p])), [presets])
-  const journalGroups = groupConsecutiveEntries(entries)
+  const journalGroups = entries.map(entry => ({ entry, items: [entry] }))
 
   // Log a scaled portion of a plate, then close the picker.
   const addPortion = (p, f) => {
     if (!(f > 0)) return
-    addEntry(scalePreset(p, f))
+    addEntry(scalePreset(p, f), date)
     setPortionFor(null)
     setPortionVal('')
   }
@@ -402,7 +397,7 @@ export default function Food() {
     if (form.editId) {
       updatePreset(form.editId, item) // edit existing preset, don't log it
     } else {
-      addEntry({ ...item, emoji: '🍽️' })
+      addEntry({ ...item, emoji: '🍽️' }, date)
       if (form.save) {
         addPreset({ ...item, emoji: '🍽️' })
         setActiveCategory(item.category)
@@ -420,14 +415,20 @@ export default function Food() {
   return (
     <div className="food-journal space-y-4 pb-24" style={{ '--acc': 'var(--acc-food)' }}>
       <section className="food-day-picker">
-        <DayStrip value={date} onChange={setDate} status={dayStatus} />
+        <DayStrip value={date} onChange={value => { closeCustomForm(); setPortionFor(null); setEntryEditor(null); setDate(value) }} status={dayStatus} />
+        <div className="food-date-controls"><label>Log date<input type="date" value={date} max={todayKey()} onChange={event => {
+          if (!event.target.value || event.target.value > todayKey()) return
+          closeCustomForm(); setPortionFor(null); setEntryEditor(null); setDate(event.target.value)
+        }} /></label>{!isToday && <button onClick={() => { closeCustomForm(); setEntryEditor(null); setDate(todayKey()) }}>Today</button>}</div>
       </section>
 
-      {isToday && (
+      <FoodUndo />
+      <RecentMeals day={date} />
+      {canEdit && (
         <section className="food-entry-panel" aria-labelledby="food-entry-title">
           <div className="food-entry-head">
             <div>
-              <div id="food-entry-title"><Label>Log a meal</Label></div>
+              <div id="food-entry-title"><Label>Log a meal · {dayLabel}</Label></div>
               <p className="food-entry-hint">Describe it or take a photo</p>
             </div>
             <button type="button" onClick={() => photoLibraryInputRef.current?.click()} disabled={analysisStatus === 'loading'}
@@ -525,7 +526,7 @@ export default function Food() {
         {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
 
-      {isToday && (
+      {canEdit && (
       <section className="food-presets">
         <div className="flex items-center justify-between px-1 mb-3">
           <Label>Plates</Label>
@@ -546,17 +547,16 @@ export default function Food() {
 
         <div className="food-plates-rail">
           {filteredPresets.map(p => (
-            <button key={p.id} onClick={() => editMode ? openEdit(p) : addEntry(p)}
-              aria-label={editMode ? `Edit ${p.name}` : `Add ${p.name}`}
-              className="food-preset-card press relative">
+            <article key={p.id} className="food-preset-card relative">
               {editMode && (
-                <span onClick={e => { e.stopPropagation(); removePreset(p.id) }}
-                  role="button" aria-label={`Delete ${p.name}`}
+                <button onClick={() => removePreset(p.id)}
+                  aria-label={`Delete ${p.name}`}
                   className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center shadow-md cursor-pointer text-white"
                   style={{ background: 'var(--down)' }}>
                   <X size={14} strokeWidth={3} />
-                </span>
+                </button>
               )}
+              <button className="w-full text-left press" onClick={() => editMode ? openEdit(p) : addEntry(p, date)} aria-label={editMode ? `Edit ${p.name}` : `Add ${p.name}`}>
               <div className="flex items-start justify-between mb-2.5">
                 <FoodPlate preset={p} />
                 <span aria-hidden="true"
@@ -565,17 +565,18 @@ export default function Food() {
                 </span>
               </div>
               <div className="text-[13px] font-bold leading-tight t1">{p.name}</div>
+              </button>
               <div className="food-preset-foot mono text-[10px] t3 mt-2">
                 <span className="truncate">{p.kcal} kcal · {macroLine(p)}</span>
                 {!editMode && (
-                  <span role="button" tabIndex={0}
-                    onClick={e => { e.stopPropagation(); closeCustomForm(); setPortionVal(''); setPortionFor(p) }}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); closeCustomForm(); setPortionVal(''); setPortionFor(p) } }}
+                  <button
+                    onClick={() => { closeCustomForm(); setPortionVal(''); setPortionFor(p) }}
                     aria-label={`Choose portion for ${p.name}`}
-                    className="food-portion-btn press"><Scale size={11} strokeWidth={2.5} /></span>
+                    title={`Choose portion for ${p.name}`}
+                    className="food-portion-btn press"><Scale size={15} strokeWidth={2.5} /></button>
                 )}
               </div>
-            </button>
+            </article>
           ))}
         </div>
       </section>
@@ -600,8 +601,9 @@ export default function Food() {
                 preset={presetByName.get(group.entry.name)}
                 count={group.items.length}
                 hideTime={index > 0 && journalGroups[index - 1].entry.time === group.entry.time}
-                canRemove={isToday}
-                onRemove={() => group.items.forEach(e => removeEntry(e.uid))}
+                canRemove={canEdit}
+                onEdit={() => setEntryEditor({ entry: group.entry, day: date })}
+                onRemove={() => removeEntry(group.items.map(entry => entry.uid), date)}
               />
             ))}
             <p className="food-note">{dayNote(entries, totals, remaining, isToday)}</p>
@@ -611,7 +613,7 @@ export default function Food() {
 
       <History logs={logs} />
 
-      {isToday && showForm && form.editId && (
+      {canEdit && showForm && form.editId && (
         <div className="food-form-sheet">
           <p className="mono text-[10px] tracking-[0.14em] uppercase t3 flex items-center gap-1.5 pb-0.5">
             <Pencil size={11} strokeWidth={2.5} /> Editing preset
@@ -635,10 +637,11 @@ export default function Food() {
               </button>
             ))}
           </div>
+          <button className="cash-action" onClick={submitCustom}>Save preset</button>
         </div>
       )}
 
-      {isToday && portionFor && (
+      {canEdit && portionFor && (
         <div className="food-form-sheet food-portion-sheet">
           <div className="food-portion-head">
             <div className="min-w-0">
@@ -669,6 +672,7 @@ export default function Food() {
         </div>
       )}
 
+      {entryEditor && <FoodEntryEditor key={entryEditor.entry.uid} entry={entryEditor.entry} day={entryEditor.day} onClose={() => setEntryEditor(null)} />}
     </div>
   )
 }
