@@ -423,7 +423,6 @@ export default function Food() {
       </section>
 
       <FoodUndo />
-      <RecentMeals day={date} />
       {canEdit && (
         <section className="food-entry-panel" aria-labelledby="food-entry-title">
           <div className="food-entry-head">
@@ -526,6 +525,7 @@ export default function Food() {
         {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
 
+      <RecentMeals day={date} />
       {canEdit && (
       <section className="food-presets">
         <div className="flex items-center justify-between px-1 mb-3">

@@ -339,8 +339,7 @@ export default function Fitness() {
   return (
     <div className="space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
       {/* Day selector */}
-      <details className="fitness-calendar">
-        <summary>{isToday ? 'Today' : shortDate(selDate)} · {weekCount}/4 sessions this week <span>Calendar &amp; history</span></summary>
+      <section className="panel p-4">
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
         <div className="mt-3 pt-3 hairline-t flex items-center justify-between">
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
@@ -404,10 +403,10 @@ export default function Fitness() {
             </div>
           </div>
         )}
-      </details>
+      </section>
 
       {/* Workout — rotation + inline weights (backlog any day) */}
-      <section className="panel p-6 fitness-console">
+      <section className="panel p-6">
         <div className="flex items-center justify-between mb-1">
           <Label><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> {isToday ? 'Today’s workout' : `${dayLabel} workout`}</Label>
           {lastLogged && (
@@ -501,8 +500,6 @@ export default function Fitness() {
         </button>
       </section>
 
-      <details className="pulse-details fitness-details">
-        <summary>Body, energy &amp; personal records</summary>
       {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} protein={(foodLogs[today] || []).reduce((a, e) => a + (e.protein || 0), 0)} />}
 
       {/* Body module — InBody log */}
@@ -669,7 +666,6 @@ export default function Fitness() {
       </section>
 
       {/* Constraints */}
-      </details>
       <section className="panel px-5 py-4 flex gap-3 items-start border-l-4" style={{ borderLeftColor: 'var(--warn)' }}>
         <TriangleAlert size={17} strokeWidth={2.25} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--warn)' }} />
         <div className="text-[13px] leading-relaxed space-y-0.5" style={{ color: 'var(--warn)' }}>

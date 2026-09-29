@@ -45,7 +45,7 @@ try {
     sessionStorage.setItem('pulse-fixture-ready', 'true')
   }, fixture)
   await page.goto(origin)
-  await page.getByRole('heading', { name: 'Up next', exact: true }).waitFor()
+  await page.getByRole('button', { name: "Open today's workout", exact: true }).waitFor()
   assert.equal(await page.getByText('Daily briefing', { exact: true }).count(), 0)
   await page.screenshot({ path: join(output, 'today-mobile.png') })
 
@@ -62,7 +62,7 @@ try {
   await page.getByRole('dialog', { name: 'Current cash', exact: true }).getByRole('spinbutton').fill('35000')
   await page.getByRole('button', { name: 'Update snapshot', exact: true }).click()
   await page.getByRole('navigation', { name: 'Modules' }).getByRole('button', { name: 'Today', exact: true }).click()
-  await page.locator('.pulse-status').filter({ hasText: 'Cash' }).getByText('QAR 35,000', { exact: true }).waitFor()
+  await page.locator('.today-cash-balance').filter({ hasText: 'QAR\u00a035,000' }).waitFor()
   console.log('PASS: advance coverage, modal balance update, same-shell home synchronization')
 
   await page.getByRole('navigation', { name: 'Modules' }).getByRole('button', { name: 'Food', exact: true }).click()
@@ -91,10 +91,20 @@ try {
     await page.setViewportSize({ width, height: 900 })
     const nav = width < 1024 ? page.getByRole('navigation', { name: 'Modules' }) : page.getByRole('navigation', { name: 'Sections' })
     await nav.getByRole('button', { name: width < 1024 ? 'Today' : /Overview/ }).click()
-    await page.getByRole('heading', { name: 'Up next', exact: true }).waitFor()
+    await page.locator(width < 1024 ? '.today-restored' : '.overview-restored').waitFor()
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, content: document.body.scrollWidth }))
     assert.ok(dimensions.content <= dimensions.viewport, `Viewport overflow at ${width}`)
+    const homeWidgets = page.locator(width < 1024 ? '.today-restored button.today-card' : '.overview-restored > .grid > .d-card')
+    assert.equal(await homeWidgets.count(), width < 1024 ? 4 : 5)
+    const widgetBounds = await homeWidgets.evaluateAll(widgets => widgets.map(widget => {
+      const bounds = widget.getBoundingClientRect()
+      return { left: bounds.left, right: bounds.right, overflow: widget.scrollWidth > widget.clientWidth + 1 }
+    }))
     await page.screenshot({ path: join(output, `today-${width}.png`) })
+    assert.ok(widgetBounds.every(bounds => bounds.left >= 0 && bounds.right <= width && !bounds.overflow), `Widget overflow at ${width}: ${JSON.stringify(widgetBounds)}`)
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.screenshot({ path: join(output, `today-dark-${width}.png`) })
+    await page.evaluate(() => document.documentElement.classList.remove('dark'))
     await nav.getByRole('button', { name: width < 1024 ? 'Cash' : /Cash/ }).click()
     await page.screenshot({ path: join(output, `cash-${width}.png`) })
   }
