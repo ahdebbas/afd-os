@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
-import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, confirmCloudStateSynced, discardCloudStateDirty, isCloudStateDirty, queueCloudState, setCloudSyncSink, shouldPreserveHydrationChange } from './cloudSync'
+import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, confirmCloudStateSynced, discardCloudStateDirty, hasUnsyncedCloudState, isCloudStateDirty, queueCloudState, setCloudSyncSink, shouldPreserveHydrationChange } from './cloudSync'
 import { getCachedSupabaseUserId, hasSupabaseConfig, supabase } from './supabase'
 
 const CloudCtx = createContext(null)
@@ -201,7 +201,7 @@ export function CloudProvider({ children }) {
     const connectSync = () => {
       clearCloudSyncSink()
       setCloudSyncSink(async batch => {
-        if (!batch.length) return
+        if (!batch.length || cancelled) return false
         setSyncStatus('syncing')
         setSyncError(null)
         const rows = batch.map(item => ({
@@ -212,14 +212,24 @@ export function CloudProvider({ children }) {
         const { error } = await supabase
           .from('app_state')
           .upsert(rows, { onConflict: 'user_id,key' })
+        if (cancelled) return false
         if (error) {
           setSyncError(error.message)
           setSyncStatus('error')
-          return
+          return false
         }
         for (const item of batch) confirmCloudStateSynced(item.key, item.value)
-        setSyncStatus('synced')
+        setSyncStatus(hasUnsyncedCloudState() ? 'syncing' : 'synced')
+        return true
       })
+      if (!hydrationUserId || hydrationUserId === userId) {
+        for (const key of CLOUD_STATE_KEYS) {
+          const raw = localStorage.getItem(key)
+          if (raw != null && isCloudStateDirty(key)) {
+            try { queueCloudState(key, JSON.parse(raw)) } catch { continue }
+          }
+        }
+      }
     }
 
     const hydrate = async () => {
@@ -251,7 +261,9 @@ export function CloudProvider({ children }) {
       const changedDuringHydration = []
       for (const key of CLOUD_STATE_KEYS) {
         const localChanged = localStorage.getItem(key) !== localSnapshot.get(key)
-        if (shouldPreserveHydrationChange(hydrationUserId, userId, localChanged, isCloudStateDirty(key))) {
+        const migratingLocal = ['afd-program-v2', 'afd-fit-exercise-progress', 'afd-food-sync-seen'].includes(key)
+          && !rows.has(key) && localSnapshot.get(key) != null
+        if (shouldPreserveHydrationChange(hydrationUserId, userId, localChanged || migratingLocal, isCloudStateDirty(key))) {
           changedDuringHydration.push(key)
           continue
         }
@@ -313,10 +325,20 @@ export function CloudProvider({ children }) {
   }
 
   const signOut = async () => {
+    if (hasUnsyncedCloudState()) {
+      setSyncError('Changes are still waiting to sync. Keep this session open and retry sign-out after syncing, or export a backup first.')
+      setSyncStatus('error')
+      return
+    }
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      setSyncError(error.message)
+      setSyncStatus('error')
+      return
+    }
     clearCloudSyncSink()
     for (const key of CLOUD_STATE_KEYS) localStorage.removeItem(key)
     localStorage.removeItem(CLOUD_USER_KEY)
-    await supabase.auth.signOut()
   }
 
   const value = useMemo(() => ({

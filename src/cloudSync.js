@@ -4,7 +4,9 @@ export const CLOUD_STATE_KEYS = [
   'afd-sessions',
   'afd-weights',
   'afd-inbody',
-  'afd-program',
+  'afd-program-v2',
+  'afd-fit-exercise-progress',
+  'afd-food-sync-seen',
   'afd-finance',
   'afd-finance-snapshots',
   'afd-cash-pulse',
@@ -17,6 +19,8 @@ const CLOUD_DIRTY_KEYS = 'afd-cloud-dirty-keys'
 
 let syncSink = null
 let debounceTimer = null
+let flushing = false
+let generation = 0
 const pending = new Map()
 
 const canSyncKey = key => CLOUD_STATE_KEYS.includes(key)
@@ -44,6 +48,7 @@ const markCloudStateDirty = key => {
 }
 
 export const isCloudStateDirty = key => readDirtyKeys().has(key)
+export const hasUnsyncedCloudState = () => readDirtyKeys().size > 0
 
 export const shouldPreserveHydrationChange = (hydrationUserId, userId, localChanged, unsynced = false) =>
   (localChanged || unsynced) && (!hydrationUserId || hydrationUserId === userId)
@@ -71,6 +76,7 @@ export function setCloudSyncSink(sink) {
 }
 
 export function clearCloudSyncSink() {
+  generation++
   syncSink = null
   pending.clear()
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -85,15 +91,33 @@ export function queueCloudState(key, value) {
 }
 
 function flushCloudSyncSoon() {
-  if (!syncSink || pending.size === 0) return
+  if (!syncSink || pending.size === 0 || flushing) return
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(flushCloudSync, 350)
 }
 
 async function flushCloudSync() {
-  if (!syncSink || pending.size === 0) return
+  if (!syncSink || pending.size === 0 || flushing) return
+  const sink = syncSink
+  const currentGeneration = generation
+  flushing = true
   const batch = Array.from(pending.entries()).map(([key, value]) => ({ key, value }))
   pending.clear()
   debounceTimer = null
-  await syncSink(batch)
+  let failed
+  try {
+    failed = await sink(batch) === false
+  } catch {
+    failed = true
+  } finally {
+    flushing = false
+  }
+  if (currentGeneration !== generation) {
+    flushCloudSyncSoon()
+    return
+  }
+  if (failed) {
+    for (const item of batch) if (!pending.has(item.key)) pending.set(item.key, item.value)
+    debounceTimer = setTimeout(flushCloudSync, 5000)
+  } else flushCloudSyncSoon()
 }

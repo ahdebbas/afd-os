@@ -1,11 +1,19 @@
-.today-restored .today-compact-stack { grid-template-columns: minmax(0, 1fr); }
-.today-restored .today-card { min-width: 0; }
+.today-restored { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.today-restored > * { margin-block: 0; }
+.today-restored > .today-whoop { margin-block: 0; }
+.today-restored .today-compact-stack { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.today-restored .today-card { min-width: 0; margin-block: 0; }
 .today-restored .today-fit-card { grid-template-columns: minmax(0, 1fr); }
 .today-restored .today-fit-body { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .today-restored .today-fit-metric { min-width: 0; padding-inline: 8px; }
 .today-restored .today-fit-metric strong { overflow-wrap: anywhere; }
 .today-restored .today-market-head { flex-wrap: wrap; gap: 10px; }
 .today-restored .today-cash-balance { white-space: normal; overflow-wrap: anywhere; }
+.today-restored .today-fuel-macro-top { flex-wrap: wrap; gap: 4px 8px; }
+@media (max-width: 360px) {
+  .today-restored .today-fuel-hero-body { gap: 10px; }
+  .today-restored .today-fuel-macro-value { font-size: 11px; }
+}
 .fitness-calendar > summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; cursor: pointer; font-size: 13px; min-height: 44px; align-items: center; }
 .fitness-calendar > summary span { color: var(--ink-2); }
 .fitness-next-exercise { display: grid; gap: 4px; padding: 16px 0; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -17,6 +25,18 @@
 .fitness-console .workout-exercise-row > span { align-items: center; }
 .fitness-console .workout-exercise-target { width: 54px; }
 .fitness-console .workout-exercise-row button { min-height: 40px; }
+.quick-log-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 40px; gap: 8px; }
+.quick-log-fields input { width: 100%; }
+.fitness-table-heading { flex-wrap: wrap; gap: 8px; }
+.fitness-table-heading > div:last-child { margin-left: auto; }
+.fitness-console .workout-exercise-row { overflow-wrap: anywhere; }
+@media (max-width: 360px) {
+  .finance-total { font-size: 40px; }
+  .fitness-console .workout-exercise-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .fitness-console .workout-exercise-row > div { justify-self: end; }
+  .quick-log-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-log-fields button { grid-column: 1 / -1; justify-self: end; height: 40px; }
+}
 .food-journal-entry .food-delete { width: 36px; height: 40px; flex-shrink: 0; }
 .food-undo { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 12px 0; border-block: 1px solid var(--line); font-size: 13px; }
 .food-undo > span { min-width: 0; overflow-wrap: anywhere; }
@@ -117,18 +137,55 @@
   .pulse-macro > span { display: grid; }
   .pulse-week { gap: 4px; }
 }
-.cash-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.cash-summary > div { min-width: 0; }
-.cash-summary > div > span { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; }
-.cash-summary > div > strong { font-size: 20px; overflow-wrap: anywhere; }
-.cash-balance { font-size: 52px; max-width: 100%; overflow-wrap: anywhere; letter-spacing: 0; }
-@media (max-width: 360px) {
-  .cash-summary { grid-template-columns: minmax(0, 1fr); }
-  .cash-summary > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .cash-balance { font-size: 36px; }
-}
-.cash-desktop-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.cash-desktop-summary .d-h1 { overflow-wrap: anywhere; font-size: 24px; letter-spacing: 0; }
+.cash-page, .cash-desktop { --cash-text: var(--ink); --cash-muted: var(--ink-2); --cash-line: var(--line); color: var(--cash-text); letter-spacing: 0; }
+.cash-desktop { --cash-text: var(--d-text); --cash-muted: var(--d-text-2); --cash-line: var(--d-border); }
+.cash-balance { font-size: 30px; max-width: 100%; overflow-wrap: anywhere; letter-spacing: 0; }
+.cash-page .w-8 { width: 40px; height: 40px; flex-shrink: 0; }
+.cash-forecast { min-width: 0; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--cash-line); }
+.cash-forecast-result { display: grid; gap: 5px; border-left: 3px solid var(--acc-cash); padding-left: 14px; }
+.cash-forecast-result > span { font-size: 13px; font-weight: 600; color: var(--acc-cash); }
+.cash-forecast-result > strong { font-family: var(--font-display); font-size: 34px; font-weight: 650; line-height: 1.2; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.cash-forecast-result > small { font-size: 12px; color: var(--cash-muted); }
+.cash-forecast-details { margin-top: 20px; display: grid; gap: 10px; font-size: 12px; }
+.cash-forecast-details > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.cash-forecast-details dt { color: var(--cash-muted); }
+.cash-forecast-details dd { font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.cash-forecast-note { margin-top: 14px; font-size: 11px; line-height: 1.5; color: var(--cash-muted); }
+.cash-shortfall { color: var(--down); font-size: 13px; font-weight: 600; margin-top: 12px; }
+.cash-next-payment { display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(0, auto); align-items: center; gap: 10px; border-top: 1px solid var(--cash-line); margin-top: 16px; padding-top: 16px; font-size: 13px; }
+.cash-next-payment > svg { color: var(--acc-cash); }
+.cash-next-payment span { display: block; color: var(--cash-muted); font-size: 11px; margin-bottom: 4px; }
+.cash-next-payment strong { overflow-wrap: anywhere; font-weight: 600; }
+.cash-next-payment > strong { max-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.cash-calendar { min-width: 0; }
+.cash-month-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--cash-line); }
+.cash-month-tabs > button { min-width: 0; display: grid; align-content: start; gap: 5px; padding: 12px 8px; text-align: left; border-bottom: 3px solid transparent; }
+.cash-month-tabs > button[aria-selected="true"] { border-color: var(--acc-cash); background: color-mix(in srgb, var(--acc-cash) 8%, transparent); }
+.cash-month-tabs span { font-size: 12px; font-weight: 600; }
+.cash-month-tabs strong { font-size: 14px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.cash-month-tabs small { font-size: 11px; color: var(--cash-muted); }
+.cash-month-tabs button:focus-visible, .cash-payment-row:focus-visible, .cash-tool:focus-visible, .cash-action:focus-visible { outline: 2px solid var(--acc-cash); outline-offset: -2px; }
+.cash-month-panel { padding: 16px 4px 8px; min-height: 150px; }
+.cash-month-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding-bottom: 8px; }
+.cash-month-heading h2 { font-size: 14px; font-weight: 600; }
+.cash-month-heading > span { font-size: 12px; color: var(--cash-muted); }
+.cash-payment-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(0, auto); width: 100%; gap: 10px; align-items: center; padding: 14px 0; text-align: left; border-bottom: 1px solid var(--cash-line); min-height: 68px; font-size: 13px; }
+.cash-payment-row > svg { color: var(--cash-muted); }
+.cash-payment-row strong { font-weight: 600; overflow-wrap: anywhere; }
+.cash-payment-row > strong { max-width: 120px; text-align: right; font-variant-numeric: tabular-nums; }
+.cash-payment-row small { display: block; margin-top: 4px; color: var(--cash-muted); font-size: 12px; }
+.cash-payment-row.is-overdue > svg, .cash-payment-row.is-overdue small { color: var(--down); }
+.cash-payment-row.is-covered > svg, .cash-payment-row.is-covered small { color: var(--up); }
+.cash-empty { padding-block: 24px; color: var(--cash-muted); font-size: 13px; }
+.cash-desktop-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 32px; }
+.cash-desktop-overview > div { min-width: 0; }
+.cash-desktop-overview .cash-forecast { margin: 0; padding: 0; border: 0; }
+.cash-coverage-totals { display: grid; gap: 4px; margin-bottom: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.cash-coverage-totals small { font-weight: 400; font-size: 12px; }
+.cash-delete-confirm { display: grid; gap: 10px; padding-block: 12px; font-size: 13px; }
+.cash-delete-confirm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.cash-end-month { display: grid; gap: 6px; margin-block: 12px; color: var(--cash-muted); font-size: 12px; }
+.cash-end-month input { width: 100%; max-width: 220px; }
 .cash-coverage-control { margin-top: 5px; color: var(--ink-2); font-size: 12px; }
 .dsk .cash-coverage-control { color: var(--d-text-2); }
 .cash-coverage-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -151,6 +208,3 @@
 .dsk .cash-overdue-row > div span { color: var(--d-text-2); }
 .cash-desktop form > .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .cash-desktop form input { min-width: 0; }
-@media (min-width: 1400px) {
-  .cash-desktop-summary { grid-template-columns: 1.3fr 1fr 1fr 1fr; }
-}

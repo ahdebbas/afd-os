@@ -62,6 +62,9 @@ export function reconcileCashPulse(value, now = new Date()) {
         active: item.active !== false,
         startMonth: validMonth(item.startMonth) ? item.startMonth : monthKey(now),
         endMonth: validMonth(item.endMonth) ? item.endMonth : null,
+        pausedPeriods: Array.isArray(item.pausedPeriods)
+          ? item.pausedPeriods.filter(period => validMonth(period?.startMonth)).map(period => ({ startMonth: period.startMonth, endMonth: validMonth(period.endMonth) ? period.endMonth : null }))
+          : item.active === false ? [{ startMonth: validMonth(item.startMonth) ? item.startMonth : monthKey(now), endMonth: null }] : [],
       }))
     : DEFAULT_CASH_PULSE.commitments
 
@@ -100,9 +103,25 @@ export function setCommitmentCoverage(state, commitmentId, month, covered) {
   return { ...state, coverage }
 }
 
-const activeInMonth = (commitment, month) => commitment.active
-  && (!commitment.startMonth || commitment.startMonth <= month)
+export const activeInMonth = (commitment, month) => (!commitment.startMonth || commitment.startMonth <= month)
   && (!commitment.endMonth || commitment.endMonth >= month)
+  && !(commitment.pausedPeriods || []).some(period => month >= period.startMonth && (!period.endMonth || month <= period.endMonth))
+
+export function setCommitmentActive(commitment, active, now = new Date()) {
+  if ((commitment.active !== false) === active) return { ...commitment, active }
+  const periods = commitment.pausedPeriods || (commitment.active === false ? [{ startMonth: commitment.startMonth || monthKey(now), endMonth: null }] : [])
+  const pausedPeriods = active
+    ? periods.map(period => period.endMonth ? period : { ...period, endMonth: monthKey(addMonths(now, -1)) }).filter(period => period.endMonth >= period.startMonth)
+    : [...periods, { startMonth: commitment.id ? monthKey(addMonths(now, 1)) : monthKey(now), endMonth: null }]
+  return { ...commitment, active, pausedPeriods }
+}
+
+export function cashDueLabel(item, now = new Date()) {
+  if (item.covered) return 'Covered'
+  const today = `${monthKey(now)}-${String(now.getDate()).padStart(2, '0')}`
+  const date = new Date(`${item.dueDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return item.dueDate < today ? `Overdue · ${date}` : item.dueDate === today ? 'Due today' : `Due ${date}`
+}
 
 export function coveredThrough(state, commitmentId, now = new Date()) {
   let last = null
@@ -161,7 +180,7 @@ export function buildCashProjection(input, now = new Date(), monthCount = 3) {
     }
   }
   const calendar = months.map(buildMonth)
-  const firstMonth = state.commitments.filter(item => item.active && item.amount > 0)
+  const firstMonth = state.commitments.filter(item => item.amount > 0)
     .map(item => item.startMonth).filter(Boolean).sort()[0] || currentMonth
   const priorRecurring = []
   for (let date = new Date(`${firstMonth}-01T12:00:00`); monthKey(date) < currentMonth; date = addMonths(date, 1)) {

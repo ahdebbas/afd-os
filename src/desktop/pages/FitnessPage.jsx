@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
-import { FITNESS, DEFAULT_WEIGHTS, nextWorkoutIdx } from '../../data'
+import { FITNESS, DEFAULT_WEIGHTS, nextWorkoutIdx, sessionIdx } from '../../data'
 import { usePersistentState } from '../../hooks'
 import { todayKey } from '../../dates'
 import { useFood } from '../../store'
@@ -65,8 +65,9 @@ export default function FitnessPage() {
 
   const today = todayKey()
   const suggested = nextWorkoutIdx(program, sessions)
-  const [day, setDay] = useState(suggested)
   const todaySession = sessions.find(s => s.date === today)
+  const [selectedWorkout, setSelectedWorkout] = useState(null)
+  const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout ?? suggested
   const done = !!todaySession
 
   const lastWeights = useMemo(() => {
@@ -144,7 +145,7 @@ export default function FitnessPage() {
 
   return (
     <div className="d-enter space-y-4">
-      <div className="grid grid-cols-[1fr_400px] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4 items-start">
         {/* Workout console */}
         <Card eyebrow="Workout" title={program[day].name}
           actions={
@@ -153,8 +154,8 @@ export default function FitnessPage() {
               <Button size="sm" variant={done ? 'outline' : 'primary'} onClick={toggleDone}>{done ? 'Undo' : 'Finish workout'}</Button>
             </div>
           }>
-          <Segmented className="mb-3" value={day} onChange={setDay}
-            options={program.map((d, i) => ({ value: i, label: d.name.split(' & ')[0] }))} />
+          {!done && <Segmented className="mb-3" value={day} onChange={setSelectedWorkout}
+            options={program.map((d, i) => ({ value: i, label: d.name.split(' & ')[0] }))} />}
           <table className="d-table">
             <thead><tr><th style={{ width: 34 }}>#</th><th>Exercise</th><th>Sets</th><th style={{ textAlign: 'right' }}>Weight</th></tr></thead>
             <tbody>

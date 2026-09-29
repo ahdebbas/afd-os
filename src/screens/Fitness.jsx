@@ -406,8 +406,8 @@ export default function Fitness() {
       </section>
 
       {/* Workout — rotation + inline weights (backlog any day) */}
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-1">
+      <section className="panel p-6 fitness-console">
+        <div className="flex flex-wrap gap-2 items-center justify-between mb-1">
           <Label><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> {isToday ? 'Today’s workout' : `${dayLabel} workout`}</Label>
           {lastLogged && (
             <span className="mono text-[10px] t3">last · {program[idxOf(lastLogged)]?.name} {relativeDay(lastLogged.date)}</span>
@@ -441,7 +441,7 @@ export default function Fitness() {
         </div>
 
         {/* Exercise table */}
-        <div className="flex items-center justify-between pb-2 mono text-[9px] tracking-[0.16em] uppercase t3">
+        <div className="fitness-table-heading flex items-center justify-between pb-2 mono text-[9px] tracking-[0.16em] uppercase t3">
           <div className="flex items-center gap-2">
             <span>Exercise</span>
             <span className={`workout-progress-count ${completedExerciseCount === program[day].exercises.length && program[day].exercises.length > 0 ? 'workout-progress-complete' : ''}`}>

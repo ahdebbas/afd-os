@@ -57,7 +57,7 @@ export default function FoodPage() {
   const submit = () => {
     if (!form.kcal) return
     const item = { name: form.name || 'Custom', kcal: +form.kcal || 0, protein: +form.protein || 0, carbs: +form.carbs || 0, fat: +form.fat || 0, category: form.category }
-    addEntry({ ...item, emoji: '🍽️' }, date)
+    if (addEntry({ ...item, emoji: '🍽️' }, date) === false) return
     if (form.save) addPreset({ ...item, emoji: '🍽️' })
     setForm(BLANK)
   }
@@ -161,9 +161,10 @@ export default function FoodPage() {
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="d-input" />
               <div className="grid grid-cols-4 gap-2">
                 {['kcal', 'protein', 'carbs', 'fat'].map(f => (
-                  <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })} placeholder={f === 'kcal' ? 'kcal' : f[0].toUpperCase()} type="number" inputMode="numeric" className="d-input text-center !px-1" />
+                  <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })} aria-label={f} placeholder={f === 'kcal' ? 'kcal' : f[0].toUpperCase()} type="number" min="0" inputMode="numeric" className="d-input text-center !px-1" />
                 ))}
               </div>
+              {['kcal', 'protein', 'carbs', 'fat'].some(key => Number(form[key]) < 0) && <p role="alert" className="text-[12px] d-down">Nutrition values must be zero or greater.</p>}
               <Segmented options={CATEGORIES.map(c => ({ value: c, label: c }))} value={form.category} onChange={c => setForm({ ...form, category: c })} />
               <label className="flex items-center gap-2 text-[13px] d-t2 cursor-pointer select-none">
                 <input type="checkbox" checked={form.save} onChange={e => setForm({ ...form, save: e.target.checked })} style={{ accentColor: 'var(--d-accent)' }} />

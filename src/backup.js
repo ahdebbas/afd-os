@@ -2,6 +2,7 @@
 // Quotes are a derived cache and are intentionally excluded.
 
 import { todayKey } from './dates'
+import { applyCloudState, CLOUD_STATE_KEYS, queueCloudState } from './cloudSync'
 
 const BACKUP_KEYS = [
   'afd-presets',
@@ -10,6 +11,8 @@ const BACKUP_KEYS = [
   'afd-weights',
   'afd-inbody',
   'afd-program-v2',
+  'afd-fit-exercise-progress',
+  'afd-food-sync-seen',
   'afd-finance',
   'afd-finance-snapshots',
   'afd-cash-pulse',
@@ -42,13 +45,17 @@ export function exportData() {
 export async function importData(file) {
   const text = await file.text()
   const parsed = JSON.parse(text)
-  if (!parsed || parsed.app !== 'afd-os' || typeof parsed.data !== 'object') {
+  if (!parsed || parsed.app !== 'afd-os' || !parsed.data || typeof parsed.data !== 'object' || Array.isArray(parsed.data)) {
     throw new Error('Not a valid AFD OS backup file')
   }
   let restored = 0
   for (const key of BACKUP_KEYS) {
     if (key in parsed.data) {
       localStorage.setItem(key, JSON.stringify(parsed.data[key]))
+      if (CLOUD_STATE_KEYS.includes(key)) {
+        queueCloudState(key, parsed.data[key])
+        applyCloudState(key, parsed.data[key])
+      }
       restored++
     }
   }

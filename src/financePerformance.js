@@ -29,7 +29,7 @@ export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt })
       dayChange: quote?.changePct == null ? null : round(quote.changePct),
     }
   })
-  const sarwaValue = holdings.reduce((sum, holding) => sum + holding.value, 0) || Math.max(0, +sarwa.total || 0)
+  const sarwaValue = holdings.reduce((sum, holding) => sum + holding.value, 0)
   const sarwaCost = holdings.reduce((sum, holding) => sum + (holding.cost || 0), 0)
   const propertyValue = Math.max(0, +property.value || 0)
   const total = msftValue + sarwaValue + propertyValue

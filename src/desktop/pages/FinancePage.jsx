@@ -32,8 +32,7 @@ export default function FinancePage() {
   const price = live?.price ?? msft.price
   const dayChangePct = live ? live.changePct : msft.dayChangePct
   const msftValue = msft.shares * price
-  const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
-  const sarwaValue = etfLive ? sarwaTotal(sarwa, q) : sarwa.total
+  const sarwaValue = sarwaTotal(sarwa, q)
   const total = msftValue + sarwaValue + property.value
   const rangePct = Math.max(0, Math.min(100, ((price - msft.low52) / (msft.high52 - msft.low52)) * 100))
   const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
@@ -47,7 +46,7 @@ export default function FinancePage() {
 
   const rows = sarwa.holdings.map((h, i) => {
     const value = holdingValue(h, q)
-    const alloc = etfLive ? (value / sarwaValue) * 100 : h.alloc
+    const alloc = sarwaValue > 0 ? (value / sarwaValue) * 100 : 0
     const perf = h.units != null ? holdingPerf(h, q) : null
     const quote = q?.[ETF_SYMBOL[h.ticker]]
     return { ...h, value, alloc, perf, quote, color: ALLOC_COLORS[i % ALLOC_COLORS.length] }
@@ -99,7 +98,7 @@ export default function FinancePage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-[1fr_360px] gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
         <Card eyebrow="Sarwa · halal" title="Holdings" bodyClass="!p-0"
           actions={<IconButton icon={editMode ? Check : Settings2} onClick={() => setEditMode(!editMode)} aria-label={editMode ? 'Done editing units' : 'Edit units'} />}>
           <DataTable columns={columns} rows={rows} getRowKey={r => r.ticker} />

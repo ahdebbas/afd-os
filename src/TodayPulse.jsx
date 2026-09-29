@@ -2,7 +2,7 @@ import { Beef, Droplets, Dumbbell, Flame, Landmark, Play, Wallet, Wheat } from '
 import { useClock, usePersistentState } from './hooks'
 import { useFood } from './store'
 import { useQuotes } from './quotes'
-import { FINANCE, FITNESS, TARGETS, ETF_SYMBOL, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from './data'
+import { FINANCE, FITNESS, TARGETS, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from './data'
 import { DEFAULT_CASH_PULSE, buildCashProjection, formatCash } from './cashPulse'
 import { dateKey } from './dates'
 import { Gauge, Odometer } from './ui'
@@ -45,8 +45,7 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const remaining = TARGETS.kcal - totals.kcal
   const stock = quotes?.MSFT
   const msftValue = finance.msft.shares * (stock?.price ?? finance.msft.price)
-  const liveFunds = finance.sarwa.holdings.some(holding => quotes?.[ETF_SYMBOL[holding.ticker]])
-  const fundValue = liveFunds ? sarwaTotal(finance.sarwa, quotes) : finance.sarwa.total
+  const fundValue = sarwaTotal(finance.sarwa, quotes)
   const total = msftValue + fundValue + finance.property.value
   const holdings = [
     { name: 'MSFT', value: msftValue, color: 'var(--asset-equity)' },

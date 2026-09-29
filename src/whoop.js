@@ -33,17 +33,37 @@ const whoopCache = {
   intraday: { ts: 0, data: null, inflight: null },
   cycles: { ts: 0, data: null, inflight: null },
 }
+let cacheUser = null
+
+export function clearWhoopCache() {
+  cacheUser = null
+  for (const key of Object.keys(whoopCache)) whoopCache[key] = { ts: 0, data: null, inflight: null }
+}
+
+supabase?.auth.onAuthStateChange?.((_event, session) => {
+  if (cacheUser !== session?.user?.id) clearWhoopCache()
+})
 
 async function cachedGet(key, url) {
+  const { data: sessionData } = supabase ? await supabase.auth.getSession() : { data: null }
+  const session = sessionData?.session
+  if (!session?.access_token || !session.user?.id) {
+    clearWhoopCache()
+    return { connected: false }
+  }
+  const user = session.user.id
+  if (cacheUser !== user) {
+    clearWhoopCache()
+    cacheUser = user
+  }
   const c = whoopCache[key]
   if (c.data && Date.now() - c.ts < CACHE_TTL) return c.data
   if (c.inflight) return c.inflight
 
   c.inflight = (async () => {
-    const t = await accessToken()
-    if (!t) return { connected: false }
     try {
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${t}` } })
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } })
+      if (cacheUser !== user || whoopCache[key] !== c) return { connected: false }
       if (!r.ok) {
         const body = await r.text().catch(() => '')
         console.warn(`[whoop] ${url} failed`, r.status, body.slice(0, 300))
@@ -51,10 +71,12 @@ async function cachedGet(key, url) {
         return c.data || { connected: false, error: true, status: r.status }
       }
       const data = await r.json()
+      if (cacheUser !== user || whoopCache[key] !== c) return { connected: false }
       c.data = data
       c.ts = Date.now()
       return data
     } catch (e) {
+      if (cacheUser !== user || whoopCache[key] !== c) return { connected: false }
       console.warn(`[whoop] ${url} threw`, e?.message)
       return c.data || { connected: false, error: true }
     } finally {
@@ -72,5 +94,7 @@ export const fetchWhoopCycles = () => cachedGet('cycles', '/api/whoop/cycles')
 export async function disconnectWhoop() {
   const t = await accessToken()
   if (!t) return
-  await fetch('/api/whoop/disconnect', { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
+  const response = await fetch('/api/whoop/disconnect', { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
+  if (!response.ok) throw new Error('Could not disconnect WHOOP')
+  clearWhoopCache()
 }

@@ -115,8 +115,9 @@ export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN
 
 // Live value of a Sarwa holding given the quotes map; falls back to the recorded value.
 export const holdingValue = (h, q) => {
+  if (h.units != null && Number(h.units) === 0) return 0
   const quote = q?.[ETF_SYMBOL[h.ticker]]
-  return quote && h.units ? h.units * quote.price : h.value
+  return quote && h.units != null ? h.units * quote.price : h.value
 }
 
 // Rotation index of a logged session within the program (stored idx, or name match).

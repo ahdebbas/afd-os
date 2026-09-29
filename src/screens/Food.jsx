@@ -386,6 +386,10 @@ export default function Food() {
   }
 
   const submitCustom = () => {
+    if (['kcal', 'protein', 'carbs', 'fat'].some(key => !Number.isFinite(Number(form[key])) || Number(form[key]) < 0)) {
+      os?.announce('Enter non-negative nutrition values', 'var(--down)')
+      return
+    }
     const item = {
       name: form.name || 'Custom',
       kcal: +form.kcal || 0,
@@ -467,7 +471,7 @@ export default function Food() {
               <div className="grid grid-cols-4 gap-2">
                 {['kcal', 'protein', 'carbs', 'fat'].map(f => (
                   <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })}
-                    placeholder={f} aria-label={f} type="number" inputMode="numeric"
+                    placeholder={f} aria-label={f} type="number" min="0" inputMode="numeric"
                     className="field rounded-2xl px-2 py-3 text-sm outline-none text-center mono" />
                 ))}
               </div>
@@ -623,7 +627,7 @@ export default function Food() {
           <div className="grid grid-cols-4 gap-2">
             {['kcal', 'protein', 'carbs', 'fat'].map(f => (
               <input key={f} value={form[f]} onChange={e => setForm({ ...form, [f]: e.target.value })}
-                placeholder={f} aria-label={f} type="number" inputMode="numeric"
+                placeholder={f} aria-label={f} type="number" min="0" inputMode="numeric"
                 className="field rounded-2xl px-2 py-3 text-sm outline-none text-center mono" />
             ))}
           </div>

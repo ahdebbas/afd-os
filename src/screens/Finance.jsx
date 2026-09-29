@@ -31,7 +31,7 @@ export default function Finance() {
   const msftValue = msft.shares * price
   // Any live ETF quote drives the Sarwa valuation; otherwise the recorded total.
   const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
-  const sarwaValue = etfLive ? sarwaTotal(sarwa, q) : sarwa.total
+  const sarwaValue = sarwaTotal(sarwa, q)
   const total = msftValue + sarwaValue + FINANCE.property.value
   const rangePct = Math.max(0, Math.min(100, (price - msft.low52) / (msft.high52 - msft.low52) * 100)).toFixed(1)
   const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
@@ -43,6 +43,9 @@ export default function Finance() {
   }), [FINANCE, q, status, syncedAt])
   const marketSnapshot = useMemo(() => toMarketSnapshot(financeSnapshot), [financeSnapshot])
   const capitalPulse = useMemo(() => buildCapitalPulse(snapshots, marketSnapshot), [snapshots, marketSnapshot])
+  const comparisons = capitalPulse.comparisons.filter((comparison, index, all) => all.findIndex(item => item.baselineDate === comparison.baselineDate) === index)
+  const signedUsd = value => `${value > 0 ? '+' : value < 0 ? '-' : ''}${usd(Math.abs(value))}`
+  const periodDate = value => new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   useEffect(() => {
     setFinance(reconcileFinance)
@@ -75,7 +78,7 @@ export default function Finance() {
             <Trend size={11} strokeWidth={2.5} /> {msftUp ? '+' : ''}{dayChangePct.toFixed(2)}% MSFT
           </span>
         </div>
-        <Odometer value={total} format={usd} className="display text-[58px] font-bold tracking-tight t1" />
+        <Odometer value={total} format={usd} className="finance-total display text-[58px] font-bold tracking-tight t1" />
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">MSFT {usd(msftValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA {usd(sarwaValue)}</span>
@@ -93,35 +96,31 @@ export default function Finance() {
         </button>
       </section>
 
-      <section className="panel capital-pulse">
+      <section className="panel capital-pulse" aria-label="Market value change">
         <div className="capital-pulse-head">
-          <Label><Activity size={12} className="inline-block mr-1 -mt-0.5" /> Capital pulse</Label>
-          <span className="capital-pulse-days">{capitalPulse.recordedDays} market day{capitalPulse.recordedDays === 1 ? '' : 's'}</span>
+          <Label><Activity size={12} className="inline-block mr-1 -mt-0.5" /> Market change</Label>
+          <span className="capital-pulse-source">{status === 'live' ? 'Live prices' : 'Last known prices'}</span>
         </div>
-        <div className="capital-pulse-body">
-          <div>
-            <h2>{capitalPulse.headline}</h2>
-            <p>{capitalPulse.summary}</p>
+        {capitalPulse.primary ? <>
+          <div className="capital-pulse-result">
+            <strong className={capitalPulse.primary.totalChange > 0 ? 'up' : capitalPulse.primary.totalChange < 0 ? 'down' : 't1'}>{signedUsd(capitalPulse.primary.totalChange)}</strong>
+            <span>{periodDate(capitalPulse.primary.baselineDate)} to {periodDate(marketSnapshot.date)}</span>
           </div>
-          {capitalPulse.comparisons.length > 0 && (
-            <div className="capital-pulse-periods" aria-label="Market asset changes by period">
-              {capitalPulse.comparisons.map(comparison => (
-                <div key={comparison.label} className={comparison.totalChange >= 0 ? 'up' : 'down'}>
-                  <span>{comparison.label}</span>
-                  <strong>{comparison.totalChange >= 0 ? '+' : '-'}${Math.abs(comparison.totalChange).toLocaleString('en-US')}</strong>
-                  <small>{comparison.changePct == null ? '—' : `${comparison.changePct >= 0 ? '+' : ''}${comparison.changePct}%`}</small>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {capitalPulse.primary && (
-          <div className="capital-pulse-breakdown">
-            <span>MSFT <strong>{capitalPulse.primary.msftChange >= 0 ? '+' : '-'}${Math.abs(capitalPulse.primary.msftChange).toLocaleString('en-US')}</strong></span>
-            <span>Sarwa <strong>{capitalPulse.primary.sarwaChange >= 0 ? '+' : '-'}${Math.abs(capitalPulse.primary.sarwaChange).toLocaleString('en-US')}</strong></span>
-            <span>MSFT share <strong>{capitalPulse.primary.concentrationChange >= 0 ? '+' : ''}{capitalPulse.primary.concentrationChange} pts</strong></span>
-          </div>
-        )}
+          <dl className="capital-pulse-contributors">
+            <div><dt>MSFT</dt><dd>{signedUsd(capitalPulse.primary.msftChange)}</dd></div>
+            <div><dt>Sarwa</dt><dd>{signedUsd(capitalPulse.primary.sarwaChange)}</dd></div>
+          </dl>
+          {comparisons.length > 1 && <table className="capital-pulse-periods">
+            <caption className="sr-only">Market value changes over recorded periods</caption>
+            <thead><tr><th scope="col">Period</th><th scope="col">Value change</th><th scope="col">%</th></tr></thead>
+            <tbody>{comparisons.map(comparison => <tr key={comparison.baselineDate}>
+              <th scope="row">{comparison.days} {comparison.days === 1 ? 'day' : 'days'}</th>
+              <td className={comparison.totalChange > 0 ? 'up' : comparison.totalChange < 0 ? 'down' : 't1'}>{signedUsd(comparison.totalChange)}</td>
+              <td>{comparison.changePct == null ? '—' : `${comparison.changePct > 0 ? '+' : ''}${comparison.changePct.toFixed(1)}%`}</td>
+            </tr>)}</tbody>
+          </table>}
+          <p className="capital-pulse-note">MSFT + Sarwa · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
+        </> : <p className="capital-pulse-empty">No earlier snapshot to compare.</p>}
       </section>
 
       {/* MSFT */}
@@ -182,14 +181,14 @@ export default function Finance() {
 
         <div className="mt-4 flex h-[6px] rounded-full overflow-hidden gap-[3px]" aria-hidden="true">
           {sarwa.holdings.map((h, i) => (
-            <div key={h.ticker} className="rounded-[2px]" style={{ width: `${etfLive ? (holdingValue(h, q) / sarwaValue) * 100 : h.alloc}%`, background: COLORS[i], boxShadow: `0 0 5px ${COLORS[i]}` }} />
+            <div key={h.ticker} className="rounded-[2px]" style={{ width: `${sarwaValue > 0 ? (holdingValue(h, q) / sarwaValue) * 100 : 0}%`, background: COLORS[i], boxShadow: `0 0 5px ${COLORS[i]}` }} />
           ))}
         </div>
 
         <div className="mt-3">
           {sarwa.holdings.map((h, i) => {
             const hv = holdingValue(h, q)
-            const alloc = etfLive ? (hv / sarwaValue) * 100 : h.alloc
+            const alloc = sarwaValue > 0 ? (hv / sarwaValue) * 100 : 0
             return (
             <div key={h.ticker} className={`flex items-center justify-between py-3.5 ${i > 0 ? 'hairline-t' : ''}`}>
               <div className="flex items-center gap-3">

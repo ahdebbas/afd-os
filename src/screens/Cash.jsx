@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarClock, Check, CheckCircle2, Circle, Pencil, Plus, Settings2, Trash2, WalletCards } from 'lucide-react'
+import { CalendarClock, Check, Pencil, Plus, Settings2, WalletCards } from 'lucide-react'
 import { Label, Odometer, Sheet } from '../ui'
-import { CashAlerts, CoverageControl } from '../CashPlanning'
-import { usePersistentState } from '../hooks'
+import { CashAlerts, CashForecast, CashMonths, CoverageControl, DeletePayment } from '../CashPlanning'
+import { useClock, usePersistentState } from '../hooks'
 import {
   DEFAULT_CASH_PULSE,
   buildCashProjection,
@@ -11,6 +11,9 @@ import {
   reconcileCashPulse,
   monthKey,
   setCommitmentCoverage,
+  setCommitmentActive,
+  addMonths,
+  monthLabel,
 } from '../cashPulse'
 
 const cashValidator = value => value && typeof value === 'object'
@@ -19,19 +22,20 @@ const newId = prefix => `${prefix}-${typeof crypto !== 'undefined' && crypto.ran
 function PaymentForm({ kind, initial, onSave, onDelete, onClose }) {
   const recurring = kind === 'commitment'
   const [form, setForm] = useState(() => recurring
-    ? { name: initial?.name || '', amount: initial?.amount || '', dueDay: initial?.dueDay || 1, active: initial?.active !== false }
+    ? { name: initial?.name || '', amount: initial?.amount || '', dueDay: initial?.dueDay || 1, active: initial?.active !== false, endMonth: initial?.endMonth || '' }
     : { name: initial?.name || '', amount: initial?.amount || '', dueDate: initial?.dueDate || '' })
 
   const submit = event => {
     event.preventDefault()
     if (!form.name.trim() || !(Number(form.amount) > 0)) return
+    const schedule = recurring ? setCommitmentActive(initial || {}, form.active) : null
     onSave({
       ...initial,
       id: initial?.id || newId(recurring ? 'commitment' : 'one-off'),
       name: form.name.trim(),
       amount: Number(form.amount),
       ...(recurring
-        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active, startMonth: initial?.startMonth || monthKey() }
+        ? { active: schedule.active, pausedPeriods: schedule.pausedPeriods, dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), startMonth: initial?.startMonth || monthKey(), endMonth: form.endMonth || null }
         : { dueDate: form.dueDate, coveredAt: initial?.coveredAt || null }),
     })
     onClose()
@@ -58,11 +62,16 @@ function PaymentForm({ kind, initial, onSave, onDelete, onClose }) {
               type="number" inputMode="numeric" min="1" max="31"
               className="field mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm outline-none" />
           </label>
+          <label className="block">
+            <span className="mono text-[10px] uppercase tracking-[0.08em] t3">Last payment month (optional)</span>
+            <input type="month" min={initial?.startMonth || monthKey()} value={form.endMonth} onChange={event => setForm({ ...form, endMonth: event.target.value })} className="field mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm outline-none" />
+          </label>
           <button type="button" onClick={() => setForm({ ...form, active: !form.active })} role="switch" aria-checked={form.active}
             className="press chip w-full rounded-xl px-3 py-3 flex items-center justify-between text-left">
             <span className="text-sm font-semibold t1">Active commitment</span>
             <span className={`mono text-[10px] uppercase ${form.active ? 'acc' : 't3'}`}>{form.active ? 'Active' : 'Paused'}</span>
           </button>
+          {!form.active && <p className="text-[12px] t2">{!initial ? 'No payments scheduled while paused.' : initial.active === false ? 'Paused. Earlier unpaid commitments remain due.' : `Pause from ${monthLabel(monthKey(addMonths(new Date(), 1)))}. Existing obligations remain due.`}</p>}
         </>
       ) : (
         <label className="block">
@@ -71,13 +80,8 @@ function PaymentForm({ kind, initial, onSave, onDelete, onClose }) {
             type="date" required className="field mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm outline-none" />
         </label>
       )}
+      {initial && <DeletePayment name={initial.name} onDelete={() => { onDelete(initial.id); onClose() }} />}
       <div className="flex gap-2 pt-1">
-        {initial && (
-          <button type="button" onClick={() => { onDelete(initial.id); onClose() }} aria-label={`Delete ${initial.name}`}
-            className="press field rounded-xl w-11 flex items-center justify-center down">
-            <Trash2 size={16} />
-          </button>
-        )}
         <button type="submit" disabled={!form.name.trim() || !(Number(form.amount) > 0) || (!recurring && !form.dueDate)}
           className="press acc-chip rounded-xl py-3 flex-1 text-sm font-bold disabled:opacity-40">
           Save payment
@@ -92,7 +96,8 @@ export default function Cash() {
   const [balanceOpen, setBalanceOpen] = useState(false)
   const [balanceDraft, setBalanceDraft] = useState('')
   const [editor, setEditor] = useState(null)
-  const projection = useMemo(() => buildCashProjection(cash), [cash])
+  const now = useClock()
+  const projection = useMemo(() => buildCashProjection(cash, now), [cash, now])
   const { state } = projection
 
   useEffect(() => {
@@ -147,10 +152,8 @@ export default function Cash() {
     })
   }
 
-  const runway = projection.runwayMonths == null ? '—' : projection.runwayMonths >= 100 ? '99+' : projection.runwayMonths.toFixed(1)
-
   return (
-    <div className="space-y-4" style={{ '--acc': 'var(--acc-cash)' }}>
+    <div className="space-y-4 cash-page" style={{ '--acc': 'var(--acc-cash)' }}>
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-3">
           <Label>Cash pulse</Label>
@@ -163,67 +166,11 @@ export default function Cash() {
         <p className="mono text-[9px] t3 mt-1">
           {state.cashAsOf ? `Updated ${new Date(state.cashAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Set your available cash snapshot'}
         </p>
-        <div className="cash-summary mt-5">
-          <div className="chip rounded-xl p-3 min-w-0">
-            <span className="text-[12px] t3 block">Monthly coverage</span>
-            <strong className="display text-[25px] t1 block mt-1">{runway}<small className="text-[12px] t3 ml-1">mo</small></strong>
-          </div>
-          <div className="chip rounded-xl p-3 min-w-0">
-            <span className="text-[12px] t3 block">Next 3 months</span>
-            <strong className="display text-[24px] t1 block mt-1">{formatCash(projection.nextMonthsNeed, state.currency)}</strong>
-          </div>
-          <div className="chip rounded-xl p-3 min-w-0">
-            <span className="text-[12px] t3 block">After payments + overdue</span>
-            <strong className={`display text-[24px] block mt-1 ${projection.projectedCash < 0 ? 'down' : 't1'}`}>
-              {formatCash(projection.projectedCash, state.currency)}
-            </strong>
-          </div>
-        </div>
-        <p className="text-[12px] t3 mt-3">Coverage at the normal monthly rate, excluding everyday spending. No income assumed.</p>
-        {projection.shortfall > 0 && (
-          <p className="mt-3 rounded-xl px-3 py-2.5 text-[12px] down" style={{ background: 'color-mix(in srgb, var(--down) 10%, transparent)' }}>
-            Short by {formatCash(projection.shortfall, state.currency)} across the next three months.
-          </p>
-        )}
+        <CashForecast projection={projection} />
       </section>
 
       <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={openBalance} />
-      <section>
-        <div className="flex items-center justify-between px-1 mb-3">
-          <Label>Month coverage</Label>
-          <span className="mono text-[9px] uppercase t3">Tap to cover</span>
-        </div>
-        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2" data-no-carousel-swipe="true">
-          {projection.months.map(month => (
-            <article key={month.key} className="panel p-4 min-w-[86%] snap-start">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h2 className="text-[16px] font-bold t1">{month.label}</h2>
-                  <p className="text-[12px] t3 mt-0.5">{month.items.length} major payment{month.items.length === 1 ? '' : 's'}</p>
-                </div>
-                <div className="text-right">
-                  <strong className="mono text-[13px] t1 block">{formatCash(month.needed, state.currency)}</strong>
-                  <span className="mono text-[9px] uppercase t3">still needed</span>
-                </div>
-              </div>
-              {month.items.length === 0 ? (
-                <p className="py-5 text-center text-[12px] t3">No funded payments yet.</p>
-              ) : month.items.map((item, index) => (
-                <button key={`${item.type}-${item.id}`} onClick={() => toggleItem(item, month.key)}
-                  className={`press w-full flex items-center gap-3 py-3 text-left ${index > 0 ? 'hairline-t' : ''}`}
-                  aria-pressed={item.covered}>
-                  {item.covered ? <CheckCircle2 size={19} className="up shrink-0" /> : <Circle size={19} className="t3 shrink-0" />}
-                  <span className="flex-1 min-w-0">
-                    <span className={`block text-[13px] font-semibold truncate ${item.covered ? 't3' : 't1'}`}>{item.name}</span>
-                    <span className="text-[12px] t3">{item.covered ? 'Covered' : `Due ${item.dueDate}`}</span>
-                  </span>
-                  <span className={`mono text-[11px] ${item.covered ? 't3' : 't1'}`}>{formatCash(item.amount, state.currency)}</span>
-                </button>
-              ))}
-            </article>
-          ))}
-        </div>
-      </section>
+      <CashMonths projection={projection} onToggle={toggleItem} />
 
       <section className="panel p-5">
         <div className="flex items-center justify-between mb-2">
@@ -237,7 +184,7 @@ export default function Cash() {
             <span className={`w-2 h-2 rounded-full ${item.active ? 'bg-[var(--up)]' : 'bg-[var(--ink-3)]'}`} />
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold t1 truncate">{item.name}</p>
-              <p className="mono text-[9px] uppercase t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}</p>
+              <p className="text-[12px] t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</p>
               <CoverageControl item={item} state={state} setCash={setCash} />
             </div>
             <button onClick={() => setEditor({ kind: 'commitment', item })} className="press chip rounded-lg w-8 h-8 flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>

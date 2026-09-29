@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CashAlerts, CoverageControl } from '../../CashPlanning'
-import { CalendarClock, Check, CheckCircle2, Circle, Pencil, Plus, Trash2, WalletCards } from 'lucide-react'
-import { usePersistentState } from '../../hooks'
+import { CashAlerts, CashForecast, CashMonths, CoverageControl, DeletePayment } from '../../CashPlanning'
+import { CalendarClock, Check, Pencil, Plus, WalletCards } from 'lucide-react'
+import { useClock, usePersistentState } from '../../hooks'
 import {
   DEFAULT_CASH_PULSE,
   buildCashProjection,
@@ -9,8 +9,11 @@ import {
   reconcileCashPulse,
   monthKey,
   setCommitmentCoverage,
+  setCommitmentActive,
+  addMonths,
+  monthLabel,
 } from '../../cashPulse'
-import { Badge, Button, Card, IconButton, NumberFlow, Stat } from '../primitives'
+import { Badge, Button, Card, IconButton } from '../primitives'
 
 const cashValidator = value => value && typeof value === 'object'
 const newId = prefix => `${prefix}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`
@@ -18,19 +21,20 @@ const newId = prefix => `${prefix}-${typeof crypto !== 'undefined' && crypto.ran
 function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
   const recurring = kind === 'commitment'
   const [form, setForm] = useState(() => recurring
-    ? { name: initial?.name || '', amount: initial?.amount || '', dueDay: initial?.dueDay || 1, active: initial?.active !== false }
+    ? { name: initial?.name || '', amount: initial?.amount || '', dueDay: initial?.dueDay || 1, active: initial?.active !== false, endMonth: initial?.endMonth || '' }
     : { name: initial?.name || '', amount: initial?.amount || '', dueDate: initial?.dueDate || '' })
 
   const submit = event => {
     event.preventDefault()
     if (!form.name.trim() || !(Number(form.amount) > 0) || (!recurring && !form.dueDate)) return
+    const schedule = recurring ? setCommitmentActive(initial || {}, form.active) : null
     onSave({
       ...initial,
       id: initial?.id || newId(recurring ? 'commitment' : 'one-off'),
       name: form.name.trim(),
       amount: Number(form.amount),
       ...(recurring
-        ? { dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), active: form.active, startMonth: initial?.startMonth || monthKey() }
+        ? { active: schedule.active, pausedPeriods: schedule.pausedPeriods, dueDay: Math.max(1, Math.min(31, Number(form.dueDay) || 1)), startMonth: initial?.startMonth || monthKey(), endMonth: form.endMonth || null }
         : { dueDate: form.dueDate, coveredAt: initial?.coveredAt || null }),
     })
   }
@@ -39,15 +43,15 @@ function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
     <form onSubmit={submit} className="d-inset p-3 mb-3">
       <div className={`grid gap-2 ${recurring ? 'grid-cols-[1fr_130px_90px_auto]' : 'grid-cols-[1fr_130px_150px_auto]'}`}>
         <input autoFocus value={form.name} onChange={event => setForm({ ...form, name: event.target.value })}
-          placeholder="Payment name" className="d-input" />
+          aria-label="Payment name" placeholder="Payment name" className="d-input" />
         <input value={form.amount} onChange={event => setForm({ ...form, amount: event.target.value })}
-          type="number" min="0" step="any" placeholder="Amount" className="d-input d-num" />
+          type="number" min="0" step="any" aria-label="Amount" placeholder="Amount" className="d-input d-num" />
         {recurring ? (
           <input value={form.dueDay} onChange={event => setForm({ ...form, dueDay: event.target.value })}
-            type="number" min="1" max="31" placeholder="Due day" className="d-input d-num" />
+            type="number" min="1" max="31" aria-label="Due day" placeholder="Due day" className="d-input d-num" />
         ) : (
           <input value={form.dueDate} onChange={event => setForm({ ...form, dueDate: event.target.value })}
-            type="date" required className="d-input d-num" />
+            type="date" aria-label="Due date" required className="d-input d-num" />
         )}
         <div className="flex gap-1">
           <IconButton icon={Check} type="submit" aria-label="Save payment" />
@@ -55,16 +59,18 @@ function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
         </div>
       </div>
       {recurring && (
+        <label className="cash-end-month">Last payment month (optional)
+          <input type="month" className="d-input" min={initial?.startMonth || monthKey()} value={form.endMonth} onChange={event => setForm({ ...form, endMonth: event.target.value })} />
+        </label>
+      )}
+      {recurring && (
         <label className="mt-2 inline-flex items-center gap-2 text-[12px] d-t2 cursor-pointer">
           <input type="checkbox" checked={form.active} onChange={event => setForm({ ...form, active: event.target.checked })} />
           Active commitment
         </label>
       )}
-      {initial && (
-        <button type="button" onClick={() => onDelete(initial.id)} className="mt-2 inline-flex items-center gap-1.5 text-[11px] d-down">
-          <Trash2 size={12} /> Delete payment
-        </button>
-      )}
+      {recurring && !form.active && <p className="text-[12px] d-t2 mt-2">{!initial ? 'No payments scheduled while paused.' : initial.active === false ? 'Paused. Earlier unpaid commitments remain due.' : `Pause from ${monthLabel(monthKey(addMonths(new Date(), 1)))}. Existing obligations remain due.`}</p>}
+      {initial && <DeletePayment name={initial.name} onDelete={() => onDelete(initial.id)} />}
     </form>
   )
 }
@@ -74,7 +80,8 @@ export default function CashPage() {
   const [balanceDraft, setBalanceDraft] = useState(null)
   const balanceRef = useRef(null)
   const [editor, setEditor] = useState(null)
-  const projection = useMemo(() => buildCashProjection(cash), [cash])
+  const now = useClock()
+  const projection = useMemo(() => buildCashProjection(cash, now), [cash, now])
   const { state } = projection
 
   useEffect(() => {
@@ -125,12 +132,10 @@ export default function CashPage() {
     setEditor(null)
   }
 
-  const runway = projection.runwayMonths == null ? '—' : projection.runwayMonths >= 100 ? '99+' : projection.runwayMonths.toFixed(1)
-
   return (
     <div className="d-enter cash-desktop space-y-4">
       <Card>
-        <div className="cash-desktop-summary">
+        <div className="cash-desktop-overview">
           <div>
             <div className="d-eyebrow mb-1">Current cash</div>
             <div className="flex items-center gap-2">
@@ -146,33 +151,12 @@ export default function CashPage() {
               {state.cashAsOf ? `Snapshot updated ${new Date(state.cashAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Manual snapshot · never auto-deducted'}
             </div>
           </div>
-          <Stat label="Monthly coverage" value={<>{runway}<span className="text-[14px] d-t3 ml-1">months</span></>} sub={`${formatCash(projection.recurringMonthly, state.currency)} normal monthly rate`} />
-          <Stat label="Next 3 months" value={<NumberFlow value={projection.nextMonthsNeed} format={value => formatCash(value, state.currency)} />} sub="uncovered commitments" />
-          <Stat label="After payments + overdue" value={<NumberFlow value={projection.projectedCash} format={value => formatCash(value, state.currency)} />} sub={projection.shortfall > 0 ? `${formatCash(projection.shortfall, state.currency)} short` : 'No income or everyday spending assumed'} />
+          <CashForecast projection={projection} />
         </div>
       </Card>
 
       <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={() => balanceRef.current?.focus()} />
-      <div className="grid grid-cols-3 gap-4">
-        {projection.months.map(month => (
-          <Card key={month.key} eyebrow={`${month.items.length} major payment${month.items.length === 1 ? '' : 's'}`} title={month.label}
-            actions={<div className="text-right"><div className="d-num text-[13px] font-medium d-t1">{formatCash(month.needed, state.currency)}</div><div className="text-[10px] d-t3">still needed</div></div>}>
-            {month.items.length === 0 ? (
-              <div className="py-8 text-center text-[13px] d-t3">No funded payments yet.</div>
-            ) : month.items.map((item, index) => (
-              <button key={`${item.type}-${item.id}`} onClick={() => toggleItem(item, month.key)} aria-pressed={item.covered}
-                className={`w-full flex items-center gap-3 py-3 text-left ${index > 0 ? 'd-divider' : ''}`}>
-                {item.covered ? <CheckCircle2 size={18} className="d-up shrink-0" /> : <Circle size={18} className="d-t3 shrink-0" />}
-                <span className="flex-1 min-w-0">
-                  <span className={`block text-[13px] font-medium truncate ${item.covered ? 'd-t3' : 'd-t1'}`}>{item.name}</span>
-                  <span className="text-[12px] d-t3">{item.covered ? 'Covered' : `Due ${item.dueDate}`}</span>
-                </span>
-                <span className={`d-num text-[12px] ${item.covered ? 'd-t3' : 'd-t1'}`}>{formatCash(item.amount, state.currency)}</span>
-              </button>
-            ))}
-          </Card>
-        ))}
-      </div>
+      <CashMonths projection={projection} onToggle={toggleItem} />
 
       <div className="grid grid-cols-2 gap-4">
         <Card eyebrow="Repeats monthly" title="Commitments"
@@ -184,7 +168,7 @@ export default function CashPage() {
               <WalletCards size={16} className={item.active ? 'd-accent' : 'd-t3'} />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-medium d-t1 truncate">{item.name}</div>
-                <div className="text-[11px] d-t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due day ${item.dueDay}` : 'Amount not set'}</div>
+                <div className="text-[12px] d-t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due day ${item.dueDay}` : 'Amount not set'}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</div>
                 <CoverageControl item={item} state={state} setCash={setCash} />
               </div>
               {!item.active && <Badge>Paused</Badge>}

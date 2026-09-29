@@ -40,9 +40,10 @@ function QuickLog({ open, onClose }) {
   const [form, setForm] = useState({ name: '', kcal: '', protein: '', carbs: '', fat: '' })
 
   const log = p => {
-    addEntry(p)
+    if (addEntry(p) === false) return false
     setFlash(p.id)
     setTimeout(() => setFlash(f => (f === p.id ? null : f)), 900)
+    return true
   }
 
   const logManual = (e) => {
@@ -57,7 +58,7 @@ function QuickLog({ open, onClose }) {
       emoji: '🍽️'
     }
     const id = 'temp-' + Date.now()
-    log({ ...entry, id })
+    if (!log({ ...entry, id })) return
     setForm({ name: '', kcal: '', protein: '', carbs: '', fat: '' })
   }
 
@@ -78,15 +79,15 @@ function QuickLog({ open, onClose }) {
       <form onSubmit={logManual} className="mb-4 space-y-2 panel-2 rounded-2xl p-3" style={{ '--acc': 'var(--acc-food)' }}>
         <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
           placeholder="What did you eat?" className="field w-full rounded-xl px-3 py-2 text-sm outline-none" />
-        <div className="flex gap-2">
+        <div className="quick-log-fields">
           <input value={form.kcal} onChange={e => setForm({...form, kcal: e.target.value})}
-            placeholder="kcal" type="number" inputMode="numeric" required className="field flex-1 rounded-xl px-3 py-2 text-sm outline-none" />
+            placeholder="kcal" aria-label="Calories" type="number" min="0" inputMode="numeric" required className="field min-w-0 rounded-xl px-2 py-2 text-sm outline-none" />
           <input value={form.protein} onChange={e => setForm({...form, protein: e.target.value})}
-            placeholder="P" type="number" inputMode="numeric" className="field flex-1 rounded-xl px-3 py-2 text-sm outline-none" />
+            placeholder="P" aria-label="Protein" type="number" min="0" inputMode="numeric" className="field min-w-0 rounded-xl px-2 py-2 text-sm outline-none" />
           <input value={form.carbs} onChange={e => setForm({...form, carbs: e.target.value})}
-            placeholder="C" type="number" inputMode="numeric" className="field flex-1 rounded-xl px-3 py-2 text-sm outline-none" />
+            placeholder="C" aria-label="Carbs" type="number" min="0" inputMode="numeric" className="field min-w-0 rounded-xl px-2 py-2 text-sm outline-none" />
           <input value={form.fat} onChange={e => setForm({...form, fat: e.target.value})}
-            placeholder="F" type="number" inputMode="numeric" className="field flex-1 rounded-xl px-3 py-2 text-sm outline-none" />
+            placeholder="F" aria-label="Fat" type="number" min="0" inputMode="numeric" className="field min-w-0 rounded-xl px-2 py-2 text-sm outline-none" />
           <button type="submit" disabled={!form.kcal} aria-label="Log manually"
             className="press acc-chip rounded-xl w-10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={16} strokeWidth={2.5} />
@@ -160,7 +161,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
       <div className="space-y-3" style={{ '--acc': 'var(--acc-os)' }}>
         <CloudStatus />
         <p className="text-[13px] t2 leading-relaxed">
-          Your data lives only on this device. Export a backup regularly — or to move to a new device.
+          Your data is saved on this device and synced to your account. Export a backup before restoring or changing devices.
         </p>
         <div className="chip rounded-2xl px-4 py-3.5">
           <p className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">Shell mode</p>

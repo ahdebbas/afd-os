@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildCashProjection, coveredThrough, reconcileCashPulse, setCoverageMonths } from './cashPulse.js'
+import { buildCashProjection, coveredThrough, reconcileCashPulse, setCoverageMonths, setCommitmentActive } from './cashPulse.js'
 
 const now = new Date('2026-09-24T12:00:00')
 const base = {
@@ -64,4 +64,51 @@ test('cash snapshot freshness is explicit', () => {
   assert.equal(buildCashProjection(base, now).snapshotStale, false)
   assert.equal(buildCashProjection({ ...base, cashAsOf: null }, now).snapshotStale, true)
   assert.equal(buildCashProjection({ ...base, cashAsOf: '2026-09-01T12:00:00' }, now).snapshotStale, true)
+})
+
+test('pausing preserves existing obligations and resuming skips paused months', () => {
+  const paused = setCommitmentActive(base.commitments[0], false, now)
+  const state = { ...base, commitments: [paused], oneOffs: [] }
+  assert.equal(buildCashProjection(state, now).nextMonthsNeed, 2000)
+  const november = new Date('2026-11-05T12:00:00')
+  const later = buildCashProjection(state, november)
+  assert.equal(later.carryoverNeed, 2000)
+  assert.equal(later.nextMonthsNeed, 0)
+  const resumed = setCommitmentActive(paused, true, november)
+  const result = buildCashProjection({ ...state, commitments: [resumed] }, november)
+  assert.equal(result.carryoverNeed, 2000)
+  assert.equal(result.nextMonthsNeed, 6000)
+  assert.deepEqual(resumed.pausedPeriods, [{ startMonth: '2026-10', endMonth: '2026-10' }])
+  const immediate = setCommitmentActive(paused, true, now)
+  assert.deepEqual(immediate.pausedPeriods, [])
+})
+
+test('ending a commitment stops future payments without removing arrears', () => {
+  const state = { ...base, commitments: [{ ...base.commitments[0], endMonth: '2026-10' }], oneOffs: [] }
+  const result = buildCashProjection(state, new Date('2026-11-05T12:00:00'))
+  assert.equal(result.carryoverNeed, 4000)
+  assert.equal(result.nextMonthsNeed, 0)
+})
+
+test('advance coverage can be undone beyond the forecast without changing cash', () => {
+  const covered = setCoverageMonths(base, 'parents', ['2027-02'], true)
+  const undone = setCoverageMonths(covered, 'parents', ['2027-02'], false)
+  assert.equal(undone.currentCash, base.currentCash)
+  assert.equal(undone.coverage.parents, undefined)
+})
+
+test('legacy paused commitments do not invent arrears or backfill on resume', () => {
+  const state = { ...base, commitments: [{ ...base.commitments[0], startMonth: '2026-01', active: false }], oneOffs: [] }
+  assert.equal(buildCashProjection(state, now).carryoverNeed, 0)
+  const normalized = reconcileCashPulse(state, now)
+  const resumed = setCommitmentActive(normalized.commitments[0], true, now)
+  const result = buildCashProjection({ ...normalized, commitments: [resumed] }, now)
+  assert.equal(result.carryoverNeed, 0)
+  assert.equal(result.nextMonthsNeed, 6000)
+})
+
+test('a newly created paused commitment has no current obligation', () => {
+  const paused = setCommitmentActive({ name: 'Future', amount: 500, startMonth: '2026-09' }, false, now)
+  const result = buildCashProjection({ ...base, commitments: [{ ...paused, id: 'future' }], oneOffs: [] }, now)
+  assert.equal(result.nextMonthsNeed, 0)
 })

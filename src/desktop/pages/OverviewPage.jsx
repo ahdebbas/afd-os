@@ -4,7 +4,7 @@ import { useFood } from '../../store'
 import { useQuotes } from '../../quotes'
 import { useClock, usePersistentState } from '../../hooks'
 import { dateKey } from '../../dates'
-import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, ETF_SYMBOL, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { connectWhoop, fetchWhoopCalories, WHOOP_POLL_MS } from '../../whoop'
 import { fuelingFlag, projectBurn, recommendedIntake } from '../../whoopEnergy'
 import { Card, Button, Ring, Meter, NumberFlow, Badge } from '../primitives'
@@ -186,8 +186,7 @@ export default function OverviewPage({ onNavigate }) {
   const weekCount = sessions.filter(session => session.date >= dateKey(monday) && session.date <= today).length
   const toGoal = latestBody?.fatPct != null ? (latestBody.fatPct - FITNESS.goal.fatPct).toFixed(1) : null
   const msftValue = finance.msft.shares * (quotes?.MSFT?.price ?? finance.msft.price)
-  const etfLive = finance.sarwa.holdings.some(holding => quotes?.[ETF_SYMBOL[holding.ticker]])
-  const sarwaValue = etfLive ? sarwaTotal(finance.sarwa, quotes) : finance.sarwa.total
+  const sarwaValue = sarwaTotal(finance.sarwa, quotes)
   const total = msftValue + sarwaValue + finance.property.value
   const msftChange = quotes?.MSFT?.changePct
   const [whoop, setWhoop] = useState(null)
