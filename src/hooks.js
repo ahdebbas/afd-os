@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CLOUD_STATE_EVENT, queueCloudState } from './cloudSync'
+import { dateKey } from './dates'
 const LOCAL_STATE_EVENT = 'afd-local-state'
 
 const reducedMotion = () =>
@@ -95,8 +96,27 @@ export function useCountUp(target, duration = 800) {
 export function useClock() {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60000)
-    return () => clearInterval(id)
+    const refresh = () => setNow(new Date())
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    const id = setInterval(refresh, 60000)
+    window.addEventListener('focus', refresh)
+    window.addEventListener('pageshow', refresh)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('pageshow', refresh)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
   return now
+}
+
+export function useCurrentDaySelection() {
+  const today = dateKey(useClock())
+  const [selection, setSelection] = useState(null)
+  const date = selection?.today === today ? selection.date : today
+  return [date, date => setSelection({ today, date }), today]
 }

@@ -1,5 +1,5 @@
-import { ETF_SYMBOL, holdingPerf, holdingValue } from './data'
-import { todayKey } from './dates'
+import { ETF_SYMBOL, holdingPerf, holdingValue, usd } from './data.js'
+import { todayKey } from './dates.js'
 
 const round = (value, digits = 1) => Number.isFinite(value) ? +value.toFixed(digits) : null
 const share = (value, total) => total > 0 ? round((value / total) * 100) : 0
@@ -151,10 +151,10 @@ export function buildCapitalPulse(history, current) {
     : { ticker: 'Sarwa', value: primary.sarwaChange }
   return {
     state: 'ready',
-    headline: `${primary.totalChange >= 0 ? 'Up' : 'Down'} $${Math.abs(primary.totalChange).toLocaleString('en-US')} over ${primary.days} day${primary.days === 1 ? '' : 's'}`,
+    headline: `${primary.totalChange >= 0 ? 'Up' : 'Down'} ${usd(Math.abs(primary.totalChange))} over ${primary.days} day${primary.days === 1 ? '' : 's'}`,
     summary: primary.positionsChanged
-      ? `Holdings changed during this period, so the $${Math.abs(primary.totalChange).toLocaleString('en-US')} move includes both position updates and market movement. Property is excluded.`
-      : `${leading.ticker} was the larger contributor at ${leading.value >= 0 ? '+' : '-'}$${Math.abs(leading.value).toLocaleString('en-US')}. Property is unchanged and excluded.`,
+      ? `Holdings changed during this period, so the ${usd(Math.abs(primary.totalChange))} move includes both position updates and market movement. Property is excluded.`
+      : `${leading.ticker} was the larger contributor at ${leading.value >= 0 ? '+' : '-'}${usd(Math.abs(leading.value))}. Property is unchanged and excluded.`,
     primary,
     comparisons,
     recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,

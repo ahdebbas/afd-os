@@ -143,4 +143,4 @@ export const holdingPerf = (h, q) =>
   h.cost ? (holdingValue(h, q) / h.cost - 1) * 100 : h.perf
 export const sarwaTotal = (sarwa, q) => sarwa.holdings.reduce((s, h) => s + holdingValue(h, q), 0)
 
-export const usd = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+export { formatUsd as usd } from './currency.js'

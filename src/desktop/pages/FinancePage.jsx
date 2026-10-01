@@ -57,7 +57,7 @@ export default function FinancePage() {
       <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-[3px]" style={{ background: r.color }} /><span className="font-medium d-t1">{r.ticker}</span></span>
     ) },
     { key: 'name', label: 'Name', render: r => <span className="d-t2">{r.name}</span> },
-    { key: 'price', label: 'Price', align: 'right', render: r => <span className="d-num d-t2">{r.quote ? `$${r.quote.price.toFixed(2)}` : '—'}</span> },
+    { key: 'price', label: 'Price', align: 'right', render: r => <span className="d-num d-t2">{r.quote ? usd(r.quote.price, 2) : '—'}</span> },
     { key: 'alloc', label: 'Alloc', align: 'right', render: r => <span className="d-num d-t2">{r.alloc.toFixed(1)}%</span> },
     { key: 'value', label: editMode ? 'Units' : 'Value', align: 'right', render: r => editMode && r.units != null
       ? <input value={r.units} type="number" min="0" step="any"
@@ -109,7 +109,7 @@ export default function FinancePage() {
             <div className="flex items-baseline justify-between">
               <NumberFlow value={msftValue} format={usd} className="d-h1 d-t1" />
               <div className="text-right">
-                <div className="d-num text-[13px] d-t2">${price.toFixed(2)}</div>
+                <div className="d-num text-[13px] d-t2">{usd(price, 2)}</div>
                 <div className={`text-[11px] ${live ? 'd-accent' : 'd-t3'}`}>{live ? 'live · today' : `as of ${msft.priceDate}`}</div>
               </div>
             </div>
@@ -118,9 +118,9 @@ export default function FinancePage() {
                 <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 rounded-full" style={{ left: `${rangePct}%`, background: 'var(--d-text)' }} />
               </div>
               <div className="flex justify-between mt-2 text-[11px] d-num">
-                <span className="d-t3">${msft.low52} <span className="d-up">+{vsLow}%</span></span>
+                <span className="d-t3">{usd(msft.low52, 2)} <span className="d-up">+{vsLow}%</span></span>
                 <span className="d-t3">52w</span>
-                <span className="d-t3"><span className="d-down">{vsHigh}%</span> ${msft.high52}</span>
+                <span className="d-t3"><span className="d-down">{vsHigh}%</span> {usd(msft.high52, 2)}</span>
               </div>
             </div>
           </Card>

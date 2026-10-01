@@ -45,7 +45,7 @@ function PaymentEditor({ kind, initial, onSave, onDelete, onCancel }) {
         <input autoFocus value={form.name} onChange={event => setForm({ ...form, name: event.target.value })}
           aria-label="Payment name" placeholder="Payment name" className="d-input" />
         <input value={form.amount} onChange={event => setForm({ ...form, amount: event.target.value })}
-          type="number" min="0" step="any" aria-label="Amount" placeholder="Amount" className="d-input d-num" />
+          type="number" inputMode="decimal" min="0" step="any" aria-label="Amount (USD)" placeholder="Amount (USD)" className="d-input d-num" />
         {recurring ? (
           <input value={form.dueDay} onChange={event => setForm({ ...form, dueDay: event.target.value })}
             type="number" min="1" max="31" aria-label="Due day" placeholder="Due day" className="d-input d-num" />

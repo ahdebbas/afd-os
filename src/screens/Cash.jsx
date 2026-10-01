@@ -49,7 +49,7 @@ function PaymentForm({ kind, initial, onSave, onDelete, onClose }) {
           placeholder={recurring ? 'Parents' : 'School fees'} className="field mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm outline-none" />
       </label>
       <label className="block">
-        <span className="mono text-[10px] uppercase tracking-[0.08em] t3">Amount</span>
+        <span className="mono text-[10px] uppercase tracking-[0.08em] t3">Amount (USD)</span>
         <input value={form.amount} onChange={event => setForm({ ...form, amount: event.target.value })}
           type="number" inputMode="decimal" min="0" step="any" placeholder="0"
           className="field mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm outline-none" />

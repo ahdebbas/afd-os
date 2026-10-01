@@ -3,7 +3,7 @@ import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRi
 import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
-import { usePersistentState } from '../hooks'
+import { useCurrentDaySelection, usePersistentState } from '../hooks'
 import { dateKey, todayKey } from '../dates'
 import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 import { useFood } from '../store'
@@ -129,10 +129,7 @@ export default function Fitness() {
     }
   }, [])
 
-  const today = todayKey()
-  // Persisted so a reload mid-workout resumes on the same day; snapped to today below if stale.
-  const [selDate, setSelDate] = usePersistentState('afd-fit-day', today,
-    v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  const [selDate, setSelDate, today] = useCurrentDaySelection()
   const isToday = selDate === today
   const idxOf = s => sessionIdx(s, program)
 
@@ -162,10 +159,13 @@ export default function Fitness() {
 
   // Selected rotation day follows the suggestion / logged session, but a manual tap sticks.
   const [day, setDay] = useState(activeIdx)
-  const prevActive = useRef(activeIdx)
+  const prevActive = useRef({ date: selDate, index: activeIdx })
   useEffect(() => {
-    if (prevActive.current !== activeIdx) { setDay(activeIdx); prevActive.current = activeIdx }
-  }, [activeIdx])
+    if (prevActive.current.date !== selDate || prevActive.current.index !== activeIdx) {
+      setDay(activeIdx)
+      prevActive.current = { date: selDate, index: activeIdx }
+    }
+  }, [activeIdx, selDate])
 
   const progressKey = `${selDate}:${program[day].name}`
   const completedExercises = exerciseProgress[progressKey] || []
@@ -192,7 +192,7 @@ export default function Fitness() {
     return Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 6)
   }, [weights, sessions])
 
-  const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody }), [sessions, inbody])
+  const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody, now: new Date(`${today}T12:00:00`) }), [sessions, inbody, today])
 
   const setGlobalWeight = (name, val) => setWeights(prev => {
     const next = { ...prev }
@@ -282,7 +282,7 @@ export default function Fitness() {
     cycles.cycles.forEach(c => { if (!c.partial) burnByDate[c.date] = c.kcal })
     const days = []
     for (let i = 1; i <= 7; i++) { // last 7 completed days (exclude today, which is partial)
-      const d = new Date(); d.setDate(d.getDate() - i)
+      const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() - i)
       const key = dateKey(d)
       if (burnByDate[key] == null) continue
       const eaten = (foodLogs[key] || []).reduce((a, e) => a + e.kcal, 0)
@@ -316,7 +316,7 @@ export default function Fitness() {
           : 'Deficit is controlled enough to support the body-fat goal.'
 
     return { maintenance, avgIntake, avgDeficit, weeklyDeficit, netDeficit, predictedKg, loggedDays: logged.length, burnDays: days.length, deficitDays, actualKg, etaDate, insight, days }
-  }, [cycles, foodLogs, readings, latest, goal])
+  }, [cycles, foodLogs, readings, latest, goal, today])
 
   const addResult = () => {
     const weight = +inForm.weight || null
@@ -341,6 +341,9 @@ export default function Fitness() {
       {/* Day selector */}
       <section className="panel p-4">
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
+        {!isToday && <button onClick={() => setSelDate(today)} className="press acc-chip rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold">
+          Back to today
+        </button>}
         <div className="mt-3 pt-3 hairline-t flex items-center justify-between">
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
           <span className="mono text-[10px] t2"><span className={weekCount >= 4 ? 'acc' : 't1'}>{weekCount}</span> / 4 sessions</span>

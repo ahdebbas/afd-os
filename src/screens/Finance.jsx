@@ -142,7 +142,7 @@ export default function Finance() {
         <div className="flex items-baseline justify-between">
           <p className="display text-[36px] leading-none font-bold t1">{usd(msftValue)}</p>
           <div className="text-right">
-            <p className="mono text-[13px] t2">${price.toFixed(2)}</p>
+            <p className="mono text-[13px] t2">{usd(price, 2)}</p>
             <p className={`mono text-[10px] ${live ? 'acc' : 't3'}`}>{priceDate}</p>
           </div>
         </div>
@@ -159,9 +159,9 @@ export default function Finance() {
               style={{ left: `${rangePct}%`, background: 'var(--acc)', boxShadow: '0 0 8px var(--acc)' }} />
           </div>
           <div className="flex justify-between mt-1.5 mono text-[10px]">
-            <span className="t3">${msft.low52} <span className="up">+{vsLow}%</span></span>
+            <span className="t3">{usd(msft.low52, 2)} <span className="up">+{vsLow}%</span></span>
             <span className="t3 tracking-[0.18em] uppercase">52w</span>
-            <span className="t3"><span className="down">{vsHigh}%</span> ${msft.high52}</span>
+            <span className="t3"><span className="down">{vsHigh}%</span> {usd(msft.high52, 2)}</span>
           </div>
         </div>
       </section>
@@ -198,7 +198,7 @@ export default function Finance() {
                   <span className="mono text-[10px] t3 ml-2">{alloc.toFixed(1)}%</span>
                   {q?.[ETF_SYMBOL[h.ticker]] && (
                     <span className={`mono text-[10px] ml-2 ${q[ETF_SYMBOL[h.ticker]].changePct >= 0 ? 'up' : 'down'}`}>
-                      ${q[ETF_SYMBOL[h.ticker]].price.toFixed(2)} {q[ETF_SYMBOL[h.ticker]].changePct >= 0 ? '+' : ''}{q[ETF_SYMBOL[h.ticker]].changePct.toFixed(1)}%
+                      {usd(q[ETF_SYMBOL[h.ticker]].price, 2)} {q[ETF_SYMBOL[h.ticker]].changePct >= 0 ? '+' : ''}{q[ETF_SYMBOL[h.ticker]].changePct.toFixed(1)}%
                     </span>
                   )}
                   <p className="text-[11px] t3 mt-0.5">{h.name}</p>

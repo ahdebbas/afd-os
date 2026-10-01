@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildCashProjection, coveredThrough, reconcileCashPulse, setCoverageMonths, setCommitmentActive } from './cashPulse.js'
+import { DEFAULT_CASH_PULSE, formatCash, buildCashProjection, coveredThrough, reconcileCashPulse, setCoverageMonths, setCommitmentActive } from './cashPulse.js'
 
 const now = new Date('2026-09-24T12:00:00')
 const base = {
@@ -13,6 +13,23 @@ const base = {
   oneOffs: [{ id: 'school', name: 'School', amount: 1500, dueDate: '2026-10-10' }],
   coverage: {},
 }
+
+test('Cash uses USD without converting entered balances or payments', () => {
+  assert.equal(DEFAULT_CASH_PULSE.currency, 'USD')
+  assert.equal(formatCash(1234), 'USD\u00a01,234')
+  for (const currency of [undefined, 'QAR', 'USD']) {
+    const input = { ...base, currency, currentCash: 30000.75, coverage: { parents: { '2026-09': now.toISOString() } } }
+    const normalized = reconcileCashPulse(input, now)
+    assert.equal(normalized.currency, 'USD')
+    assert.equal(normalized.currentCash, input.currentCash)
+    assert.deepEqual(normalized.commitments.map(item => item.amount), input.commitments.map(item => item.amount))
+    assert.deepEqual(normalized.oneOffs.map(item => item.amount), input.oneOffs.map(item => item.amount))
+    assert.deepEqual(normalized.coverage, input.coverage)
+    assert.deepEqual(reconcileCashPulse(normalized, now), normalized)
+    assert.equal(input.currency, currency)
+    assert.equal(buildCashProjection(input, now).state.currency, 'USD')
+  }
+})
 
 test('advance coverage preserves cash and excludes only named months', () => {
   const state = setCoverageMonths(base, 'parents', ['2026-09', '2026-10', '2026-11'], true)

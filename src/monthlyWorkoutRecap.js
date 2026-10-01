@@ -1,4 +1,4 @@
-import { dateKey, todayKey } from './dates'
+import { dateKey } from './dates.js'
 
 const round1 = n => Number.isFinite(n) ? Math.round(n * 10) / 10 : null
 
@@ -6,7 +6,7 @@ const round1 = n => Number.isFinite(n) ? Math.round(n * 10) / 10 : null
 export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new Date() }) {
   const monthStart = dateKey(new Date(now.getFullYear(), now.getMonth(), 1))
   const monthLabel = new Date(`${monthStart}T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const today = todayKey()
+  const today = dateKey(now)
   const daysElapsed = now.getDate()
 
   const sessionsThisMonth = sessions.filter(s => s.date >= monthStart && s.date <= today)

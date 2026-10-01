@@ -1,3 +1,5 @@
+import { formatUsd } from './currency.js'
+
 const starterCommitments = [
   ['parents', 'Parents'],
   ['wife-allowance', 'Wife allowance'],
@@ -7,7 +9,7 @@ const starterCommitments = [
 ]
 
 export const DEFAULT_CASH_PULSE = {
-  currency: 'QAR',
+  currency: 'USD',
   currentCash: 0,
   cashAsOf: null,
   commitments: starterCommitments.map(([id, name]) => ({
@@ -42,13 +44,8 @@ export function monthLabel(key) {
   })
 }
 
-export function formatCash(value, currency = 'QAR') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'code',
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0)
+export function formatCash(value) {
+  return formatUsd(Number(value) || 0)
 }
 
 export function reconcileCashPulse(value, now = new Date()) {
@@ -79,7 +76,7 @@ export function reconcileCashPulse(value, now = new Date()) {
     : []
 
   return {
-    currency: typeof source.currency === 'string' ? source.currency : DEFAULT_CASH_PULSE.currency,
+    currency: DEFAULT_CASH_PULSE.currency,
     currentCash: asAmount(source.currentCash),
     cashAsOf: source.cashAsOf || null,
     commitments,

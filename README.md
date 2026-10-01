@@ -10,6 +10,11 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
 - **Fitness** — body composition, PRs, weekly sessions, injury constraints, program.
 
+All monetary amounts use explicit **USD** labels (including stock prices and
+market-change summaries); saved balances and holdings are not converted or changed.
+The workout calendar starts on the current local day, advances after midnight or
+app resume, and allows historical selection until the next day or reload.
+
 ## Tech
 
 - React 19 + Vite
@@ -28,6 +33,8 @@ npm run preview  # serve the production build locally
 ```
 
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
+Currency and workout date checks:
+`node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 For Cash UI checks, exercise balance editing, recurring and one-off payment forms,
 month selection, and advance coverage in both themes and shells. On mobile, sheets
 follow the visible viewport above the keyboard, and form touches do not trigger
@@ -42,7 +49,6 @@ All personal data is stored **locally in the browser** (`localStorage`) — noth
 | `afd-food-log`    | Daily food entries                |
 | `afd-presets`     | Saved food presets                |
 | `afd-sessions`    | Logged workout sessions           |
-| `afd-fit-day`     | Selected program day              |
 | `afd-theme-dark`  | Theme preference                  |
 | `afd-quotes`      | Cached market quotes (derived)    |
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { FITNESS, DEFAULT_WEIGHTS, nextWorkoutIdx, sessionIdx } from '../../data'
-import { usePersistentState } from '../../hooks'
-import { todayKey } from '../../dates'
+import { useClock, usePersistentState } from '../../hooks'
+import { dateKey } from '../../dates'
 import { useFood } from '../../store'
 import { useOs } from '../../os'
 import { connectWhoop, fetchWhoopCycles, WHOOP_POLL_MS } from '../../whoop'
@@ -63,11 +63,11 @@ export default function FitnessPage() {
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [metric, setMetric] = useState('weight')
 
-  const today = todayKey()
+  const today = dateKey(useClock())
   const suggested = nextWorkoutIdx(program, sessions)
   const todaySession = sessions.find(s => s.date === today)
   const [selectedWorkout, setSelectedWorkout] = useState(null)
-  const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout ?? suggested
+  const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout?.date === today ? selectedWorkout.index : suggested
   const done = !!todaySession
 
   const lastWeights = useMemo(() => {
@@ -99,12 +99,12 @@ export default function FitnessPage() {
   const weekCount = useMemo(() => {
     let c = 0
     for (let i = 0; i < 7; i++) {
-      const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow + i)
-      const key = d.toISOString().slice(0, 10)
+      const d = new Date(`${today}T12:00:00`); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow + i)
+      const key = dateKey(d)
       if (sessions.find(s => s.date === key)) c++
     }
     return c
-  }, [sessions])
+  }, [sessions, today])
 
   const readings = useMemo(() => [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)), [inbody])
   const latest = readings[readings.length - 1] || { weight: 0, smm: 0, fatMass: 0, fatPct: 0 }
@@ -133,7 +133,7 @@ export default function FitnessPage() {
     if (!cycles?.connected || !cycles.cycles?.length) return null
     const burn = {}; cycles.cycles.forEach(c => { if (!c.partial) burn[c.date] = c.kcal })
     const days = []
-    for (let i = 1; i <= 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); const k = d.toISOString().slice(0, 10); if (burn[k] != null) days.push({ k, burned: burn[k], eaten: (foodLogs[k] || []).reduce((a, e) => a + e.kcal, 0) }) }
+    for (let i = 1; i <= 7; i++) { const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() - i); const k = dateKey(d); if (burn[k] != null) days.push({ k, burned: burn[k], eaten: (foodLogs[k] || []).reduce((a, e) => a + e.kcal, 0) }) }
     if (!days.length) return null
     const maintenance = Math.round(days.reduce((a, d) => a + d.burned, 0) / days.length)
     const logged = days.filter(d => d.eaten > 0)
@@ -141,7 +141,7 @@ export default function FitnessPage() {
     const avgDeficit = logged.length ? Math.round(logged.reduce((a, d) => a + (d.burned - d.eaten), 0) / logged.length) : 0
     const predictedKg = (avgDeficit * 7) / 7700
     return { maintenance, avgIntake, predictedKg, loggedDays: logged.length }
-  }, [cycles, foodLogs])
+  }, [cycles, foodLogs, today])
 
   return (
     <div className="d-enter space-y-4">
@@ -154,7 +154,7 @@ export default function FitnessPage() {
               <Button size="sm" variant={done ? 'outline' : 'primary'} onClick={toggleDone}>{done ? 'Undo' : 'Finish workout'}</Button>
             </div>
           }>
-          {!done && <Segmented className="mb-3" value={day} onChange={setSelectedWorkout}
+          {!done && <Segmented className="mb-3" value={day} onChange={index => setSelectedWorkout({ date: today, index })}
             options={program.map((d, i) => ({ value: i, label: d.name.split(' & ')[0] }))} />}
           <table className="d-table">
             <thead><tr><th style={{ width: 34 }}>#</th><th>Exercise</th><th>Sets</th><th style={{ textAlign: 'right' }}>Weight</th></tr></thead>

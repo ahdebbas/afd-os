@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { dateKey } from './dates'
+import { useClock } from './hooks'
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
@@ -86,10 +87,11 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
  */
 export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
   const scrollRef = useRef(null)
-  const todayKey = dateKey()
+  const now = useClock()
+  const todayKey = dateKey(now)
   // Rolling window ending today (today is rightmost), so earlier days scroll/peek to the left.
   const days = Array.from({ length: dayCount }, (_, i) => {
-    const d = new Date()
+    const d = new Date(now)
     d.setDate(d.getDate() - (dayCount - 1 - i))
     const key = dateKey(d)
     return {
@@ -102,11 +104,16 @@ export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
     }
   })
 
-  // Land on today: open scrolled to the right edge like a calendar that just snapped to now.
   useEffect(() => {
     const el = scrollRef.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [])
+    if (!el) return
+    const selected = el.querySelector('[aria-pressed="true"]')
+    if (!selected) { el.scrollLeft = el.scrollWidth; return }
+    const bounds = selected.getBoundingClientRect()
+    const rail = el.getBoundingClientRect()
+    if (bounds.left < rail.left) el.scrollLeft += bounds.left - rail.left
+    else if (bounds.right > rail.right) el.scrollLeft += bounds.right - rail.right
+  }, [todayKey, value])
 
   return (
     <div className="day-strip" ref={scrollRef} role="group" aria-label="Select day">
@@ -114,7 +121,7 @@ export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
         const selected = d.key === value
         const showBadge = d.state === 'win' || d.state === 'miss'
         return (
-          <button key={d.key} onClick={() => !d.isFuture && onChange(d.key)}
+          <button key={d.key} data-date={d.key} onClick={() => !d.isFuture && onChange(d.key)}
             disabled={d.isFuture} aria-pressed={selected}
             aria-label={`${d.wd} ${d.num}${d.state === 'win' ? ', complete' : d.state === 'miss' ? ', missed' : ''}`}
             className={`day-chip press ${selected ? 'day-chip-active' : ''} ${d.isToday ? 'day-chip-today' : ''} ${d.isFuture ? 'day-chip-disabled' : ''}`}>

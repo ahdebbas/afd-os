@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useOs } from './os'
 import { todayKey } from './dates'
+import { formatUsd } from './currency.js'
 
 // Hourly market sync via Yahoo Finance.
 //  - dev/preview: proxied through Vite (see vite.config.js)
@@ -50,7 +51,7 @@ export function QuotesProvider({ children }) {
       setCache(next)
       setStatus('live')
       const m = next.data.MSFT
-      os?.announce(`MARKET SYNC · MSFT $${m.price.toFixed(2)} ${m.changePct >= 0 ? '+' : ''}${m.changePct.toFixed(1)}%`, 'var(--acc-fin)')
+      os?.announce(`MARKET SYNC · MSFT ${formatUsd(m.price, 2)} ${m.changePct >= 0 ? '+' : ''}${m.changePct.toFixed(1)}%`, 'var(--acc-fin)')
     } catch {
       // Offline or proxy unavailable — keep cached/static values, flag freshness.
       setStatus(loadCache() ? 'stale' : 'error')
