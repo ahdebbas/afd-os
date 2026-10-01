@@ -138,6 +138,7 @@ export default function CashPage() {
         <div className="cash-desktop-overview">
           <div>
             <div className="d-eyebrow mb-1">Current cash</div>
+            <div className="cash-desktop-balance d-num d-t1">{formatCash(state.currentCash, state.currency)}</div>
             <div className="flex items-center gap-2">
               <div className="d-input flex items-center gap-2 !h-10 max-w-[250px]">
                 <span className="d-mono text-[11px] d-t3">{state.currency}</span>

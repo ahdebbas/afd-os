@@ -2223,6 +2223,9 @@ html.dark .today-whoop .panel > p:first-child > span {
   to   { opacity: 1; transform: none; }
 }
 @keyframes fade { from { opacity: 0; } }
+.sheet-viewport { height: 100dvh; }
+.sheet-panel { max-height: calc(var(--sheet-height, 100dvh) * 0.82); overscroll-behavior: contain; }
+.sheet-panel input, .sheet-panel textarea, .sheet-panel select { font-size: 16px; }
 .sheet-in { animation: sheet 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes sheet { from { transform: translate(-50%, 12%); opacity: 0.4; } to { transform: translate(-50%, 0); opacity: 1; } }
 

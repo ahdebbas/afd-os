@@ -365,6 +365,7 @@ function Shell() {
 
   const shouldIgnoreSwipe = target => {
     if (!(target instanceof Element)) return false
+    if (target.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"]')) return true
     // Explicit opt-out marker for known horizontal controls.
     if (target.closest('[data-no-carousel-swipe="true"]')) return true
 

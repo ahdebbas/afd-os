@@ -154,10 +154,10 @@ export default function Cash() {
 
   return (
     <div className="space-y-4 cash-page" style={{ '--acc': 'var(--acc-cash)' }}>
-      <section className="panel p-6">
+      <section className="panel p-5 cash-overview">
         <div className="flex items-center justify-between mb-3">
           <Label>Cash pulse</Label>
-          <button onClick={openBalance} className="press chip rounded-lg w-8 h-8 flex items-center justify-center" aria-label="Edit current cash">
+          <button onClick={openBalance} className="cash-icon-button press chip rounded-lg flex items-center justify-center" aria-label="Edit current cash">
             <Settings2 size={14} />
           </button>
         </div>
@@ -175,7 +175,7 @@ export default function Cash() {
       <section className="panel p-5">
         <div className="flex items-center justify-between mb-2">
           <Label><WalletCards size={12} /> Monthly commitments</Label>
-          <button onClick={() => setEditor({ kind: 'commitment', item: null })} className="press acc-chip rounded-lg w-8 h-8 flex items-center justify-center" aria-label="Add monthly commitment">
+          <button onClick={() => setEditor({ kind: 'commitment', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add monthly commitment">
             <Plus size={15} />
           </button>
         </div>
@@ -187,7 +187,7 @@ export default function Cash() {
               <p className="text-[12px] t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</p>
               <CoverageControl item={item} state={state} setCash={setCash} />
             </div>
-            <button onClick={() => setEditor({ kind: 'commitment', item })} className="press chip rounded-lg w-8 h-8 flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
+            <button onClick={() => setEditor({ kind: 'commitment', item })} className="cash-icon-button press chip rounded-lg flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
               <Pencil size={13} />
             </button>
           </div>
@@ -197,7 +197,7 @@ export default function Cash() {
       <section className="panel p-5">
         <div className="flex items-center justify-between mb-2">
           <Label><CalendarClock size={12} /> Planned one-offs</Label>
-          <button onClick={() => setEditor({ kind: 'one-off', item: null })} className="press acc-chip rounded-lg w-8 h-8 flex items-center justify-center" aria-label="Add planned payment">
+          <button onClick={() => setEditor({ kind: 'one-off', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add planned payment">
             <Plus size={15} />
           </button>
         </div>
@@ -209,7 +209,7 @@ export default function Cash() {
               <p className="text-[13px] font-semibold t1 truncate">{item.name}</p>
               <p className="mono text-[9px] uppercase t3">{formatCash(item.amount, state.currency)} · {new Date(`${item.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{item.coveredAt ? ' · covered' : ''}</p>
             </div>
-            <button onClick={() => setEditor({ kind: 'one-off', item })} className="press chip rounded-lg w-8 h-8 flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
+            <button onClick={() => setEditor({ kind: 'one-off', item })} className="cash-icon-button press chip rounded-lg flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
               <Pencil size={13} />
             </button>
           </div>
@@ -221,7 +221,7 @@ export default function Cash() {
           <p className="text-[12px] t2">Enter the cash available now. Covering payments will not change this number.</p>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 mono text-[11px] t3">{state.currency}</span>
-            <input autoFocus value={balanceDraft} onChange={event => setBalanceDraft(event.target.value)}
+            <input autoFocus aria-label="Current cash" value={balanceDraft} onChange={event => setBalanceDraft(event.target.value)}
               type="number" inputMode="decimal" min="0" step="any" placeholder="0"
               className="field w-full rounded-xl pl-14 pr-3 py-3 text-lg outline-none" />
           </div>

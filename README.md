@@ -6,6 +6,7 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 
 - **Today** — daily overview: fuel gauge, body-fat progress, net worth, quick log.
 - **Finance** — MSFT position + Sarwa (halal) portfolio with daily market sync.
+- **Cash** — manual USD balance, monthly commitments, planned one-offs, and three-month payment coverage. Uses the active shell's theme in light and dark mode; marking payments covered never deducts from the cash snapshot.
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
 - **Fitness** — body composition, PRs, weekly sessions, injury constraints, program.
 
@@ -25,6 +26,12 @@ npm run lint
 npm run build    # outputs dist/
 npm run preview  # serve the production build locally
 ```
+
+Cash calculation checks: `node --test src/cashPulse.test.mjs`.
+For Cash UI checks, exercise balance editing, recurring and one-off payment forms,
+month selection, and advance coverage in both themes and shells. On mobile, sheets
+follow the visible viewport above the keyboard, and form touches do not trigger
+module swipes.
 
 ## Data & privacy
 

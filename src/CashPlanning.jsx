@@ -86,6 +86,7 @@ export function CashMonths({ projection, onToggle }) {
   const [selection, setSelection] = useState(null)
   const now = useClock()
   const selected = projection.months.find(month => month.key === selection) || projection.months[0]
+  const coveredCount = selected.items.filter(item => item.covered).length
   const money = value => formatCash(value, projection.state.currency)
   return <section className="cash-calendar" aria-label="Month coverage">
     <div className="cash-month-tabs" role="tablist" aria-label="Payment months">
@@ -100,7 +101,11 @@ export function CashMonths({ projection, onToggle }) {
         }}><span>{month.label}</span><strong>{money(month.needed)}</strong><small>still needed</small></button>)}
     </div>
     <div className="cash-month-panel" role="tabpanel" id={`cash-month-${selected.key}`} aria-labelledby={`cash-tab-${selected.key}`}>
-      <div className="cash-month-heading"><h2>{selected.label}</h2><span>{selected.items.filter(item => item.covered).length} / {selected.items.length} covered</span></div>
+      <div className="cash-month-heading"><h2>{selected.label}</h2><span>{coveredCount} / {selected.items.length} covered</span></div>
+      {selected.items.length > 0 && <div className="cash-month-progress" role="progressbar" aria-label={`${selected.label} payments covered`}
+        aria-valuemin={0} aria-valuemax={selected.items.length} aria-valuenow={coveredCount}>
+        <span style={{ width: `${coveredCount / selected.items.length * 100}%` }} />
+      </div>}
       {!selected.items.length && <p className="cash-empty">No payments scheduled.</p>}
       {selected.items.map(item => {
         const due = cashDueLabel(item, now)

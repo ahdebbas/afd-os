@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { dateKey } from './dates'
 
@@ -214,21 +214,44 @@ export function Label({ children, className = '' }) {
 
 /** Bottom sheet dialog. */
 export function Sheet({ open, onClose, title, children }) {
+  const viewportRef = useRef(null)
   const panelRef = useRef(null)
+  const closeSheet = useEffectEvent(onClose)
 
   useEffect(() => {
     if (!open) return
     const restore = document.activeElement
+    const previousOverflow = document.body.style.overflow
     const panel = panelRef.current
     const focusable = () => Array.from(
       panel?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? []
     ).filter(el => !el.disabled && el.offsetParent !== null)
 
     // Move focus into the sheet so keyboard/screen-reader users land inside it.
-    ;(focusable()[0] || panel)?.focus()
+    if (!panel?.contains(document.activeElement)) (focusable()[0] || panel)?.focus({ preventScroll: true })
+
+    const viewport = window.visualViewport
+    let frame
+    const fitViewport = () => {
+      const overlay = viewportRef.current
+      if (!overlay || !viewport) return
+      overlay.style.top = `${viewport.offsetTop}px`
+      overlay.style.height = `${viewport.height}px`
+      overlay.style.setProperty('--sheet-height', `${viewport.height}px`)
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const active = document.activeElement
+        if (active instanceof HTMLElement && panel?.contains(active)) {
+          active.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        }
+      })
+    }
+    fitViewport()
+    viewport?.addEventListener('resize', fitViewport)
+    viewport?.addEventListener('scroll', fitViewport)
 
     const onKey = e => {
-      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'Escape') { closeSheet(); return }
       if (e.key !== 'Tab') return
       const items = focusable()
       if (items.length === 0) { e.preventDefault(); return }
@@ -242,18 +265,22 @@ export function Sheet({ open, onClose, title, children }) {
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-      if (restore instanceof HTMLElement) restore.focus()
+      viewport?.removeEventListener('resize', fitViewport)
+      viewport?.removeEventListener('scroll', fitViewport)
+      cancelAnimationFrame(frame)
+      document.body.style.overflow = previousOverflow
+      if (restore instanceof HTMLElement && restore.isConnected) restore.focus({ preventScroll: true })
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label={title}>
+    <div ref={viewportRef} className="sheet-viewport fixed inset-x-0 top-0 z-[80]" role="dialog" aria-modal="true" aria-label={title}
+      onTouchStart={event => event.stopPropagation()} onTouchMove={event => event.stopPropagation()} onTouchEnd={event => event.stopPropagation()}>
       <button className="absolute inset-0 w-full backdrop cursor-default" onClick={onClose} aria-label="Close" tabIndex={-1} />
       {/* centering transform lives in the sheet-in keyframes; Tailwind's translate utility would double-apply (v4 uses the `translate` property) */}
       <div className="absolute bottom-0 left-1/2 w-full max-w-md sheet-in">
-        <div ref={panelRef} tabIndex={-1} className="panel rounded-t-3xl rounded-b-none border-b-0 px-5 pt-3 pb-8 max-h-[82vh] overflow-y-auto outline-none">
+        <div ref={panelRef} tabIndex={-1} className="sheet-panel panel rounded-t-3xl rounded-b-none border-b-0 px-5 pt-3 pb-8 overflow-y-auto outline-none">
           <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'var(--track)' }} />
           <div className="flex items-center justify-between mb-4">
             <Label>{title}</Label>
