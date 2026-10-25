@@ -15,6 +15,20 @@ market-change summaries); saved balances and holdings are not converted or chang
 The workout calendar starts on the current local day, advances after midnight or
 app resume, and allows historical selection until the next day or reload.
 
+### Switching workout gyms
+
+Use **Fitness → Current gym / Beirut** on mobile or desktop. The current four-day
+split is preserved; Beirut has the two-day A/B program. Each gym keeps independent
+working weights, template additions, and rotation history. Returning resumes that
+gym's next workout even after weeks away, with no automatic restart. Beirut starts
+with blank weights rather than copying loads from different equipment.
+
+Sessions and weekly totals remain combined. Existing sessions belong to Current
+gym. A logged date always displays its original gym; changing the selector on a
+logged date sets the gym for the next unlogged day without changing that session.
+Gym selection, templates, and weights are included in cloud sync and JSON backups.
+Beirut Day B lists the biceps and triceps work separately, with two sets each.
+
 ## Tech
 
 - React 19 + Vite
@@ -35,6 +49,7 @@ npm run preview  # serve the production build locally
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
 Currency and workout date checks:
 `node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
+Gym rotation checks: `node --test src/workoutPrograms.test.mjs`.
 For Cash UI checks, exercise balance editing, recurring and one-off payment forms,
 month selection, and advance coverage in both themes and shells. On mobile, sheets
 follow the visible viewport above the keyboard, and form touches do not trigger

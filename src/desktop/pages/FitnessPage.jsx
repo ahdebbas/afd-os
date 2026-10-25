@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
-import { FITNESS, DEFAULT_WEIGHTS, nextWorkoutIdx, sessionIdx } from '../../data'
+import { FITNESS, sessionIdx } from '../../data'
+import { useWorkoutPrograms } from '../../useWorkoutPrograms'
+import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../../workoutPrograms'
+import WorkoutGymSelector from '../../WorkoutGymSelector'
 import { useClock, usePersistentState } from '../../hooks'
 import { dateKey } from '../../dates'
 import { useFood } from '../../store'
@@ -16,7 +19,7 @@ const METRICS = [
 ]
 
 function SetTracker({ spec, onTick }) {
-  const total = (String(spec).match(/^(\d+)×/) || [])[1] ? parseInt(spec, 10) : 1
+  const total = Number(String(spec).match(/^(?:\d+[–-])?(\d+)×/)?.[1] ?? 1)
   const [done, setDone] = useState(0)
   const toggle = () => { const next = done >= total ? 0 : done + 1; setDone(next); if (next > done) onTick?.() }
   return (
@@ -57,25 +60,26 @@ function WeightCell({ weight, onCommit }) {
 export default function FitnessPage() {
   const os = useOs()
   const { logs: foodLogs } = useFood()
-  const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
-  const [weights, setWeights] = usePersistentState('afd-weights', DEFAULT_WEIGHTS, v => v && typeof v === 'object' && !Array.isArray(v))
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [metric, setMetric] = useState('weight')
 
   const today = dateKey(useClock())
-  const suggested = nextWorkoutIdx(program, sessions)
   const todaySession = sessions.find(s => s.date === today)
+  const { program, weights, setWeights, programId, activeProgramId, setActiveProgramId } =
+    useWorkoutPrograms(todaySession ? sessionProgramId(todaySession) : undefined)
+  const programSessions = useMemo(() => sessionsForProgram(sessions, programId), [sessions, programId])
+  const suggested = nextProgramWorkoutIdx(program, sessions, programId)
   const [selectedWorkout, setSelectedWorkout] = useState(null)
-  const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout?.date === today ? selectedWorkout.index : suggested
+  const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout?.date === today && selectedWorkout.programId === programId ? selectedWorkout.index : suggested
   const done = !!todaySession
 
   const lastWeights = useMemo(() => {
     const m = {}
-    ;[...sessions].sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(s =>
+    ;[...programSessions].sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(s =>
       Object.entries(s.weights || {}).forEach(([n, w]) => { if (Number.isFinite(+w) && +w > 0) m[n] = +w }))
     return m
-  }, [sessions])
+  }, [programSessions])
 
   const effWeight = name => todaySession?.weights?.[name] ?? weights[name] ?? lastWeights[name] ?? null
 
@@ -92,7 +96,7 @@ export default function FitnessPage() {
     if (done) { setSessions(prev => prev.filter(s => s.date !== today)); return }
     const snap = {}
     program[day].exercises.forEach(e => { const w = effWeight(e.name); if (w != null) snap[e.name] = w })
-    setSessions(prev => [...prev, { date: today, idx: day, name: program[day].name, weights: snap }])
+    setSessions(prev => [...prev, { date: today, programId, idx: day, name: program[day].name, weights: snap }])
     os?.announce(`SESSION LOGGED · ${program[day].name}`, 'var(--acc-fit)')
   }
 
@@ -154,13 +158,15 @@ export default function FitnessPage() {
               <Button size="sm" variant={done ? 'outline' : 'primary'} onClick={toggleDone}>{done ? 'Undo' : 'Finish workout'}</Button>
             </div>
           }>
-          {!done && <Segmented className="mb-3" value={day} onChange={index => setSelectedWorkout({ date: today, index })}
+          <WorkoutGymSelector desktop value={activeProgramId} onChange={setActiveProgramId}
+            loggedProgramId={todaySession ? sessionProgramId(todaySession) : undefined} />
+          {!done && <Segmented className="mb-3" value={day} onChange={index => setSelectedWorkout({ date: today, programId, index })}
             options={program.map((d, i) => ({ value: i, label: d.name.split(' & ')[0] }))} />}
           <table className="d-table">
             <thead><tr><th style={{ width: 34 }}>#</th><th>Exercise</th><th>Sets</th><th style={{ textAlign: 'right' }}>Weight</th></tr></thead>
             <tbody>
               {program[day].exercises.map((e, i) => (
-                <tr key={e.name}>
+                <tr key={`${today}:${programId}:${day}:${e.name}`}>
                   <td className="d-num d-t3">{String(i + 1).padStart(2, '0')}</td>
                   <td className="d-t1 font-medium">{e.name}</td>
                   <td><SetTracker spec={e.sets} onTick={() => os?.startTimer?.(90)} /></td>

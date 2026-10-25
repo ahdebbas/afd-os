@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRight, ChevronDown } from 'lucide-react'
-import { FITNESS, DEFAULT_WEIGHTS, sessionIdx, nextWorkoutIdx } from '../data'
+import { FITNESS, sessionIdx } from '../data'
+import { useWorkoutPrograms } from '../useWorkoutPrograms'
+import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../workoutPrograms'
+import WorkoutGymSelector from '../WorkoutGymSelector'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { useCurrentDaySelection, usePersistentState } from '../hooks'
@@ -85,13 +88,12 @@ function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCo
 export default function Fitness() {
   const os = useOs()
   const { goal, injuries } = FITNESS
-  // Program lives in storage so new exercises added during a workout persist to the template.
-  // Key is versioned: bump the suffix whenever FITNESS.program is redesigned so existing
-  // devices re-seed from the new template instead of showing the stale cached split.
-  const [program, setProgram] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
-  const [weights, setWeights] = usePersistentState('afd-weights', DEFAULT_WEIGHTS,
-    v => v && typeof v === 'object' && !Array.isArray(v))
+  const [selDate, setSelDate, today] = useCurrentDaySelection()
+  const selSession = sessions.find(s => s.date === selDate)
+  const { program, setProgram, weights, setWeights, programId, activeProgramId, setActiveProgramId } =
+    useWorkoutPrograms(selSession ? sessionProgramId(selSession) : undefined)
+  const programSessions = useMemo(() => sessionsForProgram(sessions, programId), [sessions, programId])
   const [exerciseProgress, setExerciseProgress] = usePersistentState('afd-fit-exercise-progress', {},
     v => v && typeof v === 'object' && !Array.isArray(v))
   const [inbody, setInbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
@@ -129,21 +131,19 @@ export default function Fitness() {
     }
   }, [])
 
-  const [selDate, setSelDate, today] = useCurrentDaySelection()
   const isToday = selDate === today
   const idxOf = s => sessionIdx(s, program)
 
   // Most-recent-first, so the rotation suggestion follows the last workout actually done.
   const ordered = useMemo(
-    () => [...sessions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
-    [sessions]
+    () => [...programSessions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    [programSessions]
   )
-  const selSession = sessions.find(s => s.date === selDate)
   const done = !!selSession
 
   const lastLogged = ordered.find(s => idxOf(s) >= 0)
-  const suggested = nextWorkoutIdx(program, sessions)
-  const activeIdx = selSession ? Math.max(0, idxOf(selSession)) : suggested
+  const suggested = nextProgramWorkoutIdx(program, sessions, programId)
+  const activeIdx = selSession ? Math.max(0, Math.min(program.length - 1, idxOf(selSession))) : suggested
 
   // Most recent logged weight per exercise across all sessions (oldest→newest so newer wins).
   const lastWeights = useMemo(() => {
@@ -158,14 +158,10 @@ export default function Fitness() {
   const effWeight = name => selSession?.weights?.[name] ?? weights[name] ?? lastWeights[name] ?? null
 
   // Selected rotation day follows the suggestion / logged session, but a manual tap sticks.
-  const [day, setDay] = useState(activeIdx)
-  const prevActive = useRef({ date: selDate, index: activeIdx })
-  useEffect(() => {
-    if (prevActive.current.date !== selDate || prevActive.current.index !== activeIdx) {
-      setDay(activeIdx)
-      prevActive.current = { date: selDate, index: activeIdx }
-    }
-  }, [activeIdx, selDate])
+  const [selection, setSelection] = useState(null)
+  const day = selection?.date === selDate && selection.programId === programId && selection.activeIdx === activeIdx
+    ? selection.day : activeIdx
+  const setDay = day => setSelection({ date: selDate, programId, activeIdx, day })
 
   const progressKey = `${selDate}:${program[day].name}`
   const completedExercises = exerciseProgress[progressKey] || []
@@ -180,7 +176,7 @@ export default function Fitness() {
   // Best weight per exercise across current values + every logged snapshot.
   const bestFor = name => {
     let best = +weights[name] || 0
-    sessions.forEach(s => { const x = +s.weights?.[name]; if (Number.isFinite(x) && x > best) best = x })
+    programSessions.forEach(s => { const x = +s.weights?.[name]; if (Number.isFinite(x) && x > best) best = x })
     return best
   }
 
@@ -188,9 +184,9 @@ export default function Fitness() {
     const best = {}
     const consider = (n, w) => { if (w > 0 && (!best[n] || w > best[n])) best[n] = w }
     Object.entries(weights).forEach(([n, w]) => consider(n, +w || 0))
-    sessions.forEach(s => Object.entries(s.weights || {}).forEach(([n, w]) => consider(n, +w || 0)))
+    programSessions.forEach(s => Object.entries(s.weights || {}).forEach(([n, w]) => consider(n, +w || 0)))
     return Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 6)
-  }, [weights, sessions])
+  }, [weights, programSessions])
 
   const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody, now: new Date(`${today}T12:00:00`) }), [sessions, inbody, today])
 
@@ -228,7 +224,7 @@ export default function Fitness() {
     } else {
       const snap = {}
       program[day].exercises.forEach(e => { const w = effWeight(e.name); if (w != null) snap[e.name] = w })
-      setSessions(prev => [...prev, { date: selDate, idx: day, name: program[day].name, weights: snap }])
+      setSessions(prev => [...prev, { date: selDate, programId, idx: day, name: program[day].name, weights: snap }])
       os?.announce(`SESSION LOGGED · ${program[day].name}`, 'var(--acc-fit)')
     }
   }
@@ -410,6 +406,10 @@ export default function Fitness() {
 
       {/* Workout — rotation + inline weights (backlog any day) */}
       <section className="panel p-6 fitness-console">
+        <WorkoutGymSelector value={activeProgramId} onChange={id => {
+          setActiveProgramId(id)
+          setExForm({ open: false, name: '', sets: '' })
+        }} loggedProgramId={selSession ? sessionProgramId(selSession) : undefined} />
         <div className="flex flex-wrap gap-2 items-center justify-between mb-1">
           <Label><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> {isToday ? 'Today’s workout' : `${dayLabel} workout`}</Label>
           {lastLogged && (
@@ -422,7 +422,7 @@ export default function Fitness() {
           <span>{nextExercise.sets}{lastWeights[nextExercise.name] != null ? ` · last recorded ${lastWeights[nextExercise.name]} kg` : ' · no recorded weight'}</span>
         </div>}
         {/* Rotation strip */}
-        <div className="grid grid-cols-4 gap-1 chip rounded-2xl p-1 mb-4">
+        <div className={`grid ${program.length === 2 ? 'grid-cols-2' : 'grid-cols-4'} gap-1 chip rounded-2xl p-1 mb-4`}>
           {program.map((d, i) => {
             const selected = day === i
             // Split at the "&" so every tab renders as a consistent two-line label.
@@ -458,7 +458,7 @@ export default function Fitness() {
         </div>
         {program[day].exercises.map((e, i) => (
           <ExerciseRow
-            key={e.name}
+            key={`${selDate}:${programId}:${day}:${e.name}`}
             exercise={e}
             index={i}
             weight={effWeight(e.name)}

@@ -3,6 +3,21 @@ import assert from 'node:assert/strict'
 import { buildMonthlyWorkoutRecap } from './monthlyWorkoutRecap.js'
 import { dateKey } from './dates.js'
 
+test('recap combines session totals but never compares weights between gyms', () => {
+  const sessions = [
+    { date: '2026-09-30', name: 'Chest', weights: { 'Chest Press Machine': 30 } },
+    { date: '2026-09-30', programId: 'beirut', name: 'Beirut A', weights: { 'Chest Press Machine': 70 } },
+    { date: '2026-10-01', name: 'Chest', weights: { 'Chest Press Machine': 35 } },
+    { date: '2026-10-02', programId: 'beirut', name: 'Beirut A', weights: { 'Chest Press Machine': 75 } },
+  ]
+  const recap = buildMonthlyWorkoutRecap({ sessions, now: new Date(2026, 9, 3) })
+  assert.equal(recap.sessionsCount, 2)
+  assert.deepEqual(recap.topGains, [
+    { exercise: 'Chest Press Machine', delta: 5 },
+    { exercise: 'Chest Press Machine (Beirut)', delta: 5 },
+  ])
+})
+
 test('workout recap follows the supplied local calendar day at month rollover', () => {
   const sessions = [
     { date: '2026-09-30', name: 'Chest & Triceps' },

@@ -1,6 +1,7 @@
 import { dateKey } from './dates.js'
 
 const round1 = n => Number.isFinite(n) ? Math.round(n * 10) / 10 : null
+const liftKey = (session, exercise) => session.programId === 'beirut' ? `${exercise} (Beirut)` : exercise
 
 // Deterministic — every number traces to a logged session or InBody reading. No estimation.
 export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new Date() }) {
@@ -30,7 +31,8 @@ export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new
     for (const [exercise, weight] of Object.entries(s.weights || {})) {
       const w = +weight
       if (!Number.isFinite(w)) continue
-      if (!preMonthBest.has(exercise) || w > preMonthBest.get(exercise)) preMonthBest.set(exercise, w)
+      const key = liftKey(s, exercise)
+      if (!preMonthBest.has(key) || w > preMonthBest.get(key)) preMonthBest.set(key, w)
     }
   }
 
@@ -40,8 +42,9 @@ export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new
     for (const [exercise, weight] of Object.entries(s.weights || {})) {
       const w = +weight
       if (!Number.isFinite(w)) continue
-      if (!monthBest.has(exercise) || w > monthBest.get(exercise)) monthBest.set(exercise, w)
-      if (!heaviestLift || w > heaviestLift.weight) heaviestLift = { exercise, weight: w }
+      const key = liftKey(s, exercise)
+      if (!monthBest.has(key) || w > monthBest.get(key)) monthBest.set(key, w)
+      if (!heaviestLift || w > heaviestLift.weight) heaviestLift = { exercise: key, weight: w }
     }
   }
 

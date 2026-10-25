@@ -4,7 +4,9 @@ import { useFood } from '../../store'
 import { useQuotes } from '../../quotes'
 import { useClock, usePersistentState } from '../../hooks'
 import { dateKey } from '../../dates'
-import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { useWorkoutPrograms } from '../../useWorkoutPrograms'
+import { nextProgramWorkoutIdx } from '../../workoutPrograms'
 import { connectWhoop, fetchWhoopCalories, WHOOP_POLL_MS } from '../../whoop'
 import { fuelingFlag, projectBurn, recommendedIntake } from '../../whoopEnergy'
 import { Card, Button, Ring, Meter, NumberFlow, Badge } from '../primitives'
@@ -171,7 +173,7 @@ export default function OverviewPage({ onNavigate }) {
   const finance = reconcileFinance(savedFinance)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const latestBody = [...inbody].sort((first, second) => first.date.localeCompare(second.date)).at(-1)
-  const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
+  const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [, setFoodDay] = usePersistentState('afd-food-day', today)
   const [, setFitnessDay] = usePersistentState('afd-fit-day', today)
@@ -180,7 +182,7 @@ export default function OverviewPage({ onNavigate }) {
     if (destination === 'fitness') setFitnessDay(today)
     onNavigate(destination)
   }
-  const nextWorkout = program[nextWorkoutIdx(program, sessions)]?.name
+  const nextWorkout = program[nextProgramWorkoutIdx(program, sessions, programId)]?.name
   const monday = new Date(today + 'T00:00:00')
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
   const weekCount = sessions.filter(session => session.date >= dateKey(monday) && session.date <= today).length

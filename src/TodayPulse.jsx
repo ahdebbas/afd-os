@@ -2,7 +2,9 @@ import { Beef, Droplets, Dumbbell, Flame, Landmark, Play, Wallet, Wheat } from '
 import { useClock, usePersistentState } from './hooks'
 import { useFood } from './store'
 import { useQuotes } from './quotes'
-import { FINANCE, FITNESS, TARGETS, nextWorkoutIdx, reconcileFinance, sarwaTotal, usd } from './data'
+import { FINANCE, FITNESS, TARGETS, reconcileFinance, sarwaTotal, usd } from './data'
+import { useWorkoutPrograms } from './useWorkoutPrograms'
+import { nextProgramWorkoutIdx } from './workoutPrograms'
 import { DEFAULT_CASH_PULSE, buildCashProjection, formatCash } from './cashPulse'
 import { dateKey } from './dates'
 import { Gauge, Odometer } from './ui'
@@ -16,7 +18,7 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const [savedFinance] = usePersistentState('afd-finance', FINANCE)
   const finance = reconcileFinance(savedFinance)
   const [cash] = usePersistentState('afd-cash-pulse', DEFAULT_CASH_PULSE)
-  const [program] = usePersistentState('afd-program-v2', FITNESS.program, Array.isArray)
+  const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [, setFoodDay] = usePersistentState('afd-food-day', today)
@@ -26,7 +28,7 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
     if (destination === 'fitness') setFitnessDay(today)
     onNavigate(destination)
   }
-  const nextWorkout = program[nextWorkoutIdx(program, sessions)]
+  const nextWorkout = program[nextProgramWorkoutIdx(program, sessions, programId)]
   const todaySession = sessions.find(session => session.date === today)
   const monday = new Date(now)
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
