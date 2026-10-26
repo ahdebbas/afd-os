@@ -1,6 +1,6 @@
 // Pure WHOOP-energy math shared across screens. Kept JSX-free so it can export
 // freely without tripping react-refresh/only-export-components.
-import { TARGETS, DEFICIT_GOAL } from './data'
+import { TARGETS, DEFICIT_GOAL } from './data.js'
 
 // Fraction of the local day elapsed (0–1), based on the device clock.
 const dayFraction = (now = new Date()) =>
@@ -34,7 +34,7 @@ export function recommendedIntake(projectedBurn) {
  * Surface a single coaching flag when strain and intake are mismatched.
  * Returns { kind: 'under' | 'over' | 'protein', msg } or null.
  */
-export function fuelingFlag({ whoop, eaten = 0, protein = 0, projectedBurn = null, now = new Date() }) {
+export function fuelingFlag({ whoop, eaten = 0, protein = 0, proteinTarget = TARGETS.protein, projectedBurn = null, now = new Date() }) {
   if (!whoop?.connected || whoop.kcal == null) return null
   const strain = whoop.strain
   const projectedNet = (projectedBurn ?? whoop.kcal) - eaten
@@ -46,7 +46,7 @@ export function fuelingFlag({ whoop, eaten = 0, protein = 0, projectedBurn = nul
   if (strain != null && strain < 8 && projectedNet < -200) {
     return { kind: 'over', msg: `Low-strain day with a surplus building — ease off intake to stay on the cut.` }
   }
-  if (lateDay && eaten > 600 && protein < TARGETS.protein * 0.5) {
+  if (lateDay && eaten > 600 && protein < proteinTarget * 0.5) {
     return { kind: 'protein', msg: `Protein at ${Math.round(protein)}g, under half target this late — prioritise a protein-heavy next meal.` }
   }
   return null

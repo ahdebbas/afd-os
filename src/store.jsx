@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { TARGETS } from './data'
 import { useOs } from './os'
-import { usePersistentState } from './hooks'
-import { todayKey } from './dates'
+import { useClock, usePersistentState } from './hooks'
+import { useHomeGoals } from './useHomeGoals'
+import { dateKey, todayKey } from './dates'
 
 const DEFAULT_PRESETS = [
   // Breakfast
@@ -46,12 +47,14 @@ const nutrition = (item, partial = false) => {
 
 export function FoodProvider({ children }) {
   const os = useOs()
+  const [home] = useHomeGoals()
+  const targets = { ...TARGETS, protein: home.goals.protein }
   const [presets, setPresets] = usePersistentState('afd-presets', DEFAULT_PRESETS, Array.isArray)
   const [logs, setLogs] = usePersistentState('afd-food-log', {}, v => v && typeof v === 'object' && !Array.isArray(v))
   const [removed, setRemoved] = useState(null)
   const [syncSeen, setSyncSeen] = usePersistentState('afd-food-sync-seen', {}, value => value && typeof value === 'object' && !Array.isArray(value))
 
-  const today = todayKey()
+  const today = dateKey(useClock())
   const entries = useMemo(() => logs[today] || [], [logs, today])
   const totals = useMemo(() => entries.reduce(
     (a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + (e.protein || 0), carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0) }),
@@ -131,9 +134,9 @@ export function FoodProvider({ children }) {
   }
 
   const value = {
-    presets, entries, totals, logs,
-    remaining: TARGETS.kcal - totals.kcal,
-    proteinLeft: TARGETS.protein - totals.protein,
+    presets, entries, totals, logs, targets,
+    remaining: targets.kcal - totals.kcal,
+    proteinLeft: targets.protein - totals.protein,
     addEntry, removeEntry, updateEntry, removed, undoRemoval, addPreset, removePreset, updatePreset,
   }
   return <FoodCtx.Provider value={value}>{children}</FoodCtx.Provider>

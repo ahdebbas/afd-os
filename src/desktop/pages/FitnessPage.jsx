@@ -5,6 +5,8 @@ import { useWorkoutPrograms } from '../../useWorkoutPrograms'
 import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../../workoutPrograms'
 import WorkoutGymSelector from '../../WorkoutGymSelector'
 import { useClock, usePersistentState } from '../../hooks'
+import { useHomeGoals } from '../../useHomeGoals'
+import { bodyFatGoal, weeklyTrainingGoal } from '../../homeInsights'
 import { dateKey } from '../../dates'
 import { useFood } from '../../store'
 import { useOs } from '../../os'
@@ -59,6 +61,7 @@ function WeightCell({ weight, onCommit }) {
 
 export default function FitnessPage() {
   const os = useOs()
+  const [{ goals }] = useHomeGoals()
   const { logs: foodLogs } = useFood()
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
@@ -100,22 +103,15 @@ export default function FitnessPage() {
     os?.announce(`SESSION LOGGED · ${program[day].name}`, 'var(--acc-fit)')
   }
 
-  const weekCount = useMemo(() => {
-    let c = 0
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(`${today}T12:00:00`); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow + i)
-      const key = dateKey(d)
-      if (sessions.find(s => s.date === key)) c++
-    }
-    return c
-  }, [sessions, today])
+  const weekCount = weeklyTrainingGoal(sessions, goals.weeklyWorkouts, new Date(`${today}T12:00:00`)).current
 
   const readings = useMemo(() => [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)), [inbody])
   const latest = readings[readings.length - 1] || { weight: 0, smm: 0, fatMass: 0, fatPct: 0 }
   const prev = readings[readings.length - 2]
   const selMetric = METRICS.find(m => m.key === metric)
   const chartData = readings.filter(r => r[metric] != null).map(r => ({ date: r.date, value: r[metric] }))
-  const toGoal = (latest.fatPct - FITNESS.goal.fatPct).toFixed(1)
+  const bodyGoal = bodyFatGoal(inbody, goals.fatPct, new Date(`${today}T12:00:00`))
+  const toGoal = bodyGoal.remaining == null ? '\u2014' : bodyGoal.remaining.toFixed(1)
 
   const history = useMemo(
     () => [...sessions].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12),
@@ -181,8 +177,8 @@ export default function FitnessPage() {
         <div className="space-y-4">
           <Card eyebrow="This week" title="Training load">
             <div className="flex items-center justify-between">
-              <Stat label="Sessions" value={`${weekCount}/4`} />
-              <Ring pct={weekCount / 4} size={64} stroke={7}>
+              <Stat label="Sessions" value={`${weekCount}/${goals.weeklyWorkouts}`} />
+              <Ring pct={weekCount / goals.weeklyWorkouts} size={64} stroke={7}>
                 <span className="text-[14px] font-semibold d-num d-t1">{weekCount}</span>
               </Ring>
             </div>
@@ -218,14 +214,14 @@ export default function FitnessPage() {
             options={METRICS.map(m => ({ value: m.key, label: m.label }))} />
         }>
         <div className="flex items-center gap-5 mb-4">
-          <Ring pct={Math.max(0.04, Math.min(1, (20 - latest.fatPct) / (20 - FITNESS.goal.fatPct)))} size={88} stroke={8}>
+          <Ring pct={bodyGoal.progress ?? 0} size={88} stroke={8}>
             <div>
-              <span className="text-[22px] font-semibold d-t1 d-num leading-none">{latest.fatPct}<span className="text-[12px] d-t3">%</span></span>
+              <span className="text-[22px] font-semibold d-t1 d-num leading-none">{bodyGoal.current ?? '\u2014'}<span className="text-[12px] d-t3">%</span></span>
               <div className="text-[10px] d-t3 mt-0.5">body fat</div>
             </div>
           </Ring>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <Badge tone="accent">{toGoal}% to goal {FITNESS.goal.fatPct}%</Badge>
+            <Badge tone="accent">{toGoal} pts to goal {goals.fatPct}%</Badge>
             <span className="text-[12px] d-t2 d-num">{latest.weight}kg · {latest.smm}kg muscle</span>
             {prev && <span className="text-[11px] d-t3 d-num">{(latest.weight - prev.weight >= 0 ? '+' : '')}{(latest.weight - prev.weight).toFixed(1)}kg since last</span>}
           </div>

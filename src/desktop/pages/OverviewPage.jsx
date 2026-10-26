@@ -3,6 +3,8 @@ import { ArrowRight, Clock, Target, TrendingDown, TrendingUp, TriangleAlert, Zap
 import { useFood } from '../../store'
 import { useQuotes } from '../../quotes'
 import { useClock, usePersistentState } from '../../hooks'
+import { useHomeGoals } from '../../useHomeGoals'
+import { bodyFatGoal, weeklyTrainingGoal } from '../../homeInsights'
 import { dateKey } from '../../dates'
 import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
@@ -60,6 +62,7 @@ function MiniKpi({ label, value, tone = 't1', sub }) {
 
 function WhoopInsightsCard({ whoop, eaten, protein }) {
   const [adaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
+  const { targets } = useFood()
   const snap = whoopSnapshot(whoop, eaten)
 
   if (snap.state !== 'ready') {
@@ -87,7 +90,7 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
   const projected = projectBurn(whoop)
   const recommend = recommendedIntake(projected)
   const recLeft = recommend != null ? recommend - eaten : null
-  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, projectedBurn: projected }) : null
+  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, proteinTarget: targets.protein, projectedBurn: projected }) : null
   const vsYesterday = whoop.yesterday == null ? null : snap.burned - whoop.yesterday
   const vsWeekly = whoop.weeklyAvg == null ? null : snap.burned - whoop.weeklyAvg
   const paceKnown = snap.paceDelta != null
@@ -166,13 +169,13 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
 }
 
 export default function OverviewPage({ onNavigate }) {
-  const { totals, remaining, proteinLeft, entries } = useFood()
+  const { totals, remaining, proteinLeft, entries, targets } = useFood()
+  const [{ goals }] = useHomeGoals()
   const quotes = useQuotes()
   const today = dateKey(useClock())
   const [savedFinance] = usePersistentState('afd-finance', FINANCE)
   const finance = reconcileFinance(savedFinance)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
-  const latestBody = [...inbody].sort((first, second) => first.date.localeCompare(second.date)).at(-1)
   const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [, setFoodDay] = usePersistentState('afd-food-day', today)
@@ -183,10 +186,9 @@ export default function OverviewPage({ onNavigate }) {
     onNavigate(destination)
   }
   const nextWorkout = program[nextProgramWorkoutIdx(program, sessions, programId)]?.name
-  const monday = new Date(today + 'T00:00:00')
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
-  const weekCount = sessions.filter(session => session.date >= dateKey(monday) && session.date <= today).length
-  const toGoal = latestBody?.fatPct != null ? (latestBody.fatPct - FITNESS.goal.fatPct).toFixed(1) : null
+  const weekCount = weeklyTrainingGoal(sessions, goals.weeklyWorkouts, new Date(`${today}T12:00:00`)).current
+  const bodyGoal = bodyFatGoal(inbody, goals.fatPct, new Date(`${today}T12:00:00`))
+  const toGoal = bodyGoal.remaining?.toFixed(1) ?? null
   const msftValue = finance.msft.shares * (quotes?.MSFT?.price ?? finance.msft.price)
   const sarwaValue = sarwaTotal(finance.sarwa, quotes)
   const total = msftValue + sarwaValue + finance.property.value
@@ -213,7 +215,7 @@ export default function OverviewPage({ onNavigate }) {
               </div>
             </Ring>
             <div className="flex-1 space-y-2.5 min-w-0">
-              <MacroRow label="Protein" val={totals.protein} target={TARGETS.protein} color="var(--d-accent)" />
+              <MacroRow label="Protein" val={totals.protein} target={targets.protein} color="var(--d-accent)" />
               <MacroRow label="Carbs" val={totals.carbs} target={TARGETS.carbs} color="var(--d-warn)" />
               <MacroRow label="Fat" val={totals.fat} target={TARGETS.fat} color="var(--d-up)" />
             </div>
@@ -221,12 +223,12 @@ export default function OverviewPage({ onNavigate }) {
         </Card>
         <Card eyebrow="Fitness" title="Training" actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => navigate('fitness')}>Open</Button>}>
           <div className="flex items-center gap-4">
-            <Ring pct={latestBody?.fatPct != null ? Math.max(0, Math.min(1, (20 - latestBody.fatPct) / (20 - FITNESS.goal.fatPct))) : 0} size={104} stroke={9} color="var(--d-accent)">
-              <div><span className="text-[24px] font-semibold d-t1 d-num">{latestBody?.fatPct ?? '—'}<span className="text-[13px] d-t3">%</span></span><div className="text-[10px] d-t3 mt-1">body fat</div></div>
+            <Ring pct={bodyGoal.progress ?? 0} size={104} stroke={9} color="var(--d-accent)">
+              <div><span className="text-[24px] font-semibold d-t1 d-num">{bodyGoal.current ?? '—'}<span className="text-[13px] d-t3">%</span></span><div className="text-[10px] d-t3 mt-1">body fat</div></div>
             </Ring>
             <div className="flex-1 min-w-0 space-y-2.5">
               <div><div className="d-eyebrow">Next workout</div><div className="text-[15px] font-semibold d-t1">{nextWorkout || '—'}</div></div>
-              <div className="flex items-center gap-2 flex-wrap">{toGoal != null && <Badge tone="accent">{toGoal}% to goal</Badge>}<Badge tone={weekCount >= 4 ? 'up' : 'neutral'}>{weekCount}/4 sessions</Badge></div>
+              <div className="flex items-center gap-2 flex-wrap">{toGoal != null && <Badge tone="accent">{toGoal} pts to goal</Badge>}<Badge tone={weekCount >= goals.weeklyWorkouts ? 'up' : 'neutral'}>{weekCount}/{goals.weeklyWorkouts} sessions</Badge></div>
             </div>
           </div>
         </Card>

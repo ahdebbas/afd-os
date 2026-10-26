@@ -3,7 +3,7 @@ import { Apple, Beef, Coffee, Cookie, Drumstick, Egg, Fish, LoaderCircle, Milk, 
 import { useFood } from '../store'
 import { TARGETS } from '../data'
 import { SegBar, Label, Odometer, DayStrip, Gauge } from '../ui'
-import { dateKey, todayKey } from '../dates'
+import { dateKey, isDateKey, todayKey } from '../dates'
 import { usePersistentState } from '../hooks'
 import { combineItems, prepareFoodPhoto, requestFoodImageAnalysis, requestFoodTextAnalysis } from '../nl'
 import { useOs } from '../os'
@@ -91,11 +91,11 @@ function macroPhrase(entry) {
   return 'balanced add'
 }
 
-function dayNote(entries, totals, remaining, isToday) {
+function dayNote(entries, totals, remaining, isToday, proteinTarget) {
   if (!entries.length) return isToday ? 'Start with one tap. Keep it honest and light.' : 'No meals were logged on this day.'
   if (remaining < 0) return `Over target by ${Math.abs(remaining).toLocaleString()} kcal. Keep the rest of the day simple.`
-  if (totals.protein >= TARGETS.protein) return 'Protein is covered. The remaining calories are optional, not a chase.'
-  return `${Math.max(0, Math.round(TARGETS.protein - totals.protein))}g protein still open. Pick the next thing with purpose.`
+  if (totals.protein >= proteinTarget) return 'Protein is covered. The remaining calories are optional, not a chase.'
+  return `${Math.max(0, Math.round(proteinTarget - totals.protein))}g protein still open. Pick the next thing with purpose.`
 }
 
 function JournalEntry({ entry, preset, canRemove, onRemove, onEdit, count = 1, hideTime = false }) {
@@ -198,11 +198,10 @@ function History({ logs }) {
 
 
 export default function Food() {
-  const { presets, logs, addEntry, removeEntry, addPreset, removePreset, updatePreset } = useFood()
+  const { presets, logs, targets, addEntry, removeEntry, addPreset, removePreset, updatePreset } = useFood()
   const os = useOs()
   // Persisted so a reload mid-session resumes on the same day; snapped to today below if stale.
-  const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
-    v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  const [date, setDate] = usePersistentState('afd-food-day', todayKey(), isDateKey)
   const isToday = date === todayKey()
   const canEdit = date <= todayKey()
   const [entryEditor, setEntryEditor] = useState(null)
@@ -266,7 +265,7 @@ export default function Food() {
   const insight = (() => {
     if (totals.kcal === 0) return isToday ? 'Nothing logged yet — tap a preset to start' : 'No food logged this day'
     if (remaining < 0) return `${Math.abs(remaining).toLocaleString()} kcal over target`
-    const pLeft = Math.max(0, Math.round(TARGETS.protein - totals.protein))
+    const pLeft = Math.max(0, Math.round(targets.protein - totals.protein))
     return pLeft > 0
       ? `${remaining.toLocaleString()} kcal left · ${pLeft}g protein to go`
       : `${remaining.toLocaleString()} kcal left · protein hit ✓`
@@ -369,7 +368,7 @@ export default function Food() {
   const filteredPresets = presets.filter(p => p.category === activeCategory)
 
   const macros = [
-    { Icon: Beef, label: 'P', val: totals.protein, target: TARGETS.protein, color: 'var(--fuel-protein)' },
+    { Icon: Beef, label: 'P', val: totals.protein, target: targets.protein, color: 'var(--fuel-protein)' },
     { Icon: Wheat, label: 'C', val: totals.carbs, target: TARGETS.carbs, color: 'var(--fuel-carbs)' },
     { Icon: Droplets, label: 'F', val: totals.fat, target: TARGETS.fat, color: 'var(--fuel-fat)' },
   ]
@@ -610,7 +609,7 @@ export default function Food() {
                 onRemove={() => removeEntry(group.items.map(entry => entry.uid), date)}
               />
             ))}
-            <p className="food-note">{dayNote(entries, totals, remaining, isToday)}</p>
+            <p className="food-note">{dayNote(entries, totals, remaining, isToday, targets.protein)}</p>
           </div>
         )}
       </section>

@@ -12,6 +12,7 @@ import Cash from './screens/Cash'
 import Food from './screens/Food'
 import Fitness from './screens/Fitness'
 import { useClock, usePersistentState } from './hooks'
+import { useHomeGoals } from './useHomeGoals'
 import { exportData, importData } from './backup'
 import DesktopApp from './desktop/DesktopApp'
 
@@ -125,6 +126,7 @@ function QuickLog({ open, onClose }) {
 
 function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell }) {
   const { announce } = useOs()
+  const [home, setHome] = useHomeGoals()
   const fileRef = useRef(null)
   const [msg, setMsg] = useState(null)
   const [adaptive, setAdaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
@@ -176,6 +178,18 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
           </div>
           <p className="mono text-[9px] t3 mt-2">Desktop shortcuts: Cmd/Ctrl+1..5 modules, Cmd/Ctrl+L quick log, Cmd/Ctrl+, settings.</p>
         </div>
+        {effectiveShell === 'mobile' && <div className="chip rounded-2xl px-4 py-3.5">
+          <p className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">Mobile Home</p>
+          <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+            {[{ id: 'trajectory', label: 'Trajectory' }, { id: 'classic', label: 'Original' }].map(view => (
+              <button key={view.id} type="button" onClick={() => setHome(previous => ({ ...previous, view: view.id }))} aria-pressed={home.view === view.id}
+                className={`press rounded-xl py-2 text-[12px] font-semibold ${home.view === view.id ? 'acc-chip' : 'chip t2'}`}>
+                {view.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] t3 mt-2">Switch layouts anytime. Your saved data and targets stay the same.</p>
+        </div>}
         <button onClick={() => setAdaptive(v => !v)} role="switch" aria-checked={adaptive}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Target size={16} strokeWidth={2.25} /></span>
@@ -291,6 +305,7 @@ function MobileShell({
   onTouchStart,
   onTouchMove,
   onTouchEnd,
+  trajectoryHome,
 }) {
   return (
     <>
@@ -320,12 +335,13 @@ function MobileShell({
         <div className="dock dock-track" style={{ '--acc': activeTab.acc }}>
           {TABS.map(t => {
             const active = tab === t.id
+            const label = t.id === 'today' && trajectoryHome ? 'Home' : t.label
             return (
-              <button key={t.id} onClick={() => onTabChange(t.id)} aria-label={t.label} aria-current={active ? 'page' : undefined}
+              <button key={t.id} onClick={() => onTabChange(t.id)} aria-label={label} aria-current={active ? 'page' : undefined}
                 className="dock-btn"
-                style={{ color: active ? t.acc : 'var(--ink-3)' }}>
+                style={{ color: active ? trajectoryHome && tab === 'today' ? 'var(--cp-accent)' : t.acc : 'var(--ink-3)' }}>
                 <t.Icon size={22} strokeWidth={active ? 2.4 : 2} />
-                <span>{t.label}</span>
+                <span>{label}</span>
               </button>
             )
           })}
@@ -337,6 +353,7 @@ function MobileShell({
 
 function Shell() {
   const { announce } = useOs()
+  const [home] = useHomeGoals()
   // Persisted so an iOS PWA reload (e.g. after backgrounding) resumes on the same tab.
   const [tab, setTab] = usePersistentState('afd-tab', 'today', v => TABS.some(t => t.id === v))
   const [logOpen, setLogOpen] = useState(false)
@@ -493,8 +510,8 @@ function Shell() {
   }
 
   return (
-    <div className={isDesktop ? 'h-dvh w-full relative' : 'mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col'}>
-      <div className="ambient" style={{ '--ambient': activeTab.ambient }} aria-hidden="true" />
+    <div className={isDesktop ? 'h-dvh w-full relative' : `mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
+      <div className="ambient" style={{ '--ambient': isDesktop ? activeTab.ambient : 'var(--acc-fit)' }} aria-hidden="true" />
 
       {isDesktop ? (
         <DesktopApp
@@ -524,6 +541,7 @@ function Shell() {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          trajectoryHome={home.view === 'trajectory'}
         />
       )}
 

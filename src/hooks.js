@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOUD_STATE_EVENT, queueCloudState } from './cloudSync'
 import { dateKey } from './dates'
 const LOCAL_STATE_EVENT = 'afd-local-state'
@@ -118,5 +118,6 @@ export function useCurrentDaySelection() {
   const today = dateKey(useClock())
   const [selection, setSelection] = useState(null)
   const date = selection?.today === today ? selection.date : today
-  return [date, date => setSelection({ today, date }), today]
+  const setDate = useCallback(date => setSelection({ today, date }), [today])
+  return [date, setDate, today]
 }

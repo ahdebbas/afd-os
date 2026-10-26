@@ -13,6 +13,8 @@ import { useFood } from '../store'
 import { WhoopEnergyPanel } from '../whoopInsights'
 import { netEnergyData } from '../whoopEnergy'
 import { buildMonthlyWorkoutRecap } from '../monthlyWorkoutRecap'
+import { useHomeGoals } from '../useHomeGoals'
+import { bodyFatGoal, weeklyTrainingGoal } from '../homeInsights'
 
 const METRICS = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
@@ -87,7 +89,8 @@ function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCo
 
 export default function Fitness() {
   const os = useOs()
-  const { goal, injuries } = FITNESS
+  const { injuries } = FITNESS
+  const [{ goals: goal }] = useHomeGoals()
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [selDate, setSelDate, today] = useCurrentDaySelection()
   const selSession = sessions.find(s => s.date === selDate)
@@ -102,6 +105,33 @@ export default function Fitness() {
   const [metric, setMetric] = useState('weight')
   const [monthExpanded, setMonthExpanded] = useState(false)
   const [inForm, setInForm] = useState({ open: false, date: '', weight: '', smm: '', fatMass: '', fatPct: '' })
+  const [selection, setSelection] = useState(null)
+  const screenRef = useRef(null)
+  const inbodyRef = useRef(null)
+
+  useEffect(() => {
+    let frame
+    const onOpen = event => {
+      const date = event.detail?.date || todayKey()
+      setSelDate(date)
+      setSelection(null)
+      if (event.detail?.section === 'inbody') {
+        setInForm(form => form.open ? form : { open: true, date, weight: '', smm: '', fatMass: '', fatPct: '' })
+      }
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const screen = screenRef.current?.closest('.screen-scroll')
+        const form = inbodyRef.current
+        if (event.detail?.section === 'inbody' && screen && form) {
+          // Keep the horizontal carousel stationary while revealing the form.
+          screen.scrollTo({ top: screen.scrollTop + form.getBoundingClientRect().top - screen.getBoundingClientRect().top - 12 })
+          form.focus({ preventScroll: true })
+        } else screen?.scrollTo({ top: 0 })
+      })
+    }
+    window.addEventListener('afd-open-fitness', onOpen)
+    return () => { window.removeEventListener('afd-open-fitness', onOpen); cancelAnimationFrame(frame) }
+  }, [setSelDate])
 
   // WHOOP burn + intraday pacing (today only). Null until loaded.
   const [whoop, setWhoop] = useState(null)
@@ -158,7 +188,6 @@ export default function Fitness() {
   const effWeight = name => selSession?.weights?.[name] ?? weights[name] ?? lastWeights[name] ?? null
 
   // Selected rotation day follows the suggestion / logged session, but a manual tap sticks.
-  const [selection, setSelection] = useState(null)
   const day = selection?.date === selDate && selection.programId === programId && selection.activeIdx === activeIdx
     ? selection.day : activeIdx
   const setDay = day => setSelection({ date: selDate, programId, activeIdx, day })
@@ -188,7 +217,7 @@ export default function Fitness() {
     return Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 6)
   }, [weights, programSessions])
 
-  const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody, now: new Date(`${today}T12:00:00`) }), [sessions, inbody, today])
+  const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody, weeklyTarget: goal.weeklyWorkouts, now: new Date(`${today}T12:00:00`) }), [sessions, inbody, goal.weeklyWorkouts, today])
 
   const setGlobalWeight = (name, val) => setWeights(prev => {
     const next = { ...prev }
@@ -249,16 +278,7 @@ export default function Fitness() {
   })()
 
   // Sessions logged in the current Monday-first week.
-  const weekCount = (() => {
-    let c = 0
-    for (let i = 0; i < 7; i++) {
-      const d = new Date()
-      const dow = (d.getDay() + 6) % 7
-      d.setDate(d.getDate() - dow + i)
-      if (sessions.find(s => s.date === dateKey(d))) c++
-    }
-    return c
-  })()
+  const weekCount = weeklyTrainingGoal(sessions, goal.weeklyWorkouts, new Date(`${today}T12:00:00`)).current
 
   // InBody readings, oldest→newest. Latest drives the cards + gauge.
   const readings = useMemo(() => [...inbody].sort((a, b) => (a.date < b.date ? -1 : 1)), [inbody])
@@ -323,17 +343,18 @@ export default function Fitness() {
     os?.announce('INBODY LOGGED', 'var(--acc-fit)')
   }
 
-  const progress = Math.max(0.03, Math.min(1, (20 - latest.fatPct) / (20 - goal.fatPct)))
-  const toGoal = (latest.fatPct - goal.fatPct).toFixed(1)
+  const bodyGoal = bodyFatGoal(inbody, goal.fatPct, new Date(`${today}T12:00:00`))
+  const progress = bodyGoal.progress ?? 0
+  const toGoal = bodyGoal.remaining == null ? '\u2014' : bodyGoal.remaining.toFixed(1)
 
   const fuel = [
     { Icon: Flame, label: 'Intake', value: '1.9–2.0k' },
-    { Icon: Beef, label: 'Protein', value: '~2g/kg' },
+    { Icon: Beef, label: 'Protein', value: `${goal.protein}g` },
     { Icon: Zap, label: 'Burn', value: '~2,100' },
   ]
 
   return (
-    <div className="space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
+    <div ref={screenRef} className="space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
       {/* Day selector */}
       <section className="panel p-4">
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
@@ -342,7 +363,7 @@ export default function Fitness() {
         </button>}
         <div className="mt-3 pt-3 hairline-t flex items-center justify-between">
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
-          <span className="mono text-[10px] t2"><span className={weekCount >= 4 ? 'acc' : 't1'}>{weekCount}</span> / 4 sessions</span>
+          <span className="mono text-[10px] t2"><span className={weekCount >= goal.weeklyWorkouts ? 'acc' : 't1'}>{weekCount}</span> / {goal.weeklyWorkouts} sessions</span>
         </div>
         <button onClick={() => setMonthExpanded(v => !v)} aria-expanded={monthExpanded}
           className="press w-full mt-2 pt-2 hairline-t flex items-center justify-between">
@@ -515,17 +536,18 @@ export default function Fitness() {
         {/* Fat% gauge + goal */}
         <div className="flex items-center gap-4 mb-4">
           <Gauge pct={progress} size={132} label="Progress toward body fat goal">
-            <span className="display text-[32px] leading-none font-bold t1">{latest.fatPct}<span className="text-[16px] t3">%</span></span>
+            <span className="display text-[32px] leading-none font-bold t1">{bodyGoal.current ?? '\u2014'}<span className="text-[16px] t3">%</span></span>
             <span className="mono text-[9px] tracking-[0.08em] uppercase t3 mt-1.5">body fat</span>
           </Gauge>
           <div className="flex-1 space-y-2.5">
             <div className="acc-chip rounded-xl px-3 py-2">
-              <span className="mono text-[10px] tracking-[0.12em] uppercase">{toGoal}% → goal {goal.fatPct}%</span>
+              <span className="mono text-[10px] tracking-[0.12em] uppercase">{toGoal} pts → goal {goal.fatPct}%</span>
             </div>
+            {bodyGoal.latestDate && bodyGoal.latestDate !== latest.date && <p className="mono text-[10px] t3">Body fat last measured {longDate(bodyGoal.latestDate)}</p>}
             {firstReading && readings.length > 1 && (
               <p className="mono text-[10px] t3 leading-relaxed">
-                {(() => { const dw = latest.weight - firstReading.weight, df = latest.fatPct - firstReading.fatPct
-                  return `${dw >= 0 ? '+' : ''}${dw.toFixed(1)}kg · ${df >= 0 ? '+' : ''}${df.toFixed(1)}% bf since ${shortDate(firstReading.date)}` })()}
+                {(() => { const dw = latest.weight - firstReading.weight
+                  return `${dw >= 0 ? '+' : ''}${dw.toFixed(1)}kg${bodyGoal.available && bodyGoal.baselineDate === firstReading.date ? ` · ${bodyGoal.change > 0 ? '-' : '+'}${Math.abs(bodyGoal.change).toFixed(1)} pts bf` : ''} since ${shortDate(firstReading.date)}` })()}
               </p>
             )}
           </div>
@@ -559,7 +581,7 @@ export default function Fitness() {
 
         {/* Add InBody result */}
         {inForm.open ? (
-          <div className="mt-3 space-y-2 panel-2 rounded-2xl p-3">
+          <div ref={inbodyRef} tabIndex={-1} role="group" aria-label="Add InBody result" className="mt-3 space-y-2 panel-2 rounded-2xl p-3">
             <input type="date" value={inForm.date} onChange={e => setInForm(f => ({ ...f, date: e.target.value }))}
               aria-label="Test date" className="field w-full rounded-xl px-3.5 py-2.5 text-sm outline-none mono" />
             <div className="grid grid-cols-2 gap-2">
@@ -611,12 +633,12 @@ export default function Fitness() {
             </div>
             <div className="chip rounded-2xl p-3">
               <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Training load</div>
-              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{weekCount}/4</div>
+              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{weekCount}/{goal.weeklyWorkouts}</div>
               <p className="mono text-[9px] t3 mt-1.5">sessions this week</p>
             </div>
             <div className="chip rounded-2xl p-3">
               <div className="mono text-[8px] tracking-[0.14em] uppercase t3">Body target</div>
-              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{toGoal}%</div>
+              <div className="display text-[26px] leading-none font-bold t1 mt-1.5">{toGoal} pts</div>
               <p className="mono text-[9px] t3 mt-1.5">body fat to goal</p>
             </div>
             <div className="chip rounded-2xl p-3">

@@ -30,3 +30,10 @@ test('workout recap follows the supplied local calendar day at month rollover', 
   assert.equal(recap.sessionsCount, 1)
   assert.equal(recap.splitBreakdown[0].name, 'Glutes & Hams')
 })
+
+test('monthly pace uses the saved weekly goal without changing the default', () => {
+  const sessions = [{ date: '2026-10-01', name: 'Chest' }]
+  const now = new Date(2026, 9, 14)
+  assert.match(buildMonthlyWorkoutRecap({ sessions, now, weeklyTarget: 3 }).paceNote, /~6 on a 3×\/week pace/)
+  assert.match(buildMonthlyWorkoutRecap({ sessions, now }).paceNote, /~8 on a 4×\/week pace/)
+})

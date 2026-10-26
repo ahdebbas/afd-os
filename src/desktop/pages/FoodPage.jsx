@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, X, Search, Pencil } from 'lucide-react
 import { FoodEntryEditor, FoodUndo, RecentMeals } from '../../FoodActions'
 import { useFood } from '../../store'
 import { usePersistentState } from '../../hooks'
-import { dateKey, todayKey } from '../../dates'
+import { dateKey, isDateKey, todayKey } from '../../dates'
 import { TARGETS } from '../../data'
 import { Card, Ring, Meter, NumberFlow, Segmented, DataTable, Button, IconButton } from '../primitives'
 
@@ -21,9 +21,8 @@ function MacroRow({ label, val, target, color }) {
 }
 
 export default function FoodPage() {
-  const { presets, logs, addEntry, removeEntry, addPreset } = useFood()
-  const [date, setDate] = usePersistentState('afd-food-day', todayKey(),
-    v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  const { presets, logs, targets, addEntry, removeEntry, addPreset } = useFood()
+  const [date, setDate] = usePersistentState('afd-food-day', todayKey(), isDateKey)
   const [category, setCategory] = useState(CATEGORIES[0])
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(BLANK)
@@ -93,7 +92,7 @@ export default function FoodPage() {
               </div>
             </Ring>
             <div className="flex-1 min-w-0 space-y-2.5">
-              <MacroRow label="Protein" val={totals.protein} target={TARGETS.protein} color="var(--d-accent)" />
+              <MacroRow label="Protein" val={totals.protein} target={targets.protein} color="var(--d-accent)" />
               <MacroRow label="Carbs" val={totals.carbs} target={TARGETS.carbs} color="var(--d-warn)" />
               <MacroRow label="Fat" val={totals.fat} target={TARGETS.fat} color="var(--d-up)" />
               <div className="text-[11px] d-t3 d-num pt-1">{Math.round(totals.kcal).toLocaleString()} / {TARGETS.kcal.toLocaleString()} kcal logged</div>

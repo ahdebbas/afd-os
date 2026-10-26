@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Moon, Settings2, Sun } from 'lucide-react'
 import TodayPulse from '../TodayPulse'
+import TrajectoryHome from '../TrajectoryHome'
+import { useHomeGoals } from '../useHomeGoals'
 import { useClock } from '../hooks'
 import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 
-export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
+function OriginalToday({ goTo, onOpenSettings, dark, onToggleTheme }) {
   const now = useClock()
   const [whoop, setWhoop] = useState(null)
   const [cycles, setCycles] = useState(null)
@@ -14,6 +16,7 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
       const [result, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
       if (alive) { setWhoop(result); setCycles(history) }
     }
+
     void load()
     const timer = setInterval(() => { if (document.visibilityState === 'visible') void load() }, WHOOP_POLL_MS)
     return () => { alive = false; clearInterval(timer) }
@@ -31,4 +34,9 @@ export default function Today({ goTo, onOpenSettings, dark, onToggleTheme }) {
       <TodayPulse onNavigate={goTo} whoop={whoop} cycles={cycles} />
     </div>
   )
+}
+
+export default function Today(props) {
+  const [home] = useHomeGoals()
+  return home.view === 'classic' ? <OriginalToday {...props} /> : <TrajectoryHome {...props} />
 }

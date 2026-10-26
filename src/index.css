@@ -206,6 +206,12 @@ html.dark .day-disc {
 
 /* ---------- Mobile food journal ---------- */
 .mobile-app {
+  --font-ui: var(--font-body);
+  --acc-os: var(--acc-fit);
+  --acc-fin: var(--acc-fit);
+  --acc-cash: var(--acc-fit);
+  --acc-food: var(--acc-fit);
+  --ring: var(--acc-fit);
   background:
     radial-gradient(130% 60% at 50% -10%, rgba(143,162,216,0.10), transparent 52%),
     var(--bg);
@@ -216,6 +222,17 @@ html.dark .day-disc {
   box-shadow: none;
 }
 .mobile-app .dock-btn span { letter-spacing: 0.08em; }
+.mobile-app .mobile-dock-rail {
+  height: calc(72px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-app .mobile-dock-rail .dock-btn {
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: .03em;
+}
 
 /* ---------- Mobile home cockpit ---------- */
 .home-mobile {

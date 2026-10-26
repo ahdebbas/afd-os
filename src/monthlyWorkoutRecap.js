@@ -4,7 +4,7 @@ const round1 = n => Number.isFinite(n) ? Math.round(n * 10) / 10 : null
 const liftKey = (session, exercise) => session.programId === 'beirut' ? `${exercise} (Beirut)` : exercise
 
 // Deterministic — every number traces to a logged session or InBody reading. No estimation.
-export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new Date() }) {
+export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], weeklyTarget = 4, now = new Date() }) {
   const monthStart = dateKey(new Date(now.getFullYear(), now.getMonth(), 1))
   const monthLabel = new Date(`${monthStart}T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const today = dateKey(now)
@@ -19,10 +19,10 @@ export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], now = new
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
 
-  const expected = Math.max(0, Math.round((daysElapsed / 7) * 4))
+  const expected = Math.max(0, Math.round((daysElapsed / 7) * weeklyTarget))
   const paceNote = sessionsThisMonth.length === 0
     ? 'No sessions logged yet this month.'
-    : `${sessionsThisMonth.length} logged vs ~${expected} on a 4×/week pace.`
+    : `${sessionsThisMonth.length} logged vs ~${expected} on a ${weeklyTarget}×/week pace.`
 
   // Baseline is the best weight on record strictly before this month — never the live/current
   // working weight, so a same-day edit can't be misread as a mid-month gain.

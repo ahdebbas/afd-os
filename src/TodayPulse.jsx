@@ -6,14 +6,14 @@ import { FINANCE, FITNESS, TARGETS, reconcileFinance, sarwaTotal, usd } from './
 import { useWorkoutPrograms } from './useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from './workoutPrograms'
 import { DEFAULT_CASH_PULSE, buildCashProjection, formatCash } from './cashPulse'
-import { dateKey } from './dates'
+import { dateKey, isDateKey } from './dates'
 import { Gauge, Odometer } from './ui'
 import { WhoopEnergyPanel } from './whoopInsights'
 
 export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const now = useClock()
   const today = dateKey(now)
-  const { totals, entries } = useFood()
+  const { totals, entries, targets } = useFood()
   const quotes = useQuotes()
   const [savedFinance] = usePersistentState('afd-finance', FINANCE)
   const finance = reconcileFinance(savedFinance)
@@ -21,11 +21,10 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
-  const [, setFoodDay] = usePersistentState('afd-food-day', today)
-  const [, setFitnessDay] = usePersistentState('afd-fit-day', today)
+  const [, setFoodDay] = usePersistentState('afd-food-day', today, isDateKey)
   const navigate = destination => {
     if (destination === 'food') setFoodDay(today)
-    if (destination === 'fitness') setFitnessDay(today)
+    if (destination === 'fitness') window.dispatchEvent(new CustomEvent('afd-open-fitness', { detail: { date: today } }))
     onNavigate(destination)
   }
   const nextWorkout = program[nextProgramWorkoutIdx(program, sessions, programId)]
@@ -55,7 +54,7 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
     { name: 'Property', value: finance.property.value, color: 'var(--asset-real)' },
   ]
   const macros = [
-    { Icon: Beef, label: 'P', value: totals.protein, target: TARGETS.protein, color: 'var(--acc-food)' },
+    { Icon: Beef, label: 'P', value: totals.protein, target: targets.protein, color: 'var(--acc-food)' },
     { Icon: Wheat, label: 'C', value: totals.carbs, target: TARGETS.carbs, color: 'var(--warn)' },
     { Icon: Droplets, label: 'F', value: totals.fat, target: TARGETS.fat, color: 'var(--acc-os)' },
   ]

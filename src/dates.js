@@ -10,3 +10,6 @@ export const dateKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 export const todayKey = () => dateKey()
+
+export const isDateKey = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+  && dateKey(new Date(`${value}T12:00:00`)) === value

@@ -1,6 +1,7 @@
 import { Activity, Clock, Flame, Target, TrendingDown, TrendingUp, Zap, TriangleAlert } from 'lucide-react'
 import { TARGETS } from './data'
 import { Label } from './ui'
+import { useFood } from './store'
 import { connectWhoop } from './whoop'
 import { projectBurn, recommendedIntake, fuelingFlag } from './whoopEnergy'
 
@@ -83,6 +84,7 @@ function DataHealth({ snap }) {
 }
 
 export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = false }) {
+  const { targets } = useFood()
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state !== 'ready') return <EmptyWhoop whoop={whoop} compact={compact} />
 
@@ -96,7 +98,7 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
   const projected = projectBurn(whoop)
   const recommend = recommendedIntake(projected)
   const recIntakeLeft = recommend != null ? recommend - eaten : null
-  const proteinLeft = Math.max(0, Math.round(TARGETS.protein - protein))
+  const proteinLeft = Math.max(0, Math.round(targets.protein - protein))
   const actionText = eaten <= 0
     ? null
     : recommend == null
@@ -177,6 +179,7 @@ export function WhoopEnergyPanel({ whoop, eaten = 0, protein = 0, compact = fals
 }
 
 export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
+  const { targets } = useFood()
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state === 'loading') return null
   if (snap.state !== 'ready') {
@@ -189,7 +192,7 @@ export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
   }
 
   const netDeficit = snap.net >= 0
-  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, projectedBurn: projectBurn(whoop) }) : null
+  const flag = eaten > 0 ? fuelingFlag({ whoop, eaten, protein, proteinTarget: targets.protein, projectedBurn: projectBurn(whoop) }) : null
   const kpis = [
     { label: 'Logged', value: eaten > 0 ? kcal(eaten) : '—', cls: 't1' },
     { label: 'Burned', value: kcal(snap.burned), cls: 't1' },
