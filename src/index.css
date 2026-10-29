@@ -216,6 +216,14 @@ html.dark .day-disc {
     radial-gradient(130% 60% at 50% -10%, rgba(143,162,216,0.10), transparent 52%),
     var(--bg);
 }
+@media (display-mode: standalone) {
+  .mobile-app {
+    /* Avoid reserving browser-toolbar height in the installed app. */
+    position: fixed;
+    inset: 0;
+    height: auto;
+  }
+}
 .mobile-app .app-header { padding-bottom: 4px; }
 .mobile-app .dock {
   border-radius: 0;

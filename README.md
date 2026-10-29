@@ -56,6 +56,10 @@ The daily WHOOP calorie-burn analysis remains on Home, using the same energy
 widget and shared polling as the Original layout, including its loading,
 disconnected, and error states. The mobile dock occupies its own layout row;
 content scrolls above it without oversized spacer padding or a fixed overlay.
+When installed on the Home Screen, the mobile shell fills the viewport using
+fixed edges rather than `100dvh`, avoiding unused space below the dock when the
+browser reports a shorter dynamic viewport. The dock retains home-indicator
+safe-area padding. Browser tabs and the desktop shell keep their existing sizing.
 **Settings → Mobile Home → Original** restores the previous mobile dashboard
 without changing saved data. Home layout, selected goal, and targets sync and
 are included in JSON backups.
