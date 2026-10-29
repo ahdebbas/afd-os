@@ -6,21 +6,8 @@ import { useHomeGoals } from '../useHomeGoals'
 import { useClock } from '../hooks'
 import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 
-function OriginalToday({ goTo, onOpenSettings, dark, onToggleTheme }) {
+function OriginalToday({ goTo, onOpenSettings, dark, onToggleTheme, whoop, cycles }) {
   const now = useClock()
-  const [whoop, setWhoop] = useState(null)
-  const [cycles, setCycles] = useState(null)
-  useEffect(() => {
-    let alive = true
-    const load = async () => {
-      const [result, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
-      if (alive) { setWhoop(result); setCycles(history) }
-    }
-
-    void load()
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') void load() }, WHOOP_POLL_MS)
-    return () => { alive = false; clearInterval(timer) }
-  }, [])
   return (
     <div className="today-flagship">
       <header className="today-head">
@@ -38,5 +25,19 @@ function OriginalToday({ goTo, onOpenSettings, dark, onToggleTheme }) {
 
 export default function Today(props) {
   const [home] = useHomeGoals()
-  return home.view === 'classic' ? <OriginalToday {...props} /> : <TrajectoryHome {...props} />
+  const [whoop, setWhoop] = useState(null)
+  const [cycles, setCycles] = useState(null)
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      const [result, history] = await Promise.all([fetchWhoopCalories(), fetchWhoopCycles()])
+      if (alive) { setWhoop(result); setCycles(history) }
+    }
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    void load()
+    const timer = setInterval(refresh, WHOOP_POLL_MS)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { alive = false; clearInterval(timer); document.removeEventListener('visibilitychange', refresh) }
+  }, [])
+  return home.view === 'classic' ? <OriginalToday {...props} whoop={whoop} cycles={cycles} /> : <TrajectoryHome {...props} whoop={whoop} />
 }

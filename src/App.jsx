@@ -316,11 +316,11 @@ function MobileShell({
       )}
 
       {/* Module carousel */}
-      <div className="flex-1 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div className="flex-1 min-h-0 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className={`carousel ${dragging && drag !== 0 ? 'dragging' : ''}`}
           style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}>
           {TABS.map(t => (
-            <div key={t.id} className={`w-full h-full flex-shrink-0 min-w-0 screen-scroll ${t.id === 'today' ? 'today-screen-scroll' : 'px-5 pt-2 pb-44'}`}
+            <div key={t.id} className={`w-full h-full flex-shrink-0 min-w-0 screen-scroll ${t.id === 'today' ? 'today-screen-scroll' : 'px-5 pt-2 pb-4'}`}
               aria-hidden={t.id !== tab} inert={t.id !== tab ? true : undefined}>
               <div className="boot space-y-4">
                 <ModuleScreen tabId={t.id} onTabChange={onTabChange} onOpenLog={onOpenLog} onOpenSettings={onOpenSettings} dark={dark} onToggleTheme={onToggleTheme} />
@@ -331,7 +331,7 @@ function MobileShell({
       </div>
 
       {/* Dock */}
-      <nav className={`app-dock mobile-dock-rail fixed z-50 transition-opacity ${kbOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} aria-label="Modules">
+      <nav className={`app-dock mobile-dock-rail z-50 ${kbOpen ? 'hidden' : ''}`} aria-label="Modules">
         <div className="dock dock-track" style={{ '--acc': activeTab.acc }}>
           {TABS.map(t => {
             const active = tab === t.id

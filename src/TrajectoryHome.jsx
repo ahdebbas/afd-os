@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, Beef, ChevronDown, CircleHelp, Crosshair, Dumbbell, MapPin, Moon, Settings, SlidersHorizontal, Sun } from 'lucide-react'
+import { ArrowRight, Beef, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Dumbbell, Landmark, MapPin, Moon, Settings, SlidersHorizontal, Sun, Wallet } from 'lucide-react'
 import { FINANCE, FITNESS, reconcileFinance } from './data'
 import { DEFAULT_CASH_PULSE } from './cashPulse'
 import { formatUsd } from './currency'
@@ -10,6 +10,7 @@ import { HOME_GOALS, parseHomeGoals } from './homeGoals'
 import { bodyFatGoal, cashBufferGoal, homeNextAction, liquidCapital, portfolioSignal, proteinGoal, weeklyTrainingGoal } from './homeInsights'
 import { useHomeGoals } from './useHomeGoals'
 import { useFood } from './store'
+import { WhoopEnergyPanel } from './whoopInsights'
 import { useQuotes, useQuotesMeta } from './quotes'
 import { useWorkoutPrograms } from './useWorkoutPrograms'
 import { nextProgramWorkoutIdx, WORKOUT_GYMS } from './workoutPrograms'
@@ -144,12 +145,12 @@ function CapitalDetails({ capital, cash, portfolio, onNavigate }) {
   )
 }
 
-export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleTheme }) {
+export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleTheme, whoop }) {
   const now = useClock()
   const today = dateKey(now)
   const [home, setHome] = useHomeGoals()
   const { goals, mainGoal } = home
-  const { entries } = useFood()
+  const { entries, totals } = useFood()
   const [sessions] = usePersistentState('afd-sessions', EMPTY_SESSIONS, Array.isArray)
   const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
   const [savedCash] = usePersistentState('afd-cash-pulse', DEFAULT_CASH_PULSE)
@@ -172,6 +173,10 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
   const label = HOME_GOALS.find(item => item.id === mainGoal).label
   const gym = WORKOUT_GYMS.find(item => item.id === activeProgramId)
   const action = homeNextAction({ mainGoal, body, training, protein, cash, nextWorkout })
+  const changeGoal = direction => setHome(previous => {
+    const index = HOME_GOALS.findIndex(item => item.id === previous.mainGoal)
+    return { ...previous, mainGoal: HOME_GOALS[(index + direction + HOME_GOALS.length) % HOME_GOALS.length].id }
+  })
 
   const navigate = (destination, section) => {
     setSheet(null)
@@ -194,7 +199,7 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
       : mainGoal === 'body' && body.complete ? 'Your last check-in reached the pinned target.'
         : training.complete ? `${training.current} sessions logged. Weekly target reached.`
           : `${training.current} of ${training.target} sessions logged this week.`
-  const sheetTitle = sheet === 'goals' ? 'Main goal' : sheet === 'settings' ? 'Your targets'
+  const sheetTitle = sheet === 'settings' ? 'Your targets'
     : sheet === 'capital' ? 'Liquid capital' : sheet === 'gym' ? 'Workout gym' : 'About this goal'
 
   return (
@@ -213,10 +218,6 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
         <button type="button" onClick={() => setSheet('capital')} aria-label="View liquid capital breakdown" aria-haspopup="dialog" aria-expanded={sheet === 'capital'} className="trajectory-capital-link">
           <span className="trajectory-capital-total">{capital.available ? cashAmount(capital.total) : dash}</span><ArrowRight size={17} aria-hidden="true" />
         </button>
-        <dl className="trajectory-capital-split">
-          <div><dt>Cash</dt><dd>{capital.cash != null ? cashAmount(capital.cash) : dash}</dd></div>
-          <div><dt>Invested</dt><dd>{capital.invested != null ? cashAmount(capital.invested) : dash}</dd></div>
-        </dl>
         <p className="trajectory-source trajectory-capital-source">
           {cash.available ? `Cash ${shortDate(cash.asOf)}${cash.stale ? ' (stale)' : ''}` : 'Add a cash snapshot'}
           {' \u00b7 '}{portfolio.missingCount ? 'Update investment values' : portfolio.source}
@@ -224,14 +225,16 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
       </section>
       <section aria-label="Pinned goal">
         <div className="trajectory-goal-row">
-          <h2><button type="button" className="trajectory-goal-switch" onClick={() => setSheet('goals')} aria-label="Choose main goal" aria-haspopup="dialog" aria-expanded={sheet === 'goals'}>
-            <span className="trajectory-eyebrow">{label}</span><ChevronDown size={14} aria-hidden="true" />
-          </button></h2>
+          <h2 id="home-main-kpi" className="trajectory-eyebrow trajectory-goal-title" aria-live="polite">{label}</h2>
           {mainGoal !== 'cash' && <button type="button" className="trajectory-location" onClick={() => setSheet('gym')} aria-label={`Change workout gym, ${gym.label}`} aria-haspopup="dialog">
             <MapPin size={12} aria-hidden="true" />{gym.label}
           </button>}
         </div>
-        <GoalOrbit mainGoal={mainGoal} label={label} goal={goal} />
+        <div className="trajectory-goal-navigation">
+          <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(-1)} aria-label="Previous KPI" aria-controls="home-main-kpi"><ChevronLeft size={22} aria-hidden="true" /></button>
+          <GoalOrbit mainGoal={mainGoal} label={label} goal={goal} />
+          <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(1)} aria-label="Next KPI" aria-controls="home-main-kpi"><ChevronRight size={22} aria-hidden="true" /></button>
+        </div>
         <p className="trajectory-gap">{gap}</p>
         {mainGoal === 'body' && <button type="button" className="trajectory-goal-source" onClick={() => navigate('fitness', 'inbody')}>
           {body.available ? `InBody ${shortDate(body.latestDate)} \u00b7 ${body.ageDays === 0 ? 'today' : `${body.ageDays}d ago`}` : 'Add an InBody result'} <ArrowRight size={12} aria-hidden="true" />
@@ -261,7 +264,18 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
           <span className="trajectory-mini-caption">{protein.invalid ? 'Review food values' : !protein.available ? 'No food logged today' : protein.complete ? 'target met in logged food' : 'left in logged food today'}</span>
           <ProgressBar progress={protein.progress} />
         </button>
+        <button type="button" className="trajectory-mini-goal" onClick={() => navigate('cash')}>
+          <span className="trajectory-mini-heading"><span>Cash</span><Wallet size={14} aria-hidden="true" /></span>
+          <span className="trajectory-mini-number trajectory-financial-number">{capital.cash != null ? cashAmount(capital.cash) : dash}</span>
+          <span className="trajectory-mini-caption">{cash.available ? `Saved ${shortDate(cash.asOf)}${cash.stale ? ' \u00b7 update needed' : ''}` : 'Add a dated cash balance'}</span>
+        </button>
+        <button type="button" className="trajectory-mini-goal" onClick={() => navigate('finance')}>
+          <span className="trajectory-mini-heading"><span>Invested assets</span><Landmark size={14} aria-hidden="true" /></span>
+          <span className="trajectory-mini-number trajectory-financial-number">{capital.invested != null ? cashAmount(capital.invested) : dash}</span>
+          <span className="trajectory-mini-caption">{portfolio.missingCount ? 'Update unpriced holdings' : 'Stocks / ETFs, excluding property'}</span>
+        </button>
       </div>
+      <div className="trajectory-energy"><WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} protein={totals.protein} compact /></div>
       <button type="button" className="trajectory-insight" onClick={() => setSheet('why')} aria-haspopup="dialog">
         <CircleHelp size={15} aria-hidden="true" /><span>{insight}</span>
       </button>
@@ -271,14 +285,6 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
         <div className="trajectory-theme trajectory-dialog">
           <Sheet key={sheet} open onClose={() => setSheet(null)} title={sheetTitle}>
             {sheet === 'settings' && <GoalEditor goals={goals} onSave={nextGoals => { setHome(previous => ({ ...previous, goals: nextGoals })); setNotice('Targets saved'); setSheet(null) }} />}
-            {sheet === 'goals' && <div className="trajectory-goal-options">
-              <p className="trajectory-copy">Choose the goal that owns the orbit. Switching does not reset your progress.</p>
-              {HOME_GOALS.map(item => <button key={item.id} type="button" aria-pressed={mainGoal === item.id}
-                onClick={() => { setHome(previous => ({ ...previous, mainGoal: item.id })); setSheet(null) }}>
-                <span>{item.label}</span><strong>{item.id === 'body' ? percent(goals.fatPct) : item.id === 'training' ? `${goals.weeklyWorkouts} / week` : goals.cashBuffer == null ? 'Set a target' : formatUsd(goals.cashBuffer)}</strong>
-              </button>)}
-              <button type="button" className="trajectory-secondary" onClick={() => setSheet('settings')}>Edit all targets</button>
-            </div>}
             {sheet === 'capital' && <CapitalDetails capital={capital} cash={cash} portfolio={portfolio} onNavigate={navigate} />}
             {sheet === 'gym' && <WorkoutGymSelector value={activeProgramId} onChange={id => { setActiveProgramId(id); setSheet(null) }} />}
             {sheet === 'why' && <div className="trajectory-details">

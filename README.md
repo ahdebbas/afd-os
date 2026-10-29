@@ -4,7 +4,7 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 
 ## Modules
 
-- **Home** — mobile Trajectory: one pinned goal, two supporting metrics, liquid capital with a cash/invested split, and one contextual action. Desktop keeps its existing overview.
+- **Home** — mobile Trajectory: one pinned goal, four supporting KPI cards, liquid capital, daily WHOOP burn analysis, and one contextual action. Desktop keeps its existing overview.
 - **Finance** — MSFT position + Sarwa (halal) portfolio with daily market sync.
 - **Cash** — manual USD balance, monthly commitments, planned one-offs, and three-month payment coverage. Uses the active shell's theme in light and dark mode; marking payments covered never deducts from the cash snapshot.
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
@@ -21,7 +21,9 @@ All five mobile pages share the Fitness visual system: Barlow body text,
 Barlow Condensed display numbers/headings, JetBrains Mono labels, shared
 light/dark surfaces, and the Fitness accent. Desktop styling is unchanged.
 
-Use the main-goal selector to pin **Body fat**, **Training**, or **Cash buffer**.
+Use the left/right arrows beside the orbit to switch between **Body fat**,
+**Training**, and **Cash buffer** in one tap. The sequence wraps in both directions;
+the selected KPI persists without changing saved targets or progress.
 The sliders button edits body-fat, weekly workout, daily protein, and optional USD
 cash-buffer targets. Food, Fitness, WHOOP protein guidance, and monthly workout
 pace use those same targets. Home's gym control switches the existing independent
@@ -40,7 +42,8 @@ cash in the Cash snapshot: USD holdings are not added separately. No cash-buffer
 target is needed. Missing/invalid/future cash snapshots or unpriced holdings
 suppress the total rather than treating unknown amounts as zero; known zero
 balances and empty securities portfolios remain valid. Stale cash is labelled.
-Tap the KPI for the cash snapshot, portfolio allocation, individual price
+Cash and Invested assets also have separate tappable KPI cards, opening Cash and
+Finance respectively. Tap the Liquid capital total for the cash snapshot, portfolio allocation, individual price
 sources/dates, and links to Cash and Finance. Recorded, cached, and mixed-date
 prices are labelled. Cash and price dates may differ; this is a saved-data
 overview, not a synchronized live account balance. Allocation compares securities
@@ -49,6 +52,10 @@ only. Insights and goal explanations are calculated locally, not by external AI.
 The persistent dock still opens Home, Finance, Cash, Food, and Fitness. Contextual
 Home actions open today's Food/Fitness; a body check-in opens the actual InBody
 form. Normal tab navigation preserves historical browsing.
+The daily WHOOP calorie-burn analysis remains on Home, using the same energy
+widget and shared polling as the Original layout, including its loading,
+disconnected, and error states. The mobile dock occupies its own layout row;
+content scrolls above it without oversized spacer padding or a fixed overlay.
 **Settings → Mobile Home → Original** restores the previous mobile dashboard
 without changing saved data. Home layout, selected goal, and targets sync and
 are included in JSON backups.
