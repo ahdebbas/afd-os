@@ -27,7 +27,7 @@ the selected KPI persists without changing saved targets or progress.
 The sliders button edits body-fat, weekly workout, daily protein, and optional USD
 cash-buffer targets. Food, Fitness, WHOOP protein guidance, and monthly workout
 pace use those same targets. Home's gym control switches the existing independent
-Current gym / Beirut programs.
+Qatar / Beirut Workout programs.
 
 The body-fat ring measures distance closed from the first valid InBody reading;
 the last reading's date is always shown, and gaps use percentage points. Training
@@ -66,17 +66,41 @@ are included in JSON backups.
 
 ### Switching workout gyms
 
-Use **Fitness → Current gym / Beirut** on mobile or desktop. The current four-day
-split is preserved; Beirut has the two-day A/B program. Each gym keeps independent
-working weights, template additions, and rotation history. Returning resumes that
-gym's next workout even after weeks away, with no automatic restart. Beirut starts
-with blank weights rather than copying loads from different equipment.
+Use **Fitness → Qatar / Beirut Workout** on mobile or desktop. The existing Qatar
+four-day split is unchanged. Beirut Workout (Beirut) has Full Body A (chest, quads,
+shoulders; 23 sets), Full Body B (glutes, back, upper body; 25 sets), and optional
+Specialization C (chest, delts, arms; 21 sets). A/B take approximately 75–90 minutes.
+The goal is hypertrophy emphasizing chest, shoulders, arms and glutes while reducing
+body fat. Use 1–2 reps in reserve on compounds and 0–2 on isolations.
+
+The mandatory rotation remains A/B; C is manually selectable and never automatically
+adds volume or advances A/B. Full Beirut week: Monday A, Wednesday B, optional
+Saturday C. With two sessions, do A/B only. Travel week: Monday Qatar Upper A,
+Tuesday Qatar Lower, Thursday Qatar Upper B, Saturday Beirut B (select B manually).
+Beirut sessions replace Qatar sessions rather than adding workouts. Qatar's saved
+day names and exercises are not renamed to match these schedule labels.
+
+Each program retains working weights, template additions, and its own rotation,
+even after weeks away. Exercise history, dated last logged weights, PRs and monthly progression
+are shared across programs. Known spelling aliases reuse one exercise identity;
+different equipment and ambiguous legacy combined exercises stay separate.
+Loads remain editable per program; never assume different machines use equivalent loads.
+The compact exercise row retains one editable weight; there are no per-set weight
+or rep-entry fields. Prescribed sets, rep ranges and rest are shown as guidance.
+Use double progression: increase weight after completing all prescribed sets at
+the upper rep target with good form. Tap an exercise name to swap for that day's
+workout without changing the program template. Its own last recorded weight is
+used, never the replaced exercise's load. Respect existing injury constraints and
+swap or stop for discomfort.
 
 Sessions and weekly totals remain combined. Existing sessions belong to Current
 gym. A logged date always displays its original gym; changing the selector on a
 logged date sets the gym for the next unlogged day without changing that session.
-Gym selection, templates, and weights are included in cloud sync and JSON backups.
-Beirut Day B lists the biceps and triceps work separately, with two sets each.
+Gym selection, templates, weights and daily exercise swaps are included in cloud
+sync and JSON backups. Existing sessions, weights, legacy Beirut templates and Qatar
+data are retained. The updated Beirut template uses a separate versioned key;
+custom additions carry forward without duplicating prescribed exercises. New
+sessions snapshot their exercises so later template edits do not rewrite history.
 
 ## Tech
 
@@ -98,7 +122,7 @@ npm run preview  # serve the production build locally
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
 Currency and workout date checks:
 `node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
-Gym rotation checks: `node --test src/workoutPrograms.test.mjs`.
+Workout checks: `node --test src/workoutPrograms.test.mjs src/workoutHistory.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 Home goal, source, and target checks:
 `node --test src/homeInsights.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 For Cash UI checks, exercise balance editing, recurring and one-off payment forms,

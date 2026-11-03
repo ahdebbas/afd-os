@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { buildMonthlyWorkoutRecap } from './monthlyWorkoutRecap.js'
 import { dateKey } from './dates.js'
 
-test('recap combines session totals but never compares weights between gyms', () => {
+test('recap combines session totals and progression for shared exercises across programs', () => {
   const sessions = [
     { date: '2026-09-30', name: 'Chest', weights: { 'Chest Press Machine': 30 } },
     { date: '2026-09-30', programId: 'beirut', name: 'Beirut A', weights: { 'Chest Press Machine': 70 } },
@@ -14,7 +14,6 @@ test('recap combines session totals but never compares weights between gyms', ()
   assert.equal(recap.sessionsCount, 2)
   assert.deepEqual(recap.topGains, [
     { exercise: 'Chest Press Machine', delta: 5 },
-    { exercise: 'Chest Press Machine (Beirut)', delta: 5 },
   ])
 })
 

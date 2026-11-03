@@ -15,7 +15,7 @@ export default function WorkoutGymSelector({ value, onChange, loggedProgramId, d
       <p className={`text-[11px] mt-2 ${desktop ? 'd-t3' : 't3'}`} role="status">
         {loggedProgramId && loggedProgramId !== value
           ? `Showing the logged ${WORKOUT_GYMS.find(gym => gym.id === loggedProgramId)?.label} workout. Your gym choice applies to the next unlogged day.`
-          : 'Each gym remembers its next workout and weights. Switch anytime.'}
+          : 'Each program remembers its next workout. Exercise history and PRs are shared. Switch anytime.'}
       </p>
     </div>
   )

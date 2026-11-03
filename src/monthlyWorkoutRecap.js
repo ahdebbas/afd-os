@@ -1,7 +1,7 @@
 import { dateKey } from './dates.js'
+import { exerciseName, workoutPRs } from './workoutHistory.js'
 
 const round1 = n => Number.isFinite(n) ? Math.round(n * 10) / 10 : null
-const liftKey = (session, exercise) => session.programId === 'beirut' ? `${exercise} (Beirut)` : exercise
 
 // Deterministic — every number traces to a logged session or InBody reading. No estimation.
 export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], weeklyTarget = 4, now = new Date() }) {
@@ -28,10 +28,10 @@ export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], weeklyTar
   // working weight, so a same-day edit can't be misread as a mid-month gain.
   const preMonthBest = new Map()
   for (const s of sessionsBeforeMonth) {
-    for (const [exercise, weight] of Object.entries(s.weights || {})) {
+    for (const [exercise, weight] of workoutPRs([s])) {
       const w = +weight
       if (!Number.isFinite(w)) continue
-      const key = liftKey(s, exercise)
+      const key = exerciseName(exercise)
       if (!preMonthBest.has(key) || w > preMonthBest.get(key)) preMonthBest.set(key, w)
     }
   }
@@ -39,10 +39,10 @@ export function buildMonthlyWorkoutRecap({ sessions = [], inbody = [], weeklyTar
   const monthBest = new Map()
   let heaviestLift = null
   for (const s of sessionsThisMonth) {
-    for (const [exercise, weight] of Object.entries(s.weights || {})) {
+    for (const [exercise, weight] of workoutPRs([s])) {
       const w = +weight
       if (!Number.isFinite(w)) continue
-      const key = liftKey(s, exercise)
+      const key = exerciseName(exercise)
       if (!monthBest.has(key) || w > monthBest.get(key)) monthBest.set(key, w)
       if (!heaviestLift || w > heaviestLift.weight) heaviestLift = { exercise: key, weight: w }
     }

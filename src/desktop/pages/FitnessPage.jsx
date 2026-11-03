@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { FITNESS, sessionIdx } from '../../data'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
-import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../../workoutPrograms'
+import { nextProgramWorkoutIdx, sessionProgramId } from '../../workoutPrograms'
 import WorkoutGymSelector from '../../WorkoutGymSelector'
+import WorkoutExerciseName from '../../WorkoutExerciseName'
+import WorkoutProgramGuide from '../../WorkoutProgramGuide'
+import { useWorkoutExercises } from '../../useWorkoutExercises'
+import { exerciseId, lastRecordedWeight, workoutSnapshot } from '../../workoutHistory'
 import { useClock, usePersistentState } from '../../hooks'
 import { useHomeGoals } from '../../useHomeGoals'
 import { bodyFatGoal, weeklyTrainingGoal } from '../../homeInsights'
@@ -19,23 +23,6 @@ const METRICS = [
   { key: 'fatMass', label: 'Fat mass', unit: 'kg' },
   { key: 'fatPct', label: 'Body fat', unit: '%' },
 ]
-
-function SetTracker({ spec, onTick }) {
-  const total = Number(String(spec).match(/^(?:\d+[–-])?(\d+)×/)?.[1] ?? 1)
-  const [done, setDone] = useState(0)
-  const toggle = () => { const next = done >= total ? 0 : done + 1; setDone(next); if (next > done) onTick?.() }
-  return (
-    <button onClick={toggle} className="flex gap-1.5 items-center">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className="w-3.5 h-3.5 rounded-full" style={{
-          background: i < done ? 'var(--d-accent)' : 'transparent',
-          border: `1.5px solid ${i < done ? 'var(--d-accent)' : 'var(--d-border-strong)'}`,
-        }} />
-      ))}
-      <span className="d-num text-[12px] d-t3 ml-1">{spec}</span>
-    </button>
-  )
-}
 
 function WeightCell({ weight, onCommit }) {
   const [editing, setEditing] = useState(false)
@@ -69,22 +56,17 @@ export default function FitnessPage() {
 
   const today = dateKey(useClock())
   const todaySession = sessions.find(s => s.date === today)
-  const { program, weights, setWeights, programId, activeProgramId, setActiveProgramId } =
+  const { program, legacyProgram, exerciseCatalog, weights, setWeights, programId, activeProgramId, setActiveProgramId } =
     useWorkoutPrograms(todaySession ? sessionProgramId(todaySession) : undefined)
-  const programSessions = useMemo(() => sessionsForProgram(sessions, programId), [sessions, programId])
   const suggested = nextProgramWorkoutIdx(program, sessions, programId)
   const [selectedWorkout, setSelectedWorkout] = useState(null)
   const day = todaySession ? Math.max(0, Math.min(program.length - 1, sessionIdx(todaySession, program))) : selectedWorkout?.date === today && selectedWorkout.programId === programId ? selectedWorkout.index : suggested
   const done = !!todaySession
-
-  const lastWeights = useMemo(() => {
-    const m = {}
-    ;[...programSessions].sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(s =>
-      Object.entries(s.weights || {}).forEach(([n, w]) => { if (Number.isFinite(+w) && +w > 0) m[n] = +w }))
-    return m
-  }, [programSessions])
-
-  const effWeight = name => todaySession?.weights?.[name] ?? weights[name] ?? lastWeights[name] ?? null
+  const { exercises, swapExercise } = useWorkoutExercises({
+    date: today, programId, day, program, legacyProgram, session: todaySession, setSessions,
+  })
+  const effWeight = name => todaySession?.weights?.[name] ?? weights[name]
+    ?? lastRecordedWeight(sessions, name, today)?.weight ?? null
 
   const setWeight = (name, val) => {
     setWeights(prev => { const next = { ...prev }; if (val == null) delete next[name]; else next[name] = val; return next })
@@ -97,9 +79,8 @@ export default function FitnessPage() {
 
   const toggleDone = () => {
     if (done) { setSessions(prev => prev.filter(s => s.date !== today)); return }
-    const snap = {}
-    program[day].exercises.forEach(e => { const w = effWeight(e.name); if (w != null) snap[e.name] = w })
-    setSessions(prev => [...prev, { date: today, programId, idx: day, name: program[day].name, weights: snap }])
+    const snap = workoutSnapshot(exercises, effWeight)
+    setSessions(prev => [...prev, { date: today, programId, idx: day, name: program[day].name, ...snap }])
     os?.announce(`SESSION LOGGED · ${program[day].name}`, 'var(--acc-fit)')
   }
 
@@ -156,16 +137,21 @@ export default function FitnessPage() {
           }>
           <WorkoutGymSelector desktop value={activeProgramId} onChange={setActiveProgramId}
             loggedProgramId={todaySession ? sessionProgramId(todaySession) : undefined} />
+          <WorkoutProgramGuide programId={programId} day={{ ...program[day], exercises }} desktop />
           {!done && <Segmented className="mb-3" value={day} onChange={index => setSelectedWorkout({ date: today, programId, index })}
             options={program.map((d, i) => ({ value: i, label: d.name.split(' & ')[0] }))} />}
           <table className="d-table">
             <thead><tr><th style={{ width: 34 }}>#</th><th>Exercise</th><th>Sets</th><th style={{ textAlign: 'right' }}>Weight</th></tr></thead>
             <tbody>
-              {program[day].exercises.map((e, i) => (
+              {exercises.map((e, i) => (
                 <tr key={`${today}:${programId}:${day}:${e.name}`}>
                   <td className="d-num d-t3">{String(i + 1).padStart(2, '0')}</td>
-                  <td className="d-t1 font-medium">{e.name}</td>
-                  <td><SetTracker spec={e.sets} onTick={() => os?.startTimer?.(90)} /></td>
+                  <td className="d-t1 font-medium"><WorkoutExerciseName exercise={e} sessions={sessions}
+                    catalog={exerciseCatalog.filter(item => !exercises.some((other, index) => index !== i && exerciseId(other.name) === exerciseId(item.name)))}
+                    onSwap={name => swapExercise(i, name)} desktop /></td>
+                  <td className="d-num">{e.sets}{e.perLeg ? ' /leg' : ''}
+                    {e.rest != null && <span className="block text-[10px] d-t3">{e.rest}s rest</span>}
+                  </td>
                   <td style={{ textAlign: 'right' }}><WeightCell weight={effWeight(e.name)} onCommit={v => setWeight(e.name, v)} /></td>
                 </tr>
               ))}

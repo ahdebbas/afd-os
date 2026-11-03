@@ -6,6 +6,8 @@ export const CLOUD_STATE_KEYS = [
   'afd-inbody',
   'afd-program-v2',
   'afd-program-beirut-v1',
+  'afd-program-beirut-v2',
+  'afd-workout-swaps',
   'afd-weights-beirut',
   'afd-active-workout-program',
   'afd-home-v1',

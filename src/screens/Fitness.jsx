@@ -4,6 +4,10 @@ import { FITNESS, sessionIdx } from '../data'
 import { useWorkoutPrograms } from '../useWorkoutPrograms'
 import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../workoutPrograms'
 import WorkoutGymSelector from '../WorkoutGymSelector'
+import WorkoutExerciseName from '../WorkoutExerciseName'
+import WorkoutProgramGuide from '../WorkoutProgramGuide'
+import { useWorkoutExercises } from '../useWorkoutExercises'
+import { exerciseId, exerciseName, exercisePR, lastRecordedWeight, workoutPRs, workoutSnapshot } from '../workoutHistory'
 import { Gauge, Label, DayStrip, TrendChart } from '../ui'
 import { useOs } from '../os'
 import { useCurrentDaySelection, usePersistentState } from '../hooks'
@@ -66,7 +70,7 @@ function WeightCell({ weight, flash, onCommit }) {
   )
 }
 
-function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCommit }) {
+function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCommit, sessions, catalog, onSwap }) {
   return (
     <div className={`workout-exercise-row flex justify-between items-start gap-2 py-2.5 ${index > 0 ? 'hairline-t' : ''} ${completed ? 'workout-exercise-complete' : ''}`}>
       <span className="text-sm t1 font-medium flex items-start gap-2.5 min-w-0 flex-1 pr-1">
@@ -77,10 +81,13 @@ function ExerciseRow({ exercise, index, weight, flash, completed, onToggle, onCo
             ? <Check size={13} strokeWidth={3} aria-hidden="true" />
             : <span className="mono text-[9px]">{String(index + 1).padStart(2, '0')}</span>}
         </button>
-        <span className={`leading-snug pt-0.5 ${completed ? 'workout-exercise-name-complete' : ''}`}>{exercise.name}</span>
+        <WorkoutExerciseName exercise={exercise} sessions={sessions} catalog={catalog} onSwap={onSwap} />
       </span>
       <div className="flex items-center justify-end gap-2 flex-shrink-0">
-        <span className={`workout-exercise-target mono text-[10px] t2 w-20 text-right pt-1.5 ${completed ? 'workout-exercise-target-complete' : ''}`}>{exercise.sets}</span>
+        <span className={`workout-exercise-target mono text-[10px] t2 w-20 text-right pt-1.5 ${completed ? 'workout-exercise-target-complete' : ''}`}>
+          {exercise.sets}{exercise.perLeg ? ' /leg' : ''}
+          {exercise.rest != null && <span className="block text-[9px] t3">{exercise.rest}s rest</span>}
+        </span>
         <WeightCell weight={weight} flash={flash} onCommit={onCommit} />
       </div>
     </div>
@@ -94,7 +101,7 @@ export default function Fitness() {
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [selDate, setSelDate, today] = useCurrentDaySelection()
   const selSession = sessions.find(s => s.date === selDate)
-  const { program, setProgram, weights, setWeights, programId, activeProgramId, setActiveProgramId } =
+  const { program, legacyProgram, exerciseCatalog, setProgram, weights, allWeights, setWeights, programId, activeProgramId, setActiveProgramId } =
     useWorkoutPrograms(selSession ? sessionProgramId(selSession) : undefined)
   const programSessions = useMemo(() => sessionsForProgram(sessions, programId), [sessions, programId])
   const [exerciseProgress, setExerciseProgress] = usePersistentState('afd-fit-exercise-progress', {},
@@ -176,26 +183,22 @@ export default function Fitness() {
   const activeIdx = selSession ? Math.max(0, Math.min(program.length - 1, idxOf(selSession))) : suggested
 
   // Most recent logged weight per exercise across all sessions (oldest→newest so newer wins).
-  const lastWeights = useMemo(() => {
-    const m = {}
-    ;[...ordered].reverse().forEach(s =>
-      Object.entries(s.weights || {}).forEach(([n, w]) => { if (Number.isFinite(+w) && +w > 0) m[n] = +w })
-    )
-    return m
-  }, [ordered])
-
   // Effective weight in a cell: the selected day's snapshot, else current value, else last logged, else seed.
-  const effWeight = name => selSession?.weights?.[name] ?? weights[name] ?? lastWeights[name] ?? null
+  const effWeight = name => selSession?.weights?.[name] ?? weights[name]
+    ?? lastRecordedWeight(sessions, name, selDate)?.weight ?? null
 
   // Selected rotation day follows the suggestion / logged session, but a manual tap sticks.
-  const day = selection?.date === selDate && selection.programId === programId && selection.activeIdx === activeIdx
+  const day = !selSession && selection?.date === selDate && selection.programId === programId && selection.activeIdx === activeIdx
     ? selection.day : activeIdx
   const setDay = day => setSelection({ date: selDate, programId, activeIdx, day })
+  const { exercises, swapExercise } = useWorkoutExercises({
+    date: selDate, programId, day, program, legacyProgram, session: selSession, setSessions,
+  })
 
   const progressKey = `${selDate}:${program[day].name}`
   const completedExercises = exerciseProgress[progressKey] || []
-  const completedExerciseCount = program[day].exercises.filter(exercise => completedExercises.includes(exercise.name)).length
-  const nextExercise = program[day].exercises.find(exercise => !completedExercises.includes(exercise.name))
+  const completedExerciseCount = exercises.filter(exercise => completedExercises.includes(exercise.name)).length
+  const nextExercise = exercises.find(exercise => !completedExercises.includes(exercise.name))
   const toggleExercise = name => setExerciseProgress(prev => {
     const current = prev[progressKey] || []
     const next = current.includes(name) ? current.filter(item => item !== name) : [...current, name]
@@ -204,18 +207,10 @@ export default function Fitness() {
 
   // Best weight per exercise across current values + every logged snapshot.
   const bestFor = name => {
-    let best = +weights[name] || 0
-    programSessions.forEach(s => { const x = +s.weights?.[name]; if (Number.isFinite(x) && x > best) best = x })
-    return best
+    return Math.max(+weights[name] || 0, exercisePR(sessions, name))
   }
 
-  const prs = useMemo(() => {
-    const best = {}
-    const consider = (n, w) => { if (w > 0 && (!best[n] || w > best[n])) best[n] = w }
-    Object.entries(weights).forEach(([n, w]) => consider(n, +w || 0))
-    programSessions.forEach(s => Object.entries(s.weights || {}).forEach(([n, w]) => consider(n, +w || 0)))
-    return Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 6)
-  }, [weights, programSessions])
+  const prs = workoutPRs(sessions, allWeights).slice(0, 6)
 
   const monthlyRecap = useMemo(() => buildMonthlyWorkoutRecap({ sessions, inbody, weeklyTarget: goal.weeklyWorkouts, now: new Date(`${today}T12:00:00`) }), [sessions, inbody, goal.weeklyWorkouts, today])
 
@@ -251,16 +246,19 @@ export default function Fitness() {
     if (done) {
       setSessions(prev => prev.filter(s => s.date !== selDate))
     } else {
-      const snap = {}
-      program[day].exercises.forEach(e => { const w = effWeight(e.name); if (w != null) snap[e.name] = w })
-      setSessions(prev => [...prev, { date: selDate, programId, idx: day, name: program[day].name, weights: snap }])
+      const snap = workoutSnapshot(exercises, effWeight)
+      setSessions(prev => [...prev, { date: selDate, programId, idx: day, name: program[day].name, ...snap }])
       os?.announce(`SESSION LOGGED · ${program[day].name}`, 'var(--acc-fit)')
     }
   }
 
   const addExercise = () => {
-    const name = exForm.name.trim()
-    if (!name) return
+    const name = exerciseName(exForm.name)
+    if (!name) { os?.announce('Enter an exercise name.', 'var(--acc-fit)'); return }
+    if (exercises.some(exercise => exerciseId(exercise.name) === exerciseId(name))) {
+      os?.announce('This exercise is already in this workout.', 'var(--acc-fit)')
+      return
+    }
     const sets = exForm.sets.trim() || '3×10'
     setProgram(prev => prev.map((d, i) => i === day ? { ...d, exercises: [...d.exercises, { name, sets }] } : d))
     setExForm({ open: false, name: '', sets: '' })
@@ -431,6 +429,7 @@ export default function Fitness() {
           setActiveProgramId(id)
           setExForm({ open: false, name: '', sets: '' })
         }} loggedProgramId={selSession ? sessionProgramId(selSession) : undefined} />
+        <WorkoutProgramGuide programId={programId} day={{ ...program[day], exercises }} />
         <div className="flex flex-wrap gap-2 items-center justify-between mb-1">
           <Label><Dumbbell size={12} className="inline-block mr-0.5 -mt-0.5" /> {isToday ? 'Today’s workout' : `${dayLabel} workout`}</Label>
           {lastLogged && (
@@ -440,16 +439,16 @@ export default function Fitness() {
 
         {!done && nextExercise && <div className="fitness-next-exercise">
           <span>Next exercise</span><strong>{nextExercise.name}</strong>
-          <span>{nextExercise.sets}{lastWeights[nextExercise.name] != null ? ` · last recorded ${lastWeights[nextExercise.name]} kg` : ' · no recorded weight'}</span>
+          <span>{nextExercise.sets}{lastRecordedWeight(sessions, nextExercise.name) ? ` · last recorded ${lastRecordedWeight(sessions, nextExercise.name).weight} kg` : ' · no recorded weight'}</span>
         </div>}
         {/* Rotation strip */}
-        <div className={`grid ${program.length === 2 ? 'grid-cols-2' : 'grid-cols-4'} gap-1 chip rounded-2xl p-1 mb-4`}>
+        <div className={`grid ${program.length === 3 ? 'grid-cols-3' : program.length === 2 ? 'grid-cols-2' : 'grid-cols-4'} gap-1 chip rounded-2xl p-1 mb-4`}>
           {program.map((d, i) => {
             const selected = day === i
             // Split at the "&" so every tab renders as a consistent two-line label.
             const [head, ...rest] = d.name.split(' & ')
             return (
-              <button key={d.name} onClick={() => setDay(i)} aria-pressed={selected}
+              <button key={d.name} onClick={() => setDay(i)} aria-pressed={selected} disabled={done}
                 className={`press relative flex flex-col items-center justify-center text-center mono text-[9px] tracking-0 font-semibold px-1 py-2.5 rounded-xl leading-tight ${selected ? 'acc-chip' : 't3'}`}>
                 <span>{head}</span>
                 {rest.length > 0 && <span>&amp; {rest.join(' & ')}</span>}
@@ -468,8 +467,8 @@ export default function Fitness() {
         <div className="fitness-table-heading flex items-center justify-between pb-2 mono text-[9px] tracking-[0.16em] uppercase t3">
           <div className="flex items-center gap-2">
             <span>Exercise</span>
-            <span className={`workout-progress-count ${completedExerciseCount === program[day].exercises.length && program[day].exercises.length > 0 ? 'workout-progress-complete' : ''}`}>
-              {completedExerciseCount} of {program[day].exercises.length} done
+            <span className={`workout-progress-count ${completedExerciseCount === exercises.length && exercises.length > 0 ? 'workout-progress-complete' : ''}`}>
+              {completedExerciseCount} of {exercises.length} done
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -477,7 +476,7 @@ export default function Fitness() {
             <span className="w-[66px] text-center">Weight</span>
           </div>
         </div>
-        {program[day].exercises.map((e, i) => (
+        {exercises.map((e, i) => (
           <ExerciseRow
             key={`${selDate}:${programId}:${day}:${e.name}`}
             exercise={e}
@@ -487,6 +486,9 @@ export default function Fitness() {
             completed={completedExercises.includes(e.name)}
             onToggle={() => toggleExercise(e.name)}
             onCommit={val => setWeight(e.name, val)}
+            sessions={sessions}
+            catalog={exerciseCatalog.filter(item => !exercises.some((other, index) => index !== i && exerciseId(other.name) === exerciseId(item.name)))}
+            onSwap={name => swapExercise(i, name)}
           />
         ))}
 
