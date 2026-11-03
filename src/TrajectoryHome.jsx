@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, Beef, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Dumbbell, Landmark, MapPin, Moon, Settings, SlidersHorizontal, Sun, Wallet } from 'lucide-react'
-import { FINANCE, FITNESS, reconcileFinance } from './data'
+import { FINANCE, reconcileFinance } from './data'
+import { useInbodyReadings } from './useInbodyReadings'
 import { DEFAULT_CASH_PULSE } from './cashPulse'
 import { formatUsd } from './currency'
 import { dateKey, isDateKey } from './dates'
@@ -152,7 +153,7 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
   const { goals, mainGoal } = home
   const { entries, totals } = useFood()
   const [sessions] = usePersistentState('afd-sessions', EMPTY_SESSIONS, Array.isArray)
-  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const [inbody] = useInbodyReadings()
   const [savedCash] = usePersistentState('afd-cash-pulse', DEFAULT_CASH_PULSE)
   const [savedFinance] = usePersistentState('afd-finance', FINANCE)
   const [, setFoodDay] = usePersistentState('afd-food-day', today, isDateKey)

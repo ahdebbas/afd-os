@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
-import { FITNESS, sessionIdx } from '../../data'
+import { sessionIdx } from '../../data'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
+import { useInbodyReadings } from '../../useInbodyReadings'
 import { nextProgramWorkoutIdx, sessionProgramId } from '../../workoutPrograms'
 import WorkoutGymSelector from '../../WorkoutGymSelector'
 import WorkoutExerciseName from '../../WorkoutExerciseName'
@@ -51,7 +52,7 @@ export default function FitnessPage() {
   const [{ goals }] = useHomeGoals()
   const { logs: foodLogs } = useFood()
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
-  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const [inbody] = useInbodyReadings()
   const [metric, setMetric] = useState('weight')
 
   const today = dateKey(useClock())

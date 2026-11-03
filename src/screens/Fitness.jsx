@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy, TriangleAlert, Flame, Beef, Zap, Dumbbell, Check, Plus, ArrowRight, ChevronDown } from 'lucide-react'
 import { FITNESS, sessionIdx } from '../data'
 import { useWorkoutPrograms } from '../useWorkoutPrograms'
+import { useInbodyReadings } from '../useInbodyReadings'
 import { nextProgramWorkoutIdx, sessionProgramId, sessionsForProgram } from '../workoutPrograms'
 import WorkoutGymSelector from '../WorkoutGymSelector'
 import WorkoutExerciseName from '../WorkoutExerciseName'
@@ -106,7 +107,7 @@ export default function Fitness() {
   const programSessions = useMemo(() => sessionsForProgram(sessions, programId), [sessions, programId])
   const [exerciseProgress, setExerciseProgress] = usePersistentState('afd-fit-exercise-progress', {},
     v => v && typeof v === 'object' && !Array.isArray(v))
-  const [inbody, setInbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const [inbody, setInbody] = useInbodyReadings()
   const [flashPR, setFlashPR] = useState(null)
   const [exForm, setExForm] = useState({ open: false, name: '', sets: '' })
   const [metric, setMetric] = useState('weight')

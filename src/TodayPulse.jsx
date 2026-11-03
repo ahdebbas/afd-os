@@ -2,7 +2,8 @@ import { Beef, Droplets, Dumbbell, Flame, Landmark, Play, Wallet, Wheat } from '
 import { useClock, usePersistentState } from './hooks'
 import { useFood } from './store'
 import { useQuotes } from './quotes'
-import { FINANCE, FITNESS, TARGETS, reconcileFinance, sarwaTotal, usd } from './data'
+import { FINANCE, TARGETS, reconcileFinance, sarwaTotal, usd } from './data'
+import { useInbodyReadings } from './useInbodyReadings'
 import { useWorkoutPrograms } from './useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from './workoutPrograms'
 import { DEFAULT_CASH_PULSE, buildCashProjection, formatCash } from './cashPulse'
@@ -20,7 +21,7 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const [cash] = usePersistentState('afd-cash-pulse', DEFAULT_CASH_PULSE)
   const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
-  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const [inbody] = useInbodyReadings()
   const [, setFoodDay] = usePersistentState('afd-food-day', today, isDateKey)
   const navigate = destination => {
     if (destination === 'food') setFoodDay(today)

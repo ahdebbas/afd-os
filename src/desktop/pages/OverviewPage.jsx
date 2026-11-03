@@ -6,7 +6,8 @@ import { useClock, usePersistentState } from '../../hooks'
 import { useHomeGoals } from '../../useHomeGoals'
 import { bodyFatGoal, weeklyTrainingGoal } from '../../homeInsights'
 import { dateKey } from '../../dates'
-import { DEFICIT_GOAL, TARGETS, FITNESS, FINANCE, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { DEFICIT_GOAL, TARGETS, FINANCE, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { useInbodyReadings } from '../../useInbodyReadings'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from '../../workoutPrograms'
 import { connectWhoop, fetchWhoopCalories, WHOOP_POLL_MS } from '../../whoop'
@@ -175,7 +176,7 @@ export default function OverviewPage({ onNavigate }) {
   const today = dateKey(useClock())
   const [savedFinance] = usePersistentState('afd-finance', FINANCE)
   const finance = reconcileFinance(savedFinance)
-  const [inbody] = usePersistentState('afd-inbody', FITNESS.inbody, Array.isArray)
+  const [inbody] = useInbodyReadings()
   const { program, programId } = useWorkoutPrograms()
   const [sessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [, setFoodDay] = usePersistentState('afd-food-day', today)

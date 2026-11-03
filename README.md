@@ -14,6 +14,10 @@ All monetary amounts use explicit **USD** labels (including stock prices and
 market-change summaries); saved balances and holdings are not converted or changed.
 The workout calendar starts on the current local day, advances after midnight or
 app resume, and allows historical selection until the next day or reload.
+The latest bundled InBody scan is added to existing saved histories by date;
+saved readings for that date take precedence, and newer readings remain latest.
+Home and Fitness use the same history on mobile and desktop. Scan data is
+bundled in the client, just like the earlier readings, not private server-only data.
 
 ### Mobile Home
 

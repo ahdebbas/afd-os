@@ -18,6 +18,8 @@ export const FITNESS = {
     { date: '2026-05-09', weight: 90.7, smm: 42.7, fatMass: 16.0, fatPct: 17.7 },
     { date: '2026-05-23', weight: 90.4, smm: 43.3, fatMass: 14.8, fatPct: 16.3 },
     { date: '2026-06-13', weight: 88.3, smm: 42.2, fatMass: 14.4, fatPct: 16.3 },
+    { date: '2026-10-08', weight: 87.1, smm: 42.4, fatMass: 13.1, fatPct: 15.0,
+      waist: 90.5, waistToHipRatio: 0.89, visceralFatLevel: 5, trunkFat: 7.1 },
   ],
   goal: { fatPct: 13.5 },
   // 4-day split — chest, arms & glutes focus
