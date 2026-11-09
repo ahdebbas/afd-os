@@ -5,7 +5,7 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 ## Modules
 
 - **Home** — mobile Trajectory: one pinned goal, four supporting KPI cards, liquid capital, daily WHOOP burn analysis, and one contextual action. Desktop keeps its existing overview.
-- **Finance** — MSFT position + Sarwa (halal) portfolio with daily market sync.
+- **Finance** — MSFT position, Sarwa (halal), and a separate Sarwa Trade section with hourly market sync and manual refresh.
 - **Cash** — manual USD balance, monthly commitments, planned one-offs, and three-month payment coverage. Uses the active shell's theme in light and dark mode; marking payments covered never deducts from the cash snapshot.
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
 - **Fitness** — body composition, PRs, weekly sessions, injury constraints, program.
@@ -41,7 +41,7 @@ target: progress uses the dated manual balance **before planned payments**, not 
 bank feed or projected spendable cash.
 
 The **Liquid capital** KPI adds the dated Cash balance to direct MSFT and ETF
-values, excluding property and before planned payments. Include any brokerage
+and Sarwa Trade values, excluding property and before planned payments. Include any brokerage
 cash in the Cash snapshot: USD holdings are not added separately. No cash-buffer
 target is needed. Missing/invalid/future cash snapshots or unpriced holdings
 suppress the total rather than treating unknown amounts as zero; known zero
@@ -52,6 +52,17 @@ sources/dates, and links to Cash and Finance. Recorded, cached, and mixed-date
 prices are labelled. Cash and price dates may differ; this is a saved-data
 overview, not a synchronized live account balance. Allocation compares securities
 only. Insights and goal explanations are calculated locally, not by external AI.
+
+Sarwa Trade tracks fractional GOOGL, NVDA, and SPTE shares. Its mobile and desktop
+Finance sections allow editing shares and show position values and daily price
+moves, not lifetime returns or inferred cost bases. Trade is included in net worth,
+invested/liquid capital, allocations, and market-change snapshots. Adding or editing
+holdings is labelled as a position change rather than an investment return.
+Market refresh uses the same Yahoo Finance proxy as MSFT. Incomplete older caches
+refresh automatically; a failed symbol does not block successful quotes. Cached
+prices or the supplied screenshot values remain labelled fallbacks when offline.
+Edited quantities scale the recorded fallback proportionally; screenshot quantities
+are rounded, so a live shares-times-price value may differ from the screenshot.
 
 The persistent dock still opens Home, Finance, Cash, Food, and Fitness. Contextual
 Home actions open today's Food/Fitness; a body check-in opens the actual InBody
@@ -124,6 +135,8 @@ npm run preview  # serve the production build locally
 ```
 
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
+Finance, quote-cache, and portfolio checks:
+`node --test src/financePerformance.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
 Currency and workout date checks:
 `node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 Workout checks: `node --test src/workoutPrograms.test.mjs src/workoutHistory.test.mjs src/monthlyWorkoutRecap.test.mjs`.

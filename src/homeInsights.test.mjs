@@ -16,6 +16,28 @@ const finance = {
   property: { value: 500000 },
 }
 
+test('Trade participates in Home invested/liquid totals, concentration and source labels', () => {
+  const withTrade = { ...finance, sarwaTrade: { lastUpdated: 'Screenshot', holdings: [
+    { ticker: 'NVDA', name: 'NVIDIA', units: 10, recordedUnits: 10, value: 1000 },
+  ] } }
+  const recorded = portfolioSignal(withTrade, null)
+  assert.equal(recorded.total, 93000)
+  assert.equal(recorded.source, 'Recorded values')
+  assert.equal(recorded.positions.find(h => h.ticker === 'NVDA').value, 1000)
+  assert.equal(liquidCapital({ available: true, current: 2000 }, recorded).total, 95000)
+  const allQuotes = { MSFT: { price: 500, currency: 'USD' }, 'ISDW.L': { price: 420, currency: 'USD' }, NVDA: { price: 200, currency: 'USD' } }
+  const live = portfolioSignal(withTrade, allQuotes, { status: 'live', syncedAt: '2026-11-10T12:00:00Z' })
+  assert.equal(live.total, 94000)
+  assert.equal(live.source, 'Synced prices')
+  assert.equal(live.share, 50000 / 94000)
+  assert.equal(portfolioSignal(withTrade, allQuotes, { status: 'stale' }).source, 'Cached prices')
+  delete allQuotes.NVDA
+  assert.equal(portfolioSignal(withTrade, allQuotes).source, 'Mixed price dates')
+  const missing = { ...withTrade, sarwaTrade: { holdings: [{ ticker: 'NVDA', units: 10 }] } }
+  assert.equal(portfolioSignal(missing, null).missingCount, 1)
+  assert.equal(liquidCapital({ available: true, current: 2000 }, portfolioSignal(missing, null)).available, false)
+})
+
 test('day validation rejects rollover dates and stays reusable across mounted date selectors', () => {
   assert.equal(isDateKey('2028-02-29'), true)
   for (const invalid of [null, '2026-02-29', '2026-02-31', '2026-2-03', 'not-a-date']) assert.equal(isDateKey(invalid), false)

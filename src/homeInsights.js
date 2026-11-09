@@ -1,4 +1,4 @@
-import { ETF_SYMBOL, holdingValue } from './data.js'
+import { holdingSymbol, holdingValue } from './data.js'
 import { buildCashProjection } from './cashPulse.js'
 import { dateKey, isDateKey } from './dates.js'
 
@@ -82,21 +82,22 @@ export function portfolioSignal(finance, quotes, meta = {}) {
     if (!Number.isFinite(Number(price)) || Number(price) <= 0) missingCount++
     else positions.push({
       ticker: 'MSFT', name: 'Microsoft', value: Number(msft.shares) * Number(price),
-      source: quote ? 'quotes' : 'recorded', asOf: quote ? meta.syncedAt : msft.priceDate,
+      source: quote ? 'quotes' : 'recorded', asOf: quote ? quote.fetchedAt ?? meta.syncedAt : msft.priceDate,
     })
   }
-  for (const holding of finance.sarwa?.holdings || []) {
+  for (const [holding, recordedAt] of [finance.sarwa, finance.sarwaTrade].flatMap(account =>
+    (account?.holdings || []).map(holding => [holding, account.lastUpdated]))) {
     if (holding.ticker === 'USD') continue
     if (holding.units != null && !amount(holding.units)) { missingCount++; continue }
     if (holding.units != null && Number(holding.units) === 0) continue
-    const quote = usableQuotes[ETF_SYMBOL[holding.ticker]]
+    const quote = usableQuotes[holdingSymbol(holding)]
     const quoted = !!quote && holding.units != null
     const value = holdingValue(holding, usableQuotes)
     if (!amount(value)) { missingCount++; continue }
     if (Number(value) === 0) continue
     positions.push({
       ticker: holding.ticker, name: holding.name, value: Number(value),
-      source: quoted ? 'quotes' : 'recorded', asOf: quoted ? meta.syncedAt : finance.sarwa.lastUpdated,
+      source: quoted ? 'quotes' : 'recorded', asOf: quoted ? quote.fetchedAt ?? meta.syncedAt : recordedAt,
     })
   }
   positions.sort((a, b) => b.value - a.value)

@@ -78,9 +78,17 @@ export const DEFAULT_WEIGHTS = {
 }
 
 export const FINANCE = {
-  version: 2,
+  version: 3,
   property: { name: 'Beirut apartment', location: 'Beirut, Lebanon', value: 420000 },
   msft: { shares: 552, price: 411.74, dayChangePct: -1.44, low52: 356.28, high52: 555.45, priceDate: 'Jun 9, 2026' },
+  sarwaTrade: {
+    lastUpdated: 'Screenshot (date not provided)',
+    holdings: [
+      { ticker: 'GOOGL', name: 'Alphabet', units: 41.21, recordedUnits: 41.21, value: 11968.58, price: 290.40 },
+      { ticker: 'NVDA', name: 'NVIDIA', units: 68.27, recordedUnits: 68.27, value: 12201.51, price: 178.72 },
+      { ticker: 'SPTE', name: 'SP Funds S&P Global Technology ETF', units: 348.30, recordedUnits: 348.30, value: 15255.58, price: 43.80 },
+    ],
+  },
   sarwa: {
     total: 30876.99,
     lastUpdated: 'Aug 22, 2026',
@@ -100,6 +108,11 @@ export const FINANCE = {
 
 export function reconcileFinance(finance) {
   if (finance?.version === FINANCE.version) return finance
+  if (finance?.version === 2) return {
+    ...finance,
+    version: FINANCE.version,
+    sarwaTrade: finance.sarwaTrade ?? FINANCE.sarwaTrade,
+  }
   const savedHoldings = new Map((finance?.sarwa?.holdings || []).map(holding => [holding.ticker, holding]))
   const holdings = FINANCE.sarwa.holdings.map(holding => {
     const savedUnits = savedHoldings.get(holding.ticker)?.units
@@ -109,17 +122,22 @@ export function reconcileFinance(finance) {
     ...FINANCE,
     ...finance,
     version: FINANCE.version,
+    sarwaTrade: finance?.sarwaTrade ?? FINANCE.sarwaTrade,
     sarwa: { ...FINANCE.sarwa, ...finance?.sarwa, total: FINANCE.sarwa.total, lastUpdated: FINANCE.sarwa.lastUpdated, holdings },
   }
 }
 
 export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L' }
+export const holdingSymbol = h => ETF_SYMBOL[h.ticker] ?? h.ticker
 
 // Live value of a Sarwa holding given the quotes map; falls back to the recorded value.
 export const holdingValue = (h, q) => {
   if (h.units != null && Number(h.units) === 0) return 0
-  const quote = q?.[ETF_SYMBOL[h.ticker]]
-  return quote && h.units != null ? h.units * quote.price : h.value
+  const quote = q?.[holdingSymbol(h)]
+  if (quote && h.units != null) return h.units * quote.price
+  // Screenshot quantities are rounded; preserve its value until quantities change.
+  if (h.recordedUnits > 0 && h.units != null) return h.value * h.units / h.recordedUnits
+  return h.value
 }
 
 // Rotation index of a logged session within the program (stored idx, or name match).

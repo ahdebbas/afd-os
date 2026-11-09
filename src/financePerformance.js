@@ -1,14 +1,15 @@
-import { ETF_SYMBOL, holdingPerf, holdingValue, usd } from './data.js'
+import { ETF_SYMBOL, holdingPerf, holdingValue, sarwaTotal, usd } from './data.js'
 import { todayKey } from './dates.js'
 
 const round = (value, digits = 1) => Number.isFinite(value) ? +value.toFixed(digits) : null
 const share = (value, total) => total > 0 ? round((value / total) * 100) : 0
 
 export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt }) {
-  const { msft, sarwa, property } = finance
+  const { msft, sarwa, property, sarwaTrade } = finance
   const positionsKey = JSON.stringify([
     +msft.shares || 0,
     ...(sarwa.holdings || []).map(holding => [holding.ticker, holding.units ?? null, holding.ticker === 'USD' ? holding.value : null]),
+    ...(sarwaTrade?.holdings || []).map(holding => ['trade', holding.ticker, holding.units]),
   ])
   const msftQuote = quotes?.MSFT
   const msftPrice = msftQuote?.price ?? msft.price
@@ -29,10 +30,18 @@ export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt })
       dayChange: quote?.changePct == null ? null : round(quote.changePct),
     }
   })
-  const sarwaValue = holdings.reduce((sum, holding) => sum + holding.value, 0)
+  const sarwaValue = sarwaTotal(sarwa, quotes)
   const sarwaCost = holdings.reduce((sum, holding) => sum + (holding.cost || 0), 0)
+  const tradeHoldings = (sarwaTrade?.holdings || []).map(holding => ({
+    ticker: holding.ticker,
+    name: holding.name,
+    value: holdingValue(holding, quotes),
+    dayChange: round(quotes?.[holding.ticker]?.changePct),
+    totalReturn: null,
+  }))
+  const tradeValue = tradeHoldings.reduce((sum, holding) => sum + holding.value, 0)
   const propertyValue = Math.max(0, +property.value || 0)
-  const total = msftValue + sarwaValue + propertyValue
+  const total = msftValue + sarwaValue + tradeValue + propertyValue
   const range = (+msft.high52 || 0) - (+msft.low52 || 0)
   const msftRangePercentile = range > 0 ? round(Math.min(100, Math.max(0, ((msftPrice - msft.low52) / range) * 100))) : null
 
@@ -43,6 +52,7 @@ export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt })
   const allocations = {
     msft: share(msftValue, total),
     sarwa: share(sarwaValue, total),
+    sarwaTrade: share(tradeValue, total),
     property: share(propertyValue, total),
   }
   const flags = []
@@ -79,6 +89,12 @@ export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt })
       worst: worst ? { ticker: worst.ticker, totalReturn: worst.totalReturn } : null,
       holdings,
     },
+    sarwaTrade: {
+      value: Math.round(tradeValue),
+      share: allocations.sarwaTrade,
+      totalReturn: null,
+      holdings: tradeHoldings.map(holding => ({ ...holding, value: Math.round(holding.value) })),
+    },
     property: {
       value: Math.round(propertyValue),
       share: allocations.property,
@@ -95,7 +111,8 @@ export function toMarketSnapshot(snapshot) {
     recordedAt: snapshot.syncedAt || new Date().toISOString(),
     msft: snapshot.msft.value,
     sarwa: snapshot.sarwa.value,
-    marketTotal: snapshot.msft.value + snapshot.sarwa.value,
+    sarwaTrade: snapshot.sarwaTrade?.value ?? 0,
+    marketTotal: snapshot.msft.value + snapshot.sarwa.value + (snapshot.sarwaTrade?.value ?? 0),
     msftNetWorthShare: snapshot.msft.share,
     positionsKey: snapshot.positionsKey,
   }
@@ -113,6 +130,7 @@ const comparisonFor = (history, current, targetDays) => {
   if (!baseline) return null
   const msftChange = current.msft - baseline.msft
   const sarwaChange = current.sarwa - baseline.sarwa
+  const sarwaTradeChange = (current.sarwaTrade ?? 0) - (baseline.sarwaTrade ?? 0)
   const totalChange = current.marketTotal - baseline.marketTotal
   return {
     label: targetDays === 1 ? '1D' : `${targetDays}D`,
@@ -122,8 +140,10 @@ const comparisonFor = (history, current, targetDays) => {
     changePct: baseline.marketTotal > 0 ? round((totalChange / baseline.marketTotal) * 100) : null,
     msftChange: Math.round(msftChange),
     sarwaChange: Math.round(sarwaChange),
+    sarwaTradeChange: Math.round(sarwaTradeChange),
     concentrationChange: round(current.msftNetWorthShare - baseline.msftNetWorthShare),
-    positionsChanged: Boolean(baseline.positionsKey && current.positionsKey && baseline.positionsKey !== current.positionsKey),
+    positionsChanged: Boolean(baseline.positionsKey && current.positionsKey && baseline.positionsKey !== current.positionsKey) ||
+      (baseline.sarwaTrade == null && (current.sarwaTrade ?? 0) > 0),
   }
 }
 
@@ -140,21 +160,23 @@ export function buildCapitalPulse(history, current) {
     return {
       state: 'building',
       headline: 'Building your market baseline',
-      summary: 'Today’s MSFT and Sarwa values are saved. Changes will appear after the next market-day snapshot.',
+      summary: 'Today’s MSFT, Sarwa, and Sarwa Trade values are saved. Changes will appear after the next market-day snapshot.',
       comparisons: [],
       recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,
     }
   }
 
-  const leading = Math.abs(primary.msftChange) >= Math.abs(primary.sarwaChange)
-    ? { ticker: 'MSFT', value: primary.msftChange }
-    : { ticker: 'Sarwa', value: primary.sarwaChange }
+  const leading = [
+    { ticker: 'MSFT', value: primary.msftChange },
+    { ticker: 'Sarwa', value: primary.sarwaChange },
+    { ticker: 'Sarwa Trade', value: primary.sarwaTradeChange },
+  ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0]
   return {
     state: 'ready',
     headline: `${primary.totalChange >= 0 ? 'Up' : 'Down'} ${usd(Math.abs(primary.totalChange))} over ${primary.days} day${primary.days === 1 ? '' : 's'}`,
     summary: primary.positionsChanged
       ? `Holdings changed during this period, so the ${usd(Math.abs(primary.totalChange))} move includes both position updates and market movement. Property is excluded.`
-      : `${leading.ticker} was the larger contributor at ${leading.value >= 0 ? '+' : '-'}${usd(Math.abs(leading.value))}. Property is unchanged and excluded.`,
+      : `${leading.ticker} was the largest contributor at ${leading.value >= 0 ? '+' : '-'}${usd(Math.abs(leading.value))}. Property is unchanged and excluded.`,
     primary,
     comparisons,
     recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, mock, test } from 'node:test'
 import { clearCloudSyncSink, confirmCloudStateSynced, hasUnsyncedCloudState, queueCloudState, setCloudSyncSink } from './cloudSync.js'
+import { FINANCE } from './data.js'
 
 beforeEach(() => {
   const storage = new Map()
@@ -23,6 +24,17 @@ const advance = async milliseconds => {
   await Promise.resolve()
   await Promise.resolve()
 }
+
+test('Trade holdings round-trip in the existing finance cloud payload', async () => {
+  const finance = structuredClone(FINANCE)
+  finance.sarwaTrade.holdings[0].units = 12.345
+  const batches = []
+  setCloudSyncSink(async batch => { batches.push(JSON.parse(JSON.stringify(batch))); return true })
+  queueCloudState('afd-finance', finance)
+  await advance(350)
+  assert.equal(batches[0][0].key, 'afd-finance')
+  assert.deepEqual(batches[0][0].value, finance)
+})
 
 test('failed writes retry without requiring another edit', async () => {
   const batches = []

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Settings2, Check } from 'lucide-react'
 import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
 import { Card, Stat, DataTable, Meter, Badge, Button, IconButton, NumberFlow } from '../primitives'
+import SarwaTrade from '../../SarwaTrade'
 
 const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', 'var(--d-warn)', 'var(--d-text-3)', 'var(--d-accent-line)', 'var(--d-border-strong)']
 
@@ -12,7 +13,8 @@ const SYNC = {
 }
 
 export default function FinancePage() {
-  const [FINANCE, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const [savedFinance, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const FINANCE = useMemo(() => reconcileFinance(savedFinance), [savedFinance])
   const { msft, sarwa, property } = FINANCE
   const [editMode, setEditMode] = useState(false)
   const q = useQuotes()
@@ -33,7 +35,8 @@ export default function FinancePage() {
   const dayChangePct = live ? live.changePct : msft.dayChangePct
   const msftValue = msft.shares * price
   const sarwaValue = sarwaTotal(sarwa, q)
-  const total = msftValue + sarwaValue + property.value
+  const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
+  const total = msftValue + sarwaValue + tradeValue + property.value
   const rangePct = Math.max(0, Math.min(100, ((price - msft.low52) / (msft.high52 - msft.low52)) * 100))
   const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
   const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
@@ -41,6 +44,7 @@ export default function FinancePage() {
   const allocations = [
     { key: 'MSFT', value: msftValue, color: ALLOC_COLORS[0] },
     { key: 'Sarwa', value: sarwaValue, color: ALLOC_COLORS[1] },
+    { key: 'Sarwa Trade', value: tradeValue, color: ALLOC_COLORS[3] },
     { key: 'Property', value: property.value, color: ALLOC_COLORS[2] },
   ]
 
@@ -87,7 +91,7 @@ export default function FinancePage() {
               <div key={a.key} style={{ width: `${(a.value / total) * 100}%`, background: a.color }} />
             ))}
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-4">
+          <div className="mt-3 grid grid-cols-2 gap-4">
             {allocations.map(a => (
               <div key={a.key} className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[13px] d-t2"><span className="w-2 h-2 rounded-[3px]" style={{ background: a.color }} />{a.key}</span>
@@ -97,6 +101,8 @@ export default function FinancePage() {
           </div>
         </div>
       </Card>
+
+      <SarwaTrade finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} desktop />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
         <Card eyebrow="Sarwa · halal" title="Holdings" bodyClass="!p-0"

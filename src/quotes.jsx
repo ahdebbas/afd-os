@@ -2,36 +2,39 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useOs } from './os'
 import { todayKey } from './dates'
 import { formatUsd } from './currency.js'
+import { QUOTE_SYMBOLS, QUOTE_REFRESH_MS, freshQuoteCache, mergeQuoteResults, validQuote } from './quoteCache.js'
 
 // Hourly market sync via Yahoo Finance.
 //  - dev/preview: proxied through Vite (see vite.config.js)
 //  - production:  proxied through Netlify (see netlify.toml `/yq/*` redirect)
 // Cached in localStorage; refetched at most once per hour, or on manual refresh.
 
-const SYMBOLS = ['MSFT', 'ISDW.L', 'ISDU.L', 'ISDE.L', 'IGLN.L', 'QQQ']
 const CACHE_KEY = 'afd-quotes'
-const REFRESH_MS = 60 * 60 * 1000 // 1 hour
 
 const loadCache = () => {
   try { return JSON.parse(localStorage.getItem(CACHE_KEY)) } catch { return null }
 }
 
 // Fresh while the cached sync is under an hour old.
-const isFresh = c => !!c?.syncedAt && (Date.now() - new Date(c.syncedAt).getTime()) < REFRESH_MS
+const isFresh = freshQuoteCache
 
 async function fetchQuote(symbol) {
   const res = await fetch(`/yq/v8/finance/chart/${symbol}?interval=1d&range=1d`)
   if (!res.ok) throw new Error(`${symbol}: HTTP ${res.status}`)
-  const meta = (await res.json()).chart.result[0].meta
+  const payload = await res.json()
+  const meta = payload.chart?.result?.[0]?.meta
+  if (!meta) throw new Error(`${symbol}: ${payload.chart?.error?.description ?? 'Missing quote'}`)
   const price = meta.regularMarketPrice
   const prev = meta.chartPreviousClose
-  return { price, changePct: prev ? ((price / prev - 1) * 100) : 0, currency: meta.currency }
+  const quote = { price, changePct: Number.isFinite(prev) && prev > 0 ? ((price / prev - 1) * 100) : 0, currency: meta.currency }
+  if (!validQuote(quote)) throw new Error(`${symbol}: Invalid USD quote`)
+  return quote
 }
 
 const QuotesCtx = createContext(null)
 
 export function QuotesProvider({ children }) {
-  const os = useOs()
+  const announce = useOs()?.announce
   const [cache, setCache] = useState(() => loadCache())
   const [status, setStatus] = useState(() => {
     const c = loadCache()
@@ -45,27 +48,33 @@ export function QuotesProvider({ children }) {
     inflight.current = true
     setStatus('loading')
     try {
-      const pairs = await Promise.all(SYMBOLS.map(s => fetchQuote(s).then(q => [s, q])))
-      const next = { date: todayKey(), syncedAt: new Date().toISOString(), data: Object.fromEntries(pairs) }
+      const results = await Promise.allSettled(QUOTE_SYMBOLS.map(fetchQuote))
+      const next = { date: todayKey(), ...mergeQuoteResults(loadCache(), results, new Date().toISOString()) }
       localStorage.setItem(CACHE_KEY, JSON.stringify(next))
       setCache(next)
-      setStatus('live')
+      setStatus(next.errors.length ? Object.keys(next.data).length ? 'stale' : 'error' : 'live')
+      if (next.errors.length) {
+        console.error('Market sync incomplete:', next.errors)
+        announce?.(`MARKET SYNC INCOMPLETE · ${next.errors.join(' · ')}`, 'var(--warn)')
+      }
       const m = next.data.MSFT
-      os?.announce(`MARKET SYNC · MSFT ${formatUsd(m.price, 2)} ${m.changePct >= 0 ? '+' : ''}${m.changePct.toFixed(1)}%`, 'var(--acc-fin)')
-    } catch {
+      if (!next.errors.length && m) announce?.(`MARKET SYNC · MSFT ${formatUsd(m.price, 2)}${m.changePct == null ? '' : ` ${m.changePct >= 0 ? '+' : ''}${m.changePct.toFixed(1)}%`}`, 'var(--acc-fin)')
+    } catch (error) {
+      console.error('Market sync failed:', error)
+      announce?.(`MARKET SYNC FAILED · ${error.message}`, 'var(--down)')
       // Offline or proxy unavailable — keep cached/static values, flag freshness.
       setStatus(loadCache() ? 'stale' : 'error')
     } finally {
       inflight.current = false
     }
-  }, [os])
+  }, [announce])
 
   useEffect(() => {
     // Fetch on mount unless the cache is still fresh, then poll hourly.
     const initial = setTimeout(() => {
       if (!isFresh(loadCache())) refresh()
     }, 0)
-    const id = setInterval(refresh, REFRESH_MS)
+    const id = setInterval(refresh, QUOTE_REFRESH_MS)
     return () => {
       clearTimeout(initial)
       clearInterval(id)

@@ -5,6 +5,7 @@ import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
 import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from '../financePerformance'
+import SarwaTrade from '../SarwaTrade'
 
 const COLORS = ['var(--acc-fin)', 'var(--acc-food)', 'var(--acc-fit)', 'var(--warn)', 'var(--ink-3)', 'var(--track)']
 
@@ -17,7 +18,8 @@ const SYNC = {
 }
 
 export default function Finance() {
-  const [FINANCE, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const [savedFinance, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
+  const FINANCE = useMemo(() => reconcileFinance(savedFinance), [savedFinance])
   const [snapshots, setSnapshots] = usePersistentState('afd-finance-snapshots', [], Array.isArray)
   const [editMode, setEditMode] = useState(false)
   const { msft, sarwa } = FINANCE
@@ -32,7 +34,8 @@ export default function Finance() {
   // Any live ETF quote drives the Sarwa valuation; otherwise the recorded total.
   const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
   const sarwaValue = sarwaTotal(sarwa, q)
-  const total = msftValue + sarwaValue + FINANCE.property.value
+  const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
+  const total = msftValue + sarwaValue + tradeValue + FINANCE.property.value
   const rangePct = Math.max(0, Math.min(100, (price - msft.low52) / (msft.high52 - msft.low52) * 100)).toFixed(1)
   const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
   const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
@@ -82,6 +85,7 @@ export default function Finance() {
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">MSFT {usd(msftValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA {usd(sarwaValue)}</span>
+          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA TRADE {usd(tradeValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">PROPERTY {usd(FINANCE.property.value)}</span>
         </div>
         <button onClick={refresh} disabled={status === 'loading'}
@@ -109,6 +113,7 @@ export default function Finance() {
           <dl className="capital-pulse-contributors">
             <div><dt>MSFT</dt><dd>{signedUsd(capitalPulse.primary.msftChange)}</dd></div>
             <div><dt>Sarwa</dt><dd>{signedUsd(capitalPulse.primary.sarwaChange)}</dd></div>
+            <div><dt>Sarwa Trade</dt><dd>{signedUsd(capitalPulse.primary.sarwaTradeChange)}</dd></div>
           </dl>
           {comparisons.length > 1 && <table className="capital-pulse-periods">
             <caption className="sr-only">Market value changes over recorded periods</caption>
@@ -119,7 +124,7 @@ export default function Finance() {
               <td>{comparison.changePct == null ? '—' : `${comparison.changePct > 0 ? '+' : ''}${comparison.changePct.toFixed(1)}%`}</td>
             </tr>)}</tbody>
           </table>}
-          <p className="capital-pulse-note">MSFT + Sarwa · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
+          <p className="capital-pulse-note">MSFT + Sarwa + Sarwa Trade · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
         </> : <p className="capital-pulse-empty">No earlier snapshot to compare.</p>}
       </section>
 
@@ -228,6 +233,8 @@ export default function Finance() {
           )})}
         </div>
       </section>
+
+      <SarwaTrade finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} />
 
       {/* Real estate */}
       <section className="panel p-6">
