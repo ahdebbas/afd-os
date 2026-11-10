@@ -5,7 +5,7 @@ import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
 import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from '../financePerformance'
-import SarwaTrade from '../SarwaTrade'
+import Trading from '../Trading'
 
 const COLORS = ['var(--acc-fin)', 'var(--acc-food)', 'var(--acc-fit)', 'var(--warn)', 'var(--ink-3)', 'var(--track)']
 
@@ -29,16 +29,13 @@ export default function Finance() {
   const live = q?.MSFT
   const price = live?.price ?? msft.price
   const dayChangePct = live ? live.changePct : msft.dayChangePct
-  const priceDate = live ? 'live · today' : `as of ${msft.priceDate}`
   const msftValue = msft.shares * price
   // Any live ETF quote drives the Sarwa valuation; otherwise the recorded total.
   const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
   const sarwaValue = sarwaTotal(sarwa, q)
   const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
+  const tradingValue = msftValue + tradeValue
   const total = msftValue + sarwaValue + tradeValue + FINANCE.property.value
-  const rangePct = Math.max(0, Math.min(100, (price - msft.low52) / (msft.high52 - msft.low52) * 100)).toFixed(1)
-  const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
-  const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
   const msftUp = dayChangePct >= 0
   const Trend = msftUp ? TrendingUp : TrendingDown
   const financeSnapshot = useMemo(() => buildFinanceSnapshot({
@@ -83,9 +80,8 @@ export default function Finance() {
         </div>
         <Odometer value={total} format={usd} className="finance-total display text-[58px] font-bold tracking-tight t1" />
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">MSFT {usd(msftValue)}</span>
-          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA {usd(sarwaValue)}</span>
-          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA TRADE {usd(tradeValue)}</span>
+          <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">TRADING {usd(tradingValue)}</span>
+          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA INVEST {usd(sarwaValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">PROPERTY {usd(FINANCE.property.value)}</span>
         </div>
         <button onClick={refresh} disabled={status === 'loading'}
@@ -111,9 +107,8 @@ export default function Finance() {
             <span>{periodDate(capitalPulse.primary.baselineDate)} to {periodDate(marketSnapshot.date)}</span>
           </div>
           <dl className="capital-pulse-contributors">
-            <div><dt>MSFT</dt><dd>{signedUsd(capitalPulse.primary.msftChange)}</dd></div>
-            <div><dt>Sarwa</dt><dd>{signedUsd(capitalPulse.primary.sarwaChange)}</dd></div>
-            <div><dt>Sarwa Trade</dt><dd>{signedUsd(capitalPulse.primary.sarwaTradeChange)}</dd></div>
+            <div><dt>Trading</dt><dd>{signedUsd(capitalPulse.primary.msftChange + capitalPulse.primary.sarwaTradeChange)}</dd></div>
+            <div><dt>Sarwa Invest</dt><dd>{signedUsd(capitalPulse.primary.sarwaChange)}</dd></div>
           </dl>
           {comparisons.length > 1 && <table className="capital-pulse-periods">
             <caption className="sr-only">Market value changes over recorded periods</caption>
@@ -124,57 +119,16 @@ export default function Finance() {
               <td>{comparison.changePct == null ? '—' : `${comparison.changePct > 0 ? '+' : ''}${comparison.changePct.toFixed(1)}%`}</td>
             </tr>)}</tbody>
           </table>}
-          <p className="capital-pulse-note">MSFT + Sarwa + Sarwa Trade · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
+          <p className="capital-pulse-note">Trading + Sarwa Invest · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
         </> : <p className="capital-pulse-empty">No earlier snapshot to compare.</p>}
       </section>
 
-      {/* MSFT */}
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Label>MSFT</Label>
-            {editMode ? (
-              <input value={msft.shares} onChange={e => setFinance({...FINANCE, msft: {...msft, shares: +e.target.value}})}
-                type="number" className="field w-16 px-1.5 py-0.5 rounded text-sm text-center" />
-            ) : (
-              <span className="mono text-[10px] t3 tracking-[0.1em] uppercase">· {msft.shares} sh</span>
-            )}
-          </div>
-          <button onClick={() => setEditMode(!editMode)} className="press chip rounded-md w-6 h-6 flex items-center justify-center">
-            {editMode ? <Check size={12} strokeWidth={2.5}/> : <Settings2 size={12} />}
-          </button>
-        </div>
-        <div className="flex items-baseline justify-between">
-          <p className="display text-[36px] leading-none font-bold t1">{usd(msftValue)}</p>
-          <div className="text-right">
-            <p className="mono text-[13px] t2">{usd(price, 2)}</p>
-            <p className={`mono text-[10px] ${live ? 'acc' : 't3'}`}>{priceDate}</p>
-          </div>
-        </div>
-
-        {/* 52-week instrument rail */}
-        <div className="mt-6">
-          <div className="relative h-7">
-            <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 h-[3px] rounded-full"
-              style={{ background: 'linear-gradient(90deg, var(--down), var(--warn), var(--up))', opacity: 0.5 }} />
-            {[0, 25, 50, 75, 100].map(t => (
-              <span key={t} className="absolute top-1/2 -translate-y-1/2 w-px h-2.5" style={{ left: `${t}%`, background: 'var(--track)' }} />
-            ))}
-            <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-7 rounded-full"
-              style={{ left: `${rangePct}%`, background: 'var(--acc)', boxShadow: '0 0 8px var(--acc)' }} />
-          </div>
-          <div className="flex justify-between mt-1.5 mono text-[10px]">
-            <span className="t3">{usd(msft.low52, 2)} <span className="up">+{vsLow}%</span></span>
-            <span className="t3 tracking-[0.18em] uppercase">52w</span>
-            <span className="t3"><span className="down">{vsHigh}%</span> {usd(msft.high52, 2)}</span>
-          </div>
-        </div>
-      </section>
+      <Trading finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} />
 
       {/* Sarwa */}
-      <section className="panel p-6">
+      <section className="panel p-6" aria-label="Sarwa Invest">
         <div className="flex items-center justify-between mb-3">
-          <Label>Sarwa · halal</Label>
+          <Label>Sarwa Invest · halal</Label>
           <div className="flex items-center gap-2">
             <span className={`mono text-[10px] ${etfLive ? 'acc' : 't3'}`}>{etfLive ? 'live · today' : `as of ${sarwa.lastUpdated}`}</span>
             <button onClick={() => setEditMode(!editMode)} className="press chip rounded-md w-6 h-6 flex items-center justify-center" aria-label={editMode ? 'Done editing units' : 'Edit units'}>
@@ -233,8 +187,6 @@ export default function Finance() {
           )})}
         </div>
       </section>
-
-      <SarwaTrade finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} />
 
       {/* Real estate */}
       <section className="panel p-6">

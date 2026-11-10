@@ -5,7 +5,7 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 ## Modules
 
 - **Home** — mobile Trajectory: one pinned goal, four supporting KPI cards, liquid capital, daily WHOOP burn analysis, and one contextual action. Desktop keeps its existing overview.
-- **Finance** — MSFT position, Sarwa (halal), and a separate Sarwa Trade section with hourly market sync and manual refresh.
+- **Finance** — Trading (MSFT, GOOGL, NVDA, SPTE) above Sarwa Invest (halal), with hourly market sync and manual refresh.
 - **Cash** — manual USD balance, monthly commitments, planned one-offs, and three-month payment coverage. Uses the active shell's theme in light and dark mode; marking payments covered never deducts from the cash snapshot.
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
 - **Fitness** — body composition, PRs, weekly sessions, injury constraints, program.
@@ -40,8 +40,8 @@ No food logs means intake is unknown, not zero. Cash has no invented default
 target: progress uses the dated manual balance **before planned payments**, not a
 bank feed or projected spendable cash.
 
-The **Liquid capital** KPI adds the dated Cash balance to direct MSFT and ETF
-and Sarwa Trade values, excluding property and before planned payments. Include any brokerage
+The **Liquid capital** KPI adds the dated Cash balance to Trading and Sarwa Invest
+securities, excluding property and before planned payments. Include any brokerage
 cash in the Cash snapshot: USD holdings are not added separately. No cash-buffer
 target is needed. Missing/invalid/future cash snapshots or unpriced holdings
 suppress the total rather than treating unknown amounts as zero; known zero
@@ -53,11 +53,14 @@ prices are labelled. Cash and price dates may differ; this is a saved-data
 overview, not a synchronized live account balance. Allocation compares securities
 only. Insights and goal explanations are calculated locally, not by external AI.
 
-Sarwa Trade tracks fractional GOOGL, NVDA, and SPTE shares. Its mobile and desktop
-Finance sections allow editing shares and show position values and daily price
-moves, not lifetime returns or inferred cost bases. Trade is included in net worth,
+Trading groups Microsoft with the fractional GOOGL, NVDA, and SPTE positions in
+one mobile/desktop Finance card, above Sarwa Invest. It shows a combined total,
+editable shares, individual values and daily moves, plus Microsoft's 52-week range;
+it does not infer cost bases or lifetime returns. Trading is included in net worth,
 invested/liquid capital, allocations, and market-change snapshots. Adding or editing
 holdings is labelled as a position change rather than an investment return.
+Existing Microsoft, Sarwa Trade, and Sarwa Invest saved quantities and history retain
+their storage format; this grouping does not move, reset, or duplicate holdings.
 Market refresh uses the same Yahoo Finance proxy as MSFT. Incomplete older caches
 refresh automatically; a failed symbol does not block successful quotes. Cached
 prices or the supplied screenshot values remain labelled fallbacks when offline.

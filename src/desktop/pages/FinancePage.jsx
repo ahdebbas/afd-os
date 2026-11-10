@@ -4,7 +4,7 @@ import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reco
 import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
 import { Card, Stat, DataTable, Meter, Badge, Button, IconButton, NumberFlow } from '../primitives'
-import SarwaTrade from '../../SarwaTrade'
+import Trading from '../../Trading'
 
 const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', 'var(--d-warn)', 'var(--d-text-3)', 'var(--d-accent-line)', 'var(--d-border-strong)']
 
@@ -37,14 +37,10 @@ export default function FinancePage() {
   const sarwaValue = sarwaTotal(sarwa, q)
   const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
   const total = msftValue + sarwaValue + tradeValue + property.value
-  const rangePct = Math.max(0, Math.min(100, ((price - msft.low52) / (msft.high52 - msft.low52)) * 100))
-  const vsLow = ((price / msft.low52 - 1) * 100).toFixed(1)
-  const vsHigh = ((price / msft.high52 - 1) * 100).toFixed(1)
 
   const allocations = [
-    { key: 'MSFT', value: msftValue, color: ALLOC_COLORS[0] },
-    { key: 'Sarwa', value: sarwaValue, color: ALLOC_COLORS[1] },
-    { key: 'Sarwa Trade', value: tradeValue, color: ALLOC_COLORS[3] },
+    { key: 'Trading', value: msftValue + tradeValue, color: ALLOC_COLORS[0] },
+    { key: 'Sarwa Invest', value: sarwaValue, color: ALLOC_COLORS[1] },
     { key: 'Property', value: property.value, color: ALLOC_COLORS[2] },
   ]
 
@@ -102,35 +98,15 @@ export default function FinancePage() {
         </div>
       </Card>
 
-      <SarwaTrade finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} desktop />
+      <Trading finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} desktop />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
-        <Card eyebrow="Sarwa · halal" title="Holdings" bodyClass="!p-0"
+        <Card eyebrow="Halal portfolio" title="Sarwa Invest" aria-label="Sarwa Invest" bodyClass="!p-0"
           actions={<IconButton icon={editMode ? Check : Settings2} onClick={() => setEditMode(!editMode)} aria-label={editMode ? 'Done editing units' : 'Edit units'} />}>
           <DataTable columns={columns} rows={rows} getRowKey={r => r.ticker} />
         </Card>
 
         <div className="space-y-4">
-          <Card eyebrow={`${msft.shares} shares`} title="MSFT">
-            <div className="flex items-baseline justify-between">
-              <NumberFlow value={msftValue} format={usd} className="d-h1 d-t1" />
-              <div className="text-right">
-                <div className="d-num text-[13px] d-t2">{usd(price, 2)}</div>
-                <div className={`text-[11px] ${live ? 'd-accent' : 'd-t3'}`}>{live ? 'live · today' : `as of ${msft.priceDate}`}</div>
-              </div>
-            </div>
-            <div className="mt-5">
-              <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, var(--d-down), var(--d-warn), var(--d-up))', opacity: 0.85 }}>
-                <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 rounded-full" style={{ left: `${rangePct}%`, background: 'var(--d-text)' }} />
-              </div>
-              <div className="flex justify-between mt-2 text-[11px] d-num">
-                <span className="d-t3">{usd(msft.low52, 2)} <span className="d-up">+{vsLow}%</span></span>
-                <span className="d-t3">52w</span>
-                <span className="d-t3"><span className="d-down">{vsHigh}%</span> {usd(msft.high52, 2)}</span>
-              </div>
-            </div>
-          </Card>
-
           <Card eyebrow={property.location} title="Real estate">
             <NumberFlow value={property.value} format={usd} className="d-h1 d-t1 block" />
             <p className="text-[13px] d-t2 mt-2">{property.name}</p>

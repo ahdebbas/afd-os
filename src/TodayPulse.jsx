@@ -51,9 +51,8 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const tradeValue = sarwaTotal(finance.sarwaTrade, quotes)
   const total = msftValue + fundValue + tradeValue + finance.property.value
   const holdings = [
-    { name: 'MSFT', value: msftValue, color: 'var(--asset-equity)' },
-    { name: 'Sarwa', value: fundValue, color: 'var(--asset-fund)' },
-    { name: 'Sarwa Trade', value: tradeValue, color: 'var(--acc-fin)' },
+    { name: 'Trading', value: msftValue + tradeValue, color: 'var(--asset-equity)' },
+    { name: 'Sarwa Invest', value: fundValue, color: 'var(--asset-fund)' },
     { name: 'Property', value: finance.property.value, color: 'var(--asset-real)' },
   ]
   const macros = [

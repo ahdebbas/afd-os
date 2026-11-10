@@ -76,7 +76,17 @@ test('Trade price changes affect market contributors without marking positions c
   assert.equal(pulse.primary.sarwaTradeChange, 500)
   assert.equal(pulse.primary.totalChange, 500)
   assert.equal(pulse.primary.positionsChanged, false)
-  assert.match(pulse.summary, /Sarwa Trade/)
+  assert.match(pulse.summary, /Trading/)
+})
+
+test('market contributors group Microsoft and Trade without changing the saved snapshot shape', () => {
+  const baseline = { date: '2026-11-01', msft: 10000, sarwa: 5000, sarwaTrade: 2000, marketTotal: 17000, msftNetWorthShare: 50, positionsKey: 'same' }
+  const current = { ...baseline, date: '2026-11-10', msft: 11000, sarwaTrade: 1100, sarwa: 5200, marketTotal: 17300 }
+  const pulse = buildCapitalPulse([baseline], current)
+  assert.equal(pulse.primary.msftChange, 1000)
+  assert.equal(pulse.primary.sarwaTradeChange, -900)
+  assert.equal(pulse.primary.totalChange, 300)
+  assert.match(pulse.summary, /Sarwa Invest was the largest contributor at \+USD/)
 })
 
 test('old snapshots without Trade remain readable and addition/editing is labelled as a position change', () => {

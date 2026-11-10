@@ -160,16 +160,15 @@ export function buildCapitalPulse(history, current) {
     return {
       state: 'building',
       headline: 'Building your market baseline',
-      summary: 'Today’s MSFT, Sarwa, and Sarwa Trade values are saved. Changes will appear after the next market-day snapshot.',
+      summary: 'Today’s Trading and Sarwa Invest values are saved. Changes will appear after the next market-day snapshot.',
       comparisons: [],
       recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,
     }
   }
 
   const leading = [
-    { ticker: 'MSFT', value: primary.msftChange },
-    { ticker: 'Sarwa', value: primary.sarwaChange },
-    { ticker: 'Sarwa Trade', value: primary.sarwaTradeChange },
+    { ticker: 'Trading', value: primary.msftChange + primary.sarwaTradeChange },
+    { ticker: 'Sarwa Invest', value: primary.sarwaChange },
   ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0]
   return {
     state: 'ready',
