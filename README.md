@@ -76,13 +76,15 @@ Home actions open today's Food/Fitness; a body check-in opens the actual InBody
 form. Normal tab navigation preserves historical browsing.
 The daily WHOOP calorie-burn analysis remains on Home, using the same energy
 widget and shared polling as the Original layout, including its loading,
-disconnected, and error states. The mobile dock occupies its own layout row;
-content scrolls above it without oversized spacer padding or a fixed overlay.
+disconnected, and error states. The mobile dock is a compact, frosted floating
+pill with an active-tab highlight, inset above the home indicator. Each module
+reserves the pill's height and bottom inset so its final controls scroll clear.
 When installed on the Home Screen, the mobile shell fills the viewport using
 fixed edges and the measured window height rather than relying on `100dvh` or
 Safari's fixed-edge height, avoiding unused space below the dock when its layout
 viewport retains browser-toolbar space. It remeasures on resize, rotation, and
-app resume. The dock retains home-indicator safe-area padding. Browser tabs and
+app resume. The pill sits outside the home-indicator safe area rather than
+stretching its background through that space. Browser tabs and
 the desktop shell keep their existing sizing.
 **Settings → Mobile Home → Original** restores the previous mobile dashboard
 without changing saved data. Home layout, selected goal, and targets sync and

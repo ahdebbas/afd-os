@@ -52,29 +52,52 @@ try {
         await page.waitForFunction(() => {
           const shell = document.querySelector('.mobile-app')
           const dock = document.querySelector('.mobile-dock-rail')
+          const bottom = dock && parseFloat(getComputedStyle(dock).bottom)
           return shell && dock && Math.abs(shell.getBoundingClientRect().bottom - window.innerHeight) < 1 &&
-            Math.abs(dock.getBoundingClientRect().bottom - window.innerHeight) < 1
+            Math.abs(dock.getBoundingClientRect().bottom + bottom - window.innerHeight) < 1
         }, undefined, { timeout: 5000 })
         const metrics = await page.evaluate(() => {
           const dock = document.querySelector('.mobile-dock-rail')
           const style = getComputedStyle(dock)
           const buttons = [...dock.querySelectorAll('button')]
-          const contentBottom = Math.max(...buttons.map(button => button.getBoundingClientRect().bottom))
+          const bounds = dock.getBoundingClientRect()
+          const scroll = document.querySelector('.screen-scroll[aria-hidden="false"]')
+          scroll.scrollTop = scroll.scrollHeight
+          const active = dock.querySelector('[aria-current="page"]')
           return {
             padding: parseFloat(style.paddingBottom),
-            gap: dock.getBoundingClientRect().bottom - contentBottom,
-            height: dock.getBoundingClientRect().height,
+            bottom: parseFloat(style.bottom),
+            gap: window.innerHeight - bounds.bottom,
+            height: bounds.height,
+            radius: parseFloat(style.borderRadius),
+            left: bounds.left,
+            right: bounds.right,
+            targetSizes: buttons.map(button => {
+              const rect = button.getBoundingClientRect()
+              return { width: rect.width, height: rect.height }
+            }),
+            activeCount: dock.querySelectorAll('[aria-current="page"]').length,
+            activeBackground: getComputedStyle(active).backgroundColor,
+            contentBottom: scroll.querySelector('.boot').getBoundingClientRect().bottom,
+            dockTop: bounds.top,
             viewport: window.innerHeight,
             overflow: document.documentElement.scrollWidth > window.innerWidth,
           }
         })
-        assert.ok(metrics.gap <= metrics.padding + 8, JSON.stringify(metrics))
-        assert.ok(metrics.height <= 72 + metrics.padding, JSON.stringify(metrics))
+        assert.ok(Math.abs(metrics.gap - metrics.bottom) < 1, JSON.stringify(metrics))
+        assert.equal(metrics.height, 70)
+        assert.equal(metrics.padding, 5)
+        assert.ok(metrics.radius >= metrics.height / 2)
+        assert.ok(metrics.left >= 16 && metrics.right <= await page.evaluate(() => innerWidth - 16))
+        assert.ok(metrics.targetSizes.every(size => size.width >= 44 && size.height >= 44), JSON.stringify(metrics))
+        assert.equal(metrics.activeCount, 1)
+        assert.notEqual(metrics.activeBackground, 'rgba(0, 0, 0, 0)')
+        assert.ok(metrics.contentBottom <= metrics.dockTop - 15, JSON.stringify(metrics))
         assert.equal(metrics.overflow, false)
         assert.ok(metrics.viewport > 0)
-        if (standalone) assert.equal(metrics.padding, 34)
+        assert.equal(metrics.bottom, standalone ? 34 : 12)
       }
-      for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 375, height: 667 }]) {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 375, height: 667 }, { width: 320, height: 568 }]) {
         await page.setViewportSize(viewport)
         for (const name of ['Finance', 'Cash', 'Food', 'Fitness', 'Home']) {
           await dock.getByRole('button', { name, exact: true }).click()
@@ -83,6 +106,18 @@ try {
       }
       await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
       await checkDock()
+      await page.evaluate(() => {
+        Object.defineProperty(window.visualViewport, 'height', { configurable: true, value: window.innerHeight * 0.55 })
+        window.visualViewport.dispatchEvent(new Event('resize'))
+      })
+      await dock.waitFor({ state: 'hidden' })
+      assert.equal(await page.locator('.screen-scroll[aria-hidden="false"]').evaluate(element => getComputedStyle(element).paddingBottom), '16px')
+      await page.evaluate(() => {
+        delete window.visualViewport.height
+        window.visualViewport.dispatchEvent(new Event('resize'))
+      })
+      await dock.waitFor()
+      await checkDock()
       await page.evaluate(async () => {
         const { applyCloudState } = await import('/src/cloudSync.js')
         applyCloudState('afd-shell-mode', 'desktop')
@@ -90,7 +125,7 @@ try {
       await page.locator('.dsk').waitFor()
       assert.equal(await page.locator('[data-standalone]').count(), 0)
       assert.equal(await page.locator('[style*="--app-viewport-height"]').count(), 0)
-      console.log(`PASS ${standalone ? 'installed' : 'browser'} ${dark ? 'dark' : 'light'}: all tabs, rotation, compact safe-area dock, resume, desktop switch`)
+      console.log(`PASS ${standalone ? 'installed' : 'browser'} ${dark ? 'dark' : 'light'}: floating dock, all tabs, reachable content, rotation, resume, keyboard, desktop switch`)
       await context.close()
     }
   }
