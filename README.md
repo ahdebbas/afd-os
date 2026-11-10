@@ -71,6 +71,20 @@ prices or the supplied screenshot values remain labelled fallbacks when offline.
 Edited quantities scale the recorded fallback proportionally; screenshot quantities
 are rounded, so a live shares-times-price value may differ from the screenshot.
 
+Use **Add stock** in Trading to enter a Yahoo Finance ticker (for example `AAPL`
+or `BRK-B`) and fractional shares. A valid USD price is required before saving;
+unsupported symbols, non-USD prices and duplicate Trading entries show an error.
+Each saved stock gets its own row, value, daily move and 52-week range when
+available, and automatically joins hourly/manual quote refreshes. The verified
+price is retained as a labelled offline fallback, not a purchase cost.
+Use **Edit Trading shares** to change quantities or **Remove** an entry, with
+confirmation. Removing stocks (including Microsoft) only changes the dashboard;
+it never places a broker order. Empty Trading lists stay empty after reload.
+Microsoft's legacy record is retained with zero shares when removed, and reused
+when re-added, so other portfolio totals stay consistent without a migration.
+Stock additions/removals use the existing finance storage, cloud sync and backups,
+and restart the market-performance baseline just like quantity changes.
+
 Real estate supports multiple named properties on mobile and desktop. Add, edit,
 or delete entries with a location, an optional purchase value, and a current value
 (all amounts are USD). Only current values count toward net worth and allocations;
@@ -158,7 +172,10 @@ npm run preview  # serve the production build locally
 
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
 Finance, quote-cache, and portfolio checks:
-`node --test src/financePerformance.test.mjs src/properties.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
+`node --test src/trading.test.mjs src/financePerformance.test.mjs src/properties.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
+Trading add/remove, lookup, dynamic refresh and persistence browser checks:
+`node scripts/check-trading.mjs` with the dev server running (supports
+the same `PLAYWRIGHT_MODULE` / `PULSE_URL` overrides).
 Property editing, migration, net-worth, and backup browser checks:
 `node scripts/check-real-estate.mjs` with the dev server running (supports
 the same `PLAYWRIGHT_MODULE` / `PULSE_URL` overrides).

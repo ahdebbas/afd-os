@@ -147,7 +147,7 @@ export function reconcileFinance(finance) {
 export const propertyTotal = finance => finance.properties.reduce((sum, property) => sum + property.currentValue, 0)
 
 export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L' }
-export const holdingSymbol = h => ETF_SYMBOL[h.ticker] ?? h.ticker
+export const holdingSymbol = h => h.symbol ?? ETF_SYMBOL[h.ticker] ?? h.ticker
 
 // Live value of a Sarwa holding given the quotes map; falls back to the recorded value.
 export const holdingValue = (h, q) => {
@@ -156,6 +156,7 @@ export const holdingValue = (h, q) => {
   if (quote && h.units != null) return h.units * quote.price
   // Screenshot quantities are rounded; preserve its value until quantities change.
   if (h.recordedUnits > 0 && h.units != null) return h.value * h.units / h.recordedUnits
+  if (Number.isFinite(h.price) && h.units != null) return h.units * h.price
   return h.value
 }
 

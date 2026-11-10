@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, beforeEach, mock, test } from 'node:test'
 import { clearCloudSyncSink, confirmCloudStateSynced, hasUnsyncedCloudState, queueCloudState, setCloudSyncSink } from './cloudSync.js'
 import { FINANCE } from './data.js'
+import { addTradingStock, removeTradingStock, tradingHoldings } from './tradingHoldings.js'
 
 beforeEach(() => {
   const storage = new Map()
@@ -47,6 +48,24 @@ test('multiple property entries round-trip in the existing finance cloud payload
   queueCloudState('afd-finance', finance)
   await advance(350)
   assert.deepEqual(batches[0][0].value.properties, finance.properties)
+})
+
+test('added stocks and an empty Trading account retain their full cloud payload', async () => {
+  const batches = []
+  setCloudSyncSink(async batch => { batches.push(JSON.parse(JSON.stringify(batch))); return true })
+  const added = addTradingStock(FINANCE, 'AAPL', 2.5, {
+    name: 'Apple', price: 200, currency: 'USD', low52: 100, high52: 300, fetchedAt: '2026-11-10T12:00:00Z',
+  })
+  queueCloudState('afd-finance', added)
+  await advance(350)
+  assert.deepEqual(batches[0][0].value, added)
+  let empty = added
+  for (const holding of tradingHoldings(empty)) empty = removeTradingStock(empty, holding.ticker)
+  queueCloudState('afd-finance', empty)
+  await advance(350)
+  assert.deepEqual(batches[1][0].value, empty)
+  assert.deepEqual(tradingHoldings(batches[1][0].value), [])
+  assert.equal(batches[1][0].value.msft.shares, 0)
 })
 
 test('failed writes retry without requiring another edit', async () => {

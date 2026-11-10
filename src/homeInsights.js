@@ -86,7 +86,7 @@ export function portfolioSignal(finance, quotes, meta = {}) {
     })
   }
   for (const [holding, recordedAt] of [finance.sarwa, finance.sarwaTrade].flatMap(account =>
-    (account?.holdings || []).map(holding => [holding, account.lastUpdated]))) {
+    (account?.holdings || []).map(holding => [holding, holding.priceDate ?? account.lastUpdated]))) {
     if (holding.ticker === 'USD') continue
     if (holding.units != null && !amount(holding.units)) { missingCount++; continue }
     if (holding.units != null && Number(holding.units) === 0) continue
