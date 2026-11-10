@@ -72,9 +72,11 @@ widget and shared polling as the Original layout, including its loading,
 disconnected, and error states. The mobile dock occupies its own layout row;
 content scrolls above it without oversized spacer padding or a fixed overlay.
 When installed on the Home Screen, the mobile shell fills the viewport using
-fixed edges rather than `100dvh`, avoiding unused space below the dock when the
-browser reports a shorter dynamic viewport. The dock retains home-indicator
-safe-area padding. Browser tabs and the desktop shell keep their existing sizing.
+fixed edges and the measured window height rather than relying on `100dvh` or
+Safari's fixed-edge height, avoiding unused space below the dock when its layout
+viewport retains browser-toolbar space. It remeasures on resize, rotation, and
+app resume. The dock retains home-indicator safe-area padding. Browser tabs and
+the desktop shell keep their existing sizing.
 **Settings → Mobile Home → Original** restores the previous mobile dashboard
 without changing saved data. Home layout, selected goal, and targets sync and
 are included in JSON backups.
@@ -137,6 +139,9 @@ npm run preview  # serve the production build locally
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
 Finance, quote-cache, and portfolio checks:
 `node --test src/financePerformance.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
+Installed-app dock/viewport browser checks: `node scripts/check-mobile-viewport.mjs`
+with the dev server running (uses the same `PLAYWRIGHT_MODULE` / `PULSE_URL`
+overrides as `scripts/check-pulse.mjs`).
 Currency and workout date checks:
 `node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 Workout checks: `node --test src/workoutPrograms.test.mjs src/workoutHistory.test.mjs src/monthlyWorkoutRecap.test.mjs`.

@@ -361,6 +361,9 @@ function Shell() {
   const [dark, setDark] = usePersistentState('afd-theme-dark', true, v => typeof v === 'boolean')
   const [shellMode, setShellMode] = usePersistentState('afd-shell-mode', 'auto',
     v => v === 'auto' || v === 'mobile' || v === 'desktop')
+  const [standalone] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true)
+  const shellRef = useRef(null)
   const [kbOpen, setKbOpen] = useState(false)
   const [drag, setDrag] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -427,6 +430,37 @@ function Shell() {
       window.visualViewport.removeEventListener('resize', onResize)
     }
   }, [isDesktop])
+
+  useEffect(() => {
+    if (isDesktop || !standalone) return
+    const shell = shellRef.current
+    let frame
+    const measure = () => {
+      frame = undefined
+      // WebKit's fixed edges can retain a shorter browser-toolbar viewport.
+      shell.style.setProperty('--app-viewport-height', `${window.innerHeight}px`)
+    }
+    const schedule = () => {
+      if (frame != null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') schedule()
+    }
+    schedule()
+    window.addEventListener('resize', schedule)
+    window.addEventListener('pageshow', schedule)
+    window.visualViewport?.addEventListener('resize', schedule)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      if (frame != null) cancelAnimationFrame(frame)
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('pageshow', schedule)
+      window.visualViewport?.removeEventListener('resize', schedule)
+      document.removeEventListener('visibilitychange', onVisible)
+      shell.style.removeProperty('--app-viewport-height')
+    }
+  }, [isDesktop, standalone])
 
   // Keyboard navigation between modules
   useEffect(() => {
@@ -510,7 +544,8 @@ function Shell() {
   }
 
   return (
-    <div className={isDesktop ? 'h-dvh w-full relative' : `mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
+    <div ref={shellRef} data-standalone={!isDesktop && standalone ? '' : undefined}
+      className={isDesktop ? 'h-dvh w-full relative' : `mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
       <div className="ambient" style={{ '--ambient': isDesktop ? activeTab.ambient : 'var(--acc-fit)' }} aria-hidden="true" />
 
       {isDesktop ? (
