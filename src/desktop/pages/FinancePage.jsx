@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Settings2, Check } from 'lucide-react'
-import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, propertyTotal, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { useQuotes, useQuotesMeta } from '../../quotes'
 import { usePersistentState } from '../../hooks'
-import { Card, Stat, DataTable, Meter, Badge, Button, IconButton, NumberFlow } from '../primitives'
+import { Card, Stat, DataTable, Badge, Button, IconButton, NumberFlow } from '../primitives'
 import Trading from '../../Trading'
+import RealEstate from '../../RealEstate'
 
 const ALLOC_COLORS = ['var(--d-accent)', 'var(--d-up)', 'var(--d-warn)', 'var(--d-text-3)', 'var(--d-accent-line)', 'var(--d-border-strong)']
 
@@ -15,7 +16,7 @@ const SYNC = {
 export default function FinancePage() {
   const [savedFinance, setFinance] = usePersistentState('afd-finance', DEFAULT_FINANCE, v => v && typeof v === 'object')
   const FINANCE = useMemo(() => reconcileFinance(savedFinance), [savedFinance])
-  const { msft, sarwa, property } = FINANCE
+  const { msft, sarwa } = FINANCE
   const [editMode, setEditMode] = useState(false)
   const q = useQuotes()
   const { status, syncedAt, refresh } = useQuotesMeta()
@@ -36,12 +37,13 @@ export default function FinancePage() {
   const msftValue = msft.shares * price
   const sarwaValue = sarwaTotal(sarwa, q)
   const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
-  const total = msftValue + sarwaValue + tradeValue + property.value
+  const propertyValue = propertyTotal(FINANCE)
+  const total = msftValue + sarwaValue + tradeValue + propertyValue
 
   const allocations = [
     { key: 'Trading', value: msftValue + tradeValue, color: ALLOC_COLORS[0] },
     { key: 'Sarwa Invest', value: sarwaValue, color: ALLOC_COLORS[1] },
-    { key: 'Property', value: property.value, color: ALLOC_COLORS[2] },
+    { key: 'Property', value: propertyValue, color: ALLOC_COLORS[2] },
   ]
 
   const rows = sarwa.holdings.map((h, i) => {
@@ -100,23 +102,13 @@ export default function FinancePage() {
 
       <Trading finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} desktop />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] items-start gap-4">
         <Card eyebrow="Halal portfolio" title="Sarwa Invest" aria-label="Sarwa Invest" bodyClass="!p-0"
           actions={<IconButton icon={editMode ? Check : Settings2} onClick={() => setEditMode(!editMode)} aria-label={editMode ? 'Done editing units' : 'Edit units'} />}>
           <DataTable columns={columns} rows={rows} getRowKey={r => r.ticker} />
         </Card>
 
-        <div className="space-y-4">
-          <Card eyebrow={property.location} title="Real estate">
-            <NumberFlow value={property.value} format={usd} className="d-h1 d-t1 block" />
-            <p className="text-[13px] d-t2 mt-2">{property.name}</p>
-            <div className="mt-3 flex items-center justify-between text-[12px]">
-              <span className="d-t3">Share of net worth</span>
-              <span className="d-num d-t1">{((property.value / total) * 100).toFixed(0)}%</span>
-            </div>
-            <Meter className="mt-2" pct={property.value / total} color="var(--d-accent)" />
-          </Card>
-        </div>
+        <RealEstate finance={FINANCE} setFinance={setFinance} netWorth={total} desktop />
       </div>
     </div>
   )

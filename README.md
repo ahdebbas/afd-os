@@ -71,6 +71,17 @@ prices or the supplied screenshot values remain labelled fallbacks when offline.
 Edited quantities scale the recorded fallback proportionally; screenshot quantities
 are rounded, so a live shares-times-price value may differ from the screenshot.
 
+Real estate supports multiple named properties on mobile and desktop. Add, edit,
+or delete entries with a location, an optional purchase value, and a current value
+(all amounts are USD). Only current values count toward net worth and allocations;
+purchase values are records, not additional assets or market gains. Deletion asks
+for confirmation. The existing single property migrates into the first entry
+without inferring a purchase value; deleting all properties leaves an empty list.
+Entries use the existing finance storage, cloud sync, and backup payload.
+In Cash, Monthly commitments follows Planned one-offs and starts collapsed.
+Click or keyboard-toggle its header to manage entries; collapsing it does not
+change payment schedules, coverage, or the cash forecast.
+
 The persistent dock still opens Home, Finance, Cash, Food, and Fitness. Contextual
 Home actions open today's Food/Fitness; a body check-in opens the actual InBody
 form. Normal tab navigation preserves historical browsing.
@@ -147,7 +158,12 @@ npm run preview  # serve the production build locally
 
 Cash calculation checks: `node --test src/cashPulse.test.mjs`.
 Finance, quote-cache, and portfolio checks:
-`node --test src/financePerformance.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
+`node --test src/financePerformance.test.mjs src/properties.test.mjs src/quoteCache.test.mjs src/homeInsights.test.mjs src/currency.test.mjs src/cloudSync.test.mjs`.
+Property editing, migration, net-worth, and backup browser checks:
+`node scripts/check-real-estate.mjs` with the dev server running (supports
+the same `PLAYWRIGHT_MODULE` / `PULSE_URL` overrides).
+Cash section ordering, disclosure, and editing checks:
+`node scripts/check-cash-commitments.mjs` with the same server and overrides.
 Installed-app dock/viewport browser checks: `node scripts/check-mobile-viewport.mjs`
 with the dev server running (uses the same `PLAYWRIGHT_MODULE` / `PULSE_URL`
 overrides as `scripts/check-pulse.mjs`).

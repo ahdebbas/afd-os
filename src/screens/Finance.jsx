@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TrendingUp, TrendingDown, RefreshCw, Settings2, Check, Activity } from 'lucide-react'
-import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, reconcileFinance, sarwaTotal, usd } from '../data'
+import { FINANCE as DEFAULT_FINANCE, ETF_SYMBOL, holdingValue, holdingPerf, propertyTotal, reconcileFinance, sarwaTotal, usd } from '../data'
 import { Label, Odometer } from '../ui'
 import { useQuotes, useQuotesMeta } from '../quotes'
 import { usePersistentState } from '../hooks'
 import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from '../financePerformance'
 import Trading from '../Trading'
+import RealEstate from '../RealEstate'
 
 const COLORS = ['var(--acc-fin)', 'var(--acc-food)', 'var(--acc-fit)', 'var(--warn)', 'var(--ink-3)', 'var(--track)']
 
@@ -35,7 +36,8 @@ export default function Finance() {
   const sarwaValue = sarwaTotal(sarwa, q)
   const tradeValue = sarwaTotal(FINANCE.sarwaTrade, q)
   const tradingValue = msftValue + tradeValue
-  const total = msftValue + sarwaValue + tradeValue + FINANCE.property.value
+  const propertyValue = propertyTotal(FINANCE)
+  const total = msftValue + sarwaValue + tradeValue + propertyValue
   const msftUp = dayChangePct >= 0
   const Trend = msftUp ? TrendingUp : TrendingDown
   const financeSnapshot = useMemo(() => buildFinanceSnapshot({
@@ -82,7 +84,7 @@ export default function Finance() {
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">TRADING {usd(tradingValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA INVEST {usd(sarwaValue)}</span>
-          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">PROPERTY {usd(FINANCE.property.value)}</span>
+          <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">PROPERTY {usd(propertyValue)}</span>
         </div>
         <button onClick={refresh} disabled={status === 'loading'}
           className="press mt-3 inline-flex items-center gap-2 chip rounded-lg px-3 py-1.5 disabled:opacity-60"
@@ -188,17 +190,7 @@ export default function Finance() {
         </div>
       </section>
 
-      {/* Real estate */}
-      <section className="panel p-6">
-        <div className="flex items-center justify-between mb-3">
-          <Label>Real estate</Label>
-          <span className="mono text-[10px] t3">{FINANCE.property.location}</span>
-        </div>
-        <div className="flex items-baseline justify-between">
-          <p className="display text-[36px] leading-none font-bold t1">{usd(FINANCE.property.value)}</p>
-          <p className="mono text-[12px] t2">{FINANCE.property.name}</p>
-        </div>
-      </section>
+      <RealEstate finance={FINANCE} setFinance={setFinance} netWorth={total} />
     </div>
   )
 }

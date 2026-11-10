@@ -6,7 +6,7 @@ import { useClock, usePersistentState } from '../../hooks'
 import { useHomeGoals } from '../../useHomeGoals'
 import { bodyFatGoal, weeklyTrainingGoal } from '../../homeInsights'
 import { dateKey } from '../../dates'
-import { DEFICIT_GOAL, TARGETS, FINANCE, reconcileFinance, sarwaTotal, usd } from '../../data'
+import { DEFICIT_GOAL, TARGETS, FINANCE, propertyTotal, reconcileFinance, sarwaTotal, usd } from '../../data'
 import { useInbodyReadings } from '../../useInbodyReadings'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from '../../workoutPrograms'
@@ -193,7 +193,8 @@ export default function OverviewPage({ onNavigate }) {
   const msftValue = finance.msft.shares * (quotes?.MSFT?.price ?? finance.msft.price)
   const sarwaValue = sarwaTotal(finance.sarwa, quotes)
   const tradeValue = sarwaTotal(finance.sarwaTrade, quotes)
-  const total = msftValue + sarwaValue + tradeValue + finance.property.value
+  const propertyValue = propertyTotal(finance)
+  const total = msftValue + sarwaValue + tradeValue + propertyValue
   const msftChange = quotes?.MSFT?.changePct
   const [whoop, setWhoop] = useState(null)
   useEffect(() => {
@@ -237,7 +238,7 @@ export default function OverviewPage({ onNavigate }) {
         <Card eyebrow="Finance" title="Capital" actions={<Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => navigate('finance')}>Open</Button>}>
           <NumberFlow value={total} format={usd} className="d-h1 d-t1 block leading-none break-words" />
           <div className="flex items-center gap-2 mt-2">{msftChange != null && <Badge tone={msftChange >= 0 ? 'up' : 'down'}>{msftChange >= 0 ? '+' : ''}{msftChange.toFixed(2)}% MSFT</Badge>}<span className="text-[12px] d-t3">{quotes?.MSFT ? 'live' : 'last known prices'}</span></div>
-          <div className="mt-4 space-y-2">{[['Trading', msftValue + tradeValue], ['Sarwa Invest', sarwaValue], ['Property', finance.property.value]].map(([label, value]) => <div key={label} className="flex items-center justify-between text-[12px]"><span className="d-t2">{label}</span><span className="d-num d-t1">{usd(value)}</span></div>)}</div>
+          <div className="mt-4 space-y-2">{[['Trading', msftValue + tradeValue], ['Sarwa Invest', sarwaValue], ['Property', propertyValue]].map(([label, value]) => <div key={label} className="flex items-center justify-between text-[12px]"><span className="d-t2">{label}</span><span className="d-num d-t1">{usd(value)}</span></div>)}</div>
         </Card>
       </div>
       <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,.9fr)] gap-4">

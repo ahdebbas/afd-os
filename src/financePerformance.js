@@ -1,11 +1,11 @@
-import { ETF_SYMBOL, holdingPerf, holdingValue, sarwaTotal, usd } from './data.js'
+import { ETF_SYMBOL, holdingPerf, holdingValue, propertyTotal, sarwaTotal, usd } from './data.js'
 import { todayKey } from './dates.js'
 
 const round = (value, digits = 1) => Number.isFinite(value) ? +value.toFixed(digits) : null
 const share = (value, total) => total > 0 ? round((value / total) * 100) : 0
 
 export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt }) {
-  const { msft, sarwa, property, sarwaTrade } = finance
+  const { msft, sarwa, sarwaTrade } = finance
   const positionsKey = JSON.stringify([
     +msft.shares || 0,
     ...(sarwa.holdings || []).map(holding => [holding.ticker, holding.units ?? null, holding.ticker === 'USD' ? holding.value : null]),
@@ -40,7 +40,7 @@ export function buildFinanceSnapshot({ finance, quotes, quoteStatus, syncedAt })
     totalReturn: null,
   }))
   const tradeValue = tradeHoldings.reduce((sum, holding) => sum + holding.value, 0)
-  const propertyValue = Math.max(0, +property.value || 0)
+  const propertyValue = propertyTotal(finance)
   const total = msftValue + sarwaValue + tradeValue + propertyValue
   const range = (+msft.high52 || 0) - (+msft.low52 || 0)
   const msftRangePercentile = range > 0 ? round(Math.min(100, Math.max(0, ((msftPrice - msft.low52) / range) * 100))) : null

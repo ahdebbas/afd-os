@@ -36,6 +36,19 @@ test('Trade holdings round-trip in the existing finance cloud payload', async ()
   assert.deepEqual(batches[0][0].value, finance)
 })
 
+test('multiple property entries round-trip in the existing finance cloud payload', async () => {
+  const finance = structuredClone(FINANCE)
+  finance.properties = [
+    { id: 'x', name: 'Property X', location: 'Beirut', purchaseValue: 200000, currentValue: 250000.50 },
+    { id: 'y', name: 'Property Y', location: '', purchaseValue: null, currentValue: 0 },
+  ]
+  const batches = []
+  setCloudSyncSink(async batch => { batches.push(JSON.parse(JSON.stringify(batch))); return true })
+  queueCloudState('afd-finance', finance)
+  await advance(350)
+  assert.deepEqual(batches[0][0].value.properties, finance.properties)
+})
+
 test('failed writes retry without requiring another edit', async () => {
   const batches = []
   setCloudSyncSink(async batch => { batches.push(batch); return batches.length > 1 })

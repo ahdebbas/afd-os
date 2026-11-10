@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarClock, Check, Pencil, Plus, Settings2, WalletCards } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Pencil, Plus, Settings2, WalletCards } from 'lucide-react'
 import { Label, Odometer, Sheet } from '../ui'
 import { CashAlerts, CashForecast, CashMonths, CoverageControl, DeletePayment } from '../CashPlanning'
 import { useClock, usePersistentState } from '../hooks'
@@ -174,28 +174,6 @@ export default function Cash() {
 
       <section className="panel p-5">
         <div className="flex items-center justify-between mb-2">
-          <Label><WalletCards size={12} /> Monthly commitments</Label>
-          <button onClick={() => setEditor({ kind: 'commitment', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add monthly commitment">
-            <Plus size={15} />
-          </button>
-        </div>
-        {state.commitments.map((item, index) => (
-          <div key={item.id} className={`flex items-center gap-3 py-3 ${index > 0 ? 'hairline-t' : ''}`}>
-            <span className={`w-2 h-2 rounded-full ${item.active ? 'bg-[var(--up)]' : 'bg-[var(--ink-3)]'}`} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold t1 truncate">{item.name}</p>
-              <p className="text-[12px] t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</p>
-              <CoverageControl item={item} state={state} setCash={setCash} />
-            </div>
-            <button onClick={() => setEditor({ kind: 'commitment', item })} className="cash-icon-button press chip rounded-lg flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
-              <Pencil size={13} />
-            </button>
-          </div>
-        ))}
-      </section>
-
-      <section className="panel p-5">
-        <div className="flex items-center justify-between mb-2">
           <Label><CalendarClock size={12} /> Planned one-offs</Label>
           <button onClick={() => setEditor({ kind: 'one-off', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add planned payment">
             <Plus size={15} />
@@ -215,6 +193,35 @@ export default function Cash() {
           </div>
         ))}
       </section>
+
+      <details className="panel p-5 group" aria-label="Monthly commitments">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
+          <span className="mono text-[10px] tracking-[0.08em] uppercase t3 flex items-center gap-2">
+            <WalletCards size={12} /> Monthly commitments ({state.commitments.length})
+          </span>
+          <ChevronDown size={16} className="t3 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="mt-2">
+          <div className="flex justify-end">
+            <button onClick={() => setEditor({ kind: 'commitment', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add monthly commitment">
+              <Plus size={15} />
+            </button>
+          </div>
+          {state.commitments.map((item, index) => (
+            <div key={item.id} className={`flex items-center gap-3 py-3 ${index > 0 ? 'hairline-t' : ''}`}>
+              <span className={`w-2 h-2 rounded-full ${item.active ? 'bg-[var(--up)]' : 'bg-[var(--ink-3)]'}`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold t1 truncate">{item.name}</p>
+                <p className="text-[12px] t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due ${item.dueDay}` : 'Amount not set'}{!item.active ? ' · paused' : ''}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</p>
+                <CoverageControl item={item} state={state} setCash={setCash} />
+              </div>
+              <button onClick={() => setEditor({ kind: 'commitment', item })} className="cash-icon-button press chip rounded-lg flex items-center justify-center t2" aria-label={`Edit ${item.name}`}>
+                <Pencil size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </details>
 
       {createPortal(<div style={{ '--acc': 'var(--acc-cash)' }}><Sheet open={balanceOpen} onClose={() => setBalanceOpen(false)} title="Current cash">
         <form onSubmit={saveBalance} className="space-y-3">

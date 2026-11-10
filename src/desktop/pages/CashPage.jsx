@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CashAlerts, CashForecast, CashMonths, CoverageControl, DeletePayment } from '../../CashPlanning'
-import { CalendarClock, Check, Pencil, Plus, WalletCards } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Pencil, Plus, WalletCards } from 'lucide-react'
 import { useClock, usePersistentState } from '../../hooks'
 import {
   DEFAULT_CASH_PULSE,
@@ -159,25 +159,7 @@ export default function CashPage() {
       <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={() => balanceRef.current?.focus()} />
       <CashMonths projection={projection} onToggle={toggleItem} />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Card eyebrow="Repeats monthly" title="Commitments"
-          actions={<Button size="sm" variant="outline" icon={Plus} onClick={() => setEditor({ kind: 'commitment', item: null })}>Add</Button>}>
-          {editor?.kind === 'commitment' && <PaymentEditor key={editor.item?.id || 'new-commitment'} kind="commitment" initial={editor.item}
-            onSave={savePayment} onDelete={deletePayment} onCancel={() => setEditor(null)} />}
-          {state.commitments.map((item, index) => (
-            <div key={item.id} className={`flex items-center gap-3 py-3 ${index > 0 ? 'd-divider' : ''}`}>
-              <WalletCards size={16} className={item.active ? 'd-accent' : 'd-t3'} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium d-t1 truncate">{item.name}</div>
-                <div className="text-[12px] d-t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due day ${item.dueDay}` : 'Amount not set'}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</div>
-                <CoverageControl item={item} state={state} setCash={setCash} />
-              </div>
-              {!item.active && <Badge>Paused</Badge>}
-              <IconButton icon={Pencil} onClick={() => setEditor({ kind: 'commitment', item })} aria-label={`Edit ${item.name}`} />
-            </div>
-          ))}
-        </Card>
-
+      <div className="space-y-4">
         <Card eyebrow="Known future payments" title="Planned one-offs"
           actions={<Button size="sm" variant="outline" icon={Plus} onClick={() => setEditor({ kind: 'one-off', item: null })}>Add</Button>}>
           {editor?.kind === 'one-off' && <PaymentEditor key={editor.item?.id || 'new-one-off'} kind="one-off" initial={editor.item}
@@ -199,6 +181,34 @@ export default function CashPage() {
             </div>
           ))}
         </Card>
+        <details className="d-card group" aria-label="Monthly commitments">
+          <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 list-none px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="d-eyebrow block">Repeats monthly</span>
+              <span className="d-h2 d-t1 block">Commitments ({state.commitments.length})</span>
+            </span>
+            <ChevronDown size={16} className="d-t3 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="p-4 d-divider">
+            <div className="flex justify-end mb-3">
+              <Button size="sm" variant="outline" icon={Plus} aria-label="Add monthly commitment" onClick={() => setEditor({ kind: 'commitment', item: null })}>Add</Button>
+            </div>
+            {editor?.kind === 'commitment' && <PaymentEditor key={editor.item?.id || 'new-commitment'} kind="commitment" initial={editor.item}
+              onSave={savePayment} onDelete={deletePayment} onCancel={() => setEditor(null)} />}
+            {state.commitments.map((item, index) => (
+              <div key={item.id} className={`flex items-center gap-3 py-3 ${index > 0 ? 'd-divider' : ''}`}>
+                <WalletCards size={16} className={item.active ? 'd-accent' : 'd-t3'} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium d-t1 truncate">{item.name}</div>
+                  <div className="text-[12px] d-t3">{item.amount > 0 ? `${formatCash(item.amount, state.currency)} · due day ${item.dueDay}` : 'Amount not set'}{item.endMonth ? ` · ends ${monthLabel(item.endMonth)}` : ''}</div>
+                  <CoverageControl item={item} state={state} setCash={setCash} />
+                </div>
+                {!item.active && <Badge>Paused</Badge>}
+                <IconButton icon={Pencil} onClick={() => setEditor({ kind: 'commitment', item })} aria-label={`Edit ${item.name}`} />
+              </div>
+            ))}
+          </div>
+        </details>
       </div>
     </div>
   )

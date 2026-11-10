@@ -32,12 +32,14 @@ test('version 2 migration adds Trade without resetting saved holdings, values, o
   saved.version = 2
   delete saved.sarwaTrade
   saved.msft.shares = 42
-  saved.property.value = 123456
+  delete saved.properties
+  saved.property = { name: 'Saved apartment', location: 'Saved location', value: 123456 }
   saved.sarwa.holdings[0].units = 0
   saved.sarwa.holdings[0].value = 987
   const migrated = reconcileFinance(saved)
   assert.equal(migrated.msft, saved.msft)
-  assert.equal(migrated.property, saved.property)
+  assert.equal(migrated.properties[0].currentValue, saved.property.value)
+  assert.equal(migrated.properties[0].name, saved.property.name)
   assert.equal(migrated.sarwa, saved.sarwa)
   assert.deepEqual(migrated.sarwaTrade, FINANCE.sarwaTrade)
   assert.equal(reconcileFinance(migrated), migrated)

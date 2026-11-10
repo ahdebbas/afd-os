@@ -2,7 +2,7 @@ import { Beef, Droplets, Dumbbell, Flame, Landmark, Play, Wallet, Wheat } from '
 import { useClock, usePersistentState } from './hooks'
 import { useFood } from './store'
 import { useQuotes } from './quotes'
-import { FINANCE, TARGETS, reconcileFinance, sarwaTotal, usd } from './data'
+import { FINANCE, TARGETS, propertyTotal, reconcileFinance, sarwaTotal, usd } from './data'
 import { useInbodyReadings } from './useInbodyReadings'
 import { useWorkoutPrograms } from './useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from './workoutPrograms'
@@ -49,11 +49,12 @@ export default function TodayPulse({ onNavigate, whoop, cycles }) {
   const msftValue = finance.msft.shares * (stock?.price ?? finance.msft.price)
   const fundValue = sarwaTotal(finance.sarwa, quotes)
   const tradeValue = sarwaTotal(finance.sarwaTrade, quotes)
-  const total = msftValue + fundValue + tradeValue + finance.property.value
+  const propertyValue = propertyTotal(finance)
+  const total = msftValue + fundValue + tradeValue + propertyValue
   const holdings = [
     { name: 'Trading', value: msftValue + tradeValue, color: 'var(--asset-equity)' },
     { name: 'Sarwa Invest', value: fundValue, color: 'var(--asset-fund)' },
-    { name: 'Property', value: finance.property.value, color: 'var(--asset-real)' },
+    { name: 'Property', value: propertyValue, color: 'var(--asset-real)' },
   ]
   const macros = [
     { Icon: Beef, label: 'P', value: totals.protein, target: targets.protein, color: 'var(--acc-food)' },

@@ -78,8 +78,10 @@ export const DEFAULT_WEIGHTS = {
 }
 
 export const FINANCE = {
-  version: 3,
-  property: { name: 'Beirut apartment', location: 'Beirut, Lebanon', value: 420000 },
+  version: 4,
+  properties: [
+    { id: 'beirut-apartment', name: 'Beirut apartment', location: 'Beirut, Lebanon', purchaseValue: null, currentValue: 420000 },
+  ],
   msft: { shares: 552, price: 411.74, dayChangePct: -1.44, low52: 356.28, high52: 555.45, priceDate: 'Jun 9, 2026' },
   sarwaTrade: {
     lastUpdated: 'Screenshot (date not provided)',
@@ -108,24 +110,41 @@ export const FINANCE = {
 
 export function reconcileFinance(finance) {
   if (finance?.version === FINANCE.version) return finance
-  if (finance?.version === 2) return {
-    ...finance,
-    version: FINANCE.version,
-    sarwaTrade: finance.sarwaTrade ?? FINANCE.sarwaTrade,
+  let migrated
+  if (finance?.version === 2 || finance?.version === 3) {
+    migrated = {
+      ...finance,
+      version: FINANCE.version,
+      sarwaTrade: finance.sarwaTrade ?? FINANCE.sarwaTrade,
+    }
+  } else {
+    const savedHoldings = new Map((finance?.sarwa?.holdings || []).map(holding => [holding.ticker, holding]))
+    const holdings = FINANCE.sarwa.holdings.map(holding => {
+      const savedUnits = savedHoldings.get(holding.ticker)?.units
+      return savedUnits == null ? holding : { ...holding, units: savedUnits }
+    })
+    migrated = {
+      ...FINANCE,
+      ...finance,
+      version: FINANCE.version,
+      sarwaTrade: finance?.sarwaTrade ?? FINANCE.sarwaTrade,
+      sarwa: { ...FINANCE.sarwa, ...finance?.sarwa, total: FINANCE.sarwa.total, lastUpdated: FINANCE.sarwa.lastUpdated, holdings },
+    }
   }
-  const savedHoldings = new Map((finance?.sarwa?.holdings || []).map(holding => [holding.ticker, holding]))
-  const holdings = FINANCE.sarwa.holdings.map(holding => {
-    const savedUnits = savedHoldings.get(holding.ticker)?.units
-    return savedUnits == null ? holding : { ...holding, units: savedUnits }
-  })
+  const { property, ...portfolio } = migrated
   return {
-    ...FINANCE,
-    ...finance,
-    version: FINANCE.version,
-    sarwaTrade: finance?.sarwaTrade ?? FINANCE.sarwaTrade,
-    sarwa: { ...FINANCE.sarwa, ...finance?.sarwa, total: FINANCE.sarwa.total, lastUpdated: FINANCE.sarwa.lastUpdated, holdings },
+    ...portfolio,
+    properties: finance?.properties ?? (property ? [{
+      id: 'legacy-property',
+      name: property.name || 'Property',
+      location: property.location ?? '',
+      purchaseValue: property.purchaseValue ?? null,
+      currentValue: property.value,
+    }] : FINANCE.properties),
   }
 }
+
+export const propertyTotal = finance => finance.properties.reduce((sum, property) => sum + property.currentValue, 0)
 
 export const ETF_SYMBOL = { ISDW: 'ISDW.L', ISDU: 'ISDU.L', ISDE: 'ISDE.L', IGLN: 'IGLN.L' }
 export const holdingSymbol = h => ETF_SYMBOL[h.ticker] ?? h.ticker

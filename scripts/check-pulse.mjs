@@ -60,6 +60,7 @@ try {
   await tabs.nth(2).press('Home')
   assert.equal(await tabs.nth(0).getAttribute('aria-selected'), 'true')
   if (today.getDate() > 1) await page.locator('.cash-payment-row.is-overdue').waitFor()
+  await page.locator('details[aria-label="Monthly commitments"] summary').click()
   await page.getByRole('button', { name: 'Cover months for Parents', exact: true }).click()
   const picker = page.getByRole('group', { name: 'Parents advance coverage' })
   for (const checkbox of (await picker.getByRole('checkbox').all()).slice(0, 3)) await checkbox.check()
@@ -166,6 +167,7 @@ try {
     await page.screenshot({ path: join(output, `cash-dark-${width}.png`) })
     await page.evaluate(() => document.documentElement.classList.remove('dark'))
   }
+  await page.locator('details[aria-label="Monthly commitments"] summary').click()
   await page.getByRole('button', { name: 'Cover months for Parents', exact: true }).click()
   await picker.getByRole('checkbox').nth(0).uncheck()
   await picker.getByRole('button', { name: 'Save coverage' }).click()
