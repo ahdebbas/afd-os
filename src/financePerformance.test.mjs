@@ -89,19 +89,79 @@ test('market contributors group Microsoft and Trade without changing the saved s
   assert.match(pulse.summary, /Sarwa Invest was the largest contributor at \+USD/)
 })
 
-test('old snapshots without Trade remain readable and addition/editing is labelled as a position change', () => {
+test('adding Trade starts a new baseline instead of treating its purchase value as profit', () => {
   const current = { ...toMarketSnapshot(snapshot(FINANCE)), date: '2026-11-10' }
   const baseline = { ...current, date: '2026-11-01', marketTotal: current.marketTotal - current.sarwaTrade }
   delete baseline.sarwaTrade
   delete baseline.positionsKey
   const pulse = buildCapitalPulse([baseline], current)
-  assert.equal(pulse.primary.sarwaTradeChange, 43432)
-  assert.equal(pulse.primary.positionsChanged, true)
-  assert.match(pulse.summary, /Holdings changed/)
+  assert.equal(pulse.primary, undefined)
+  assert.deepEqual(pulse.comparisons, [])
+  assert.equal(pulse.baselineReset, true)
+  assert.match(pulse.summary, /Purchases and sales are not gains/)
   const edited = structuredClone(FINANCE)
   edited.sarwaTrade.holdings[0].units = 0
   assert.notEqual(snapshot(edited).positionsKey, snapshot(FINANCE).positionsKey)
   const oldFinance = { ...FINANCE }
   delete oldFinance.sarwaTrade
   assert.equal(snapshot(oldFinance).sarwaTrade.value, 0)
+})
+
+test('buying or selling shares at unchanged prices cannot produce a market gain or loss', () => {
+  const baseline = { ...toMarketSnapshot(snapshot(FINANCE)), date: '2026-11-01' }
+  for (const [ticker, units] of [['MSFT', 600], ['MSFT', 0], ['GOOGL', 80], ['NVDA', 0]]) {
+    const changed = structuredClone(FINANCE)
+    if (ticker === 'MSFT') changed.msft.shares = units
+    else changed.sarwaTrade.holdings.find(h => h.ticker === ticker).units = units
+    const current = { ...toMarketSnapshot(snapshot(changed)), date: '2026-11-10' }
+    const pulse = buildCapitalPulse([baseline], current)
+    assert.equal(pulse.primary, undefined)
+    assert.equal(pulse.baselineReset, true)
+  }
+})
+
+test('market changes resume from the first snapshot with the new holdings', () => {
+  const oldFinance = structuredClone(FINANCE)
+  delete oldFinance.sarwaTrade
+  const old = { ...toMarketSnapshot(snapshot(oldFinance)), date: '2026-11-01' }
+  const purchased = { ...toMarketSnapshot(snapshot(FINANCE)), date: '2026-11-09' }
+  const moved = buildFinanceSnapshot({
+    finance: FINANCE,
+    quotes: { ...quotes, GOOGL: { ...quotes.GOOGL, price: quotes.GOOGL.price + 10 } },
+    quoteStatus: 'live',
+  })
+  const current = { ...toMarketSnapshot(moved), date: '2026-11-10' }
+  const pulse = buildCapitalPulse([old, purchased], current)
+  assert.equal(pulse.primary.baselineDate, purchased.date)
+  assert.equal(pulse.primary.totalChange, 412)
+  assert.equal(pulse.primary.sarwaTradeChange, 412)
+  assert.equal(pulse.comparisons.length, 1)
+  assert.equal(pulse.recordedDays, 2)
+})
+
+test('returning to an earlier quantity does not cross an intervening purchase or sale', () => {
+  const original = toMarketSnapshot(snapshot(FINANCE))
+  const changedFinance = structuredClone(FINANCE)
+  changedFinance.msft.shares = 600
+  const changed = toMarketSnapshot(snapshot(changedFinance))
+  const history = [
+    { ...original, date: '2026-10-01' },
+    { ...changed, date: '2026-11-08' },
+    { ...original, date: '2026-11-09' },
+  ]
+  const pulse = buildCapitalPulse(history, { ...original, date: '2026-11-10' })
+  assert.equal(pulse.primary.baselineDate, '2026-11-09')
+  assert.equal(pulse.primary.totalChange, 0)
+  assert.equal(pulse.comparisons.length, 1)
+})
+
+test('cash deposits and legacy snapshots without quantity metadata start a new baseline', () => {
+  const original = toMarketSnapshot(snapshot(FINANCE))
+  const changedFinance = structuredClone(FINANCE)
+  changedFinance.sarwa.holdings.find(h => h.ticker === 'USD').value += 39000
+  const changed = { ...toMarketSnapshot(snapshot(changedFinance)), date: '2026-11-10' }
+  assert.equal(buildCapitalPulse([{ ...original, date: '2026-11-01' }], changed).primary, undefined)
+  const legacy = { ...original, date: '2026-11-01' }
+  delete legacy.positionsKey
+  assert.equal(buildCapitalPulse([legacy], { ...original, date: '2026-11-10' }).primary, undefined)
 })

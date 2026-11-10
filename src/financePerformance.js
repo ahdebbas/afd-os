@@ -151,18 +151,29 @@ export function buildCapitalPulse(history, current) {
   const ordered = [...(history || [])]
     .filter(item => item && /^\d{4}-\d{2}-\d{2}$/.test(item.date))
     .sort((a, b) => a.date.localeCompare(b.date))
+  const previous = ordered.filter(item => item.date < current.date)
+  // Never compare across a purchase, sale, cash update, or unknown legacy position.
+  const lastChange = previous.findLastIndex(item =>
+    !current.positionsKey || item.positionsKey !== current.positionsKey ||
+    (item.sarwaTrade == null) !== (current.sarwaTrade == null))
+  const comparable = previous.slice(lastChange + 1)
+  const baselineReset = lastChange >= 0
+  const recordedDays = new Set([...comparable.map(item => item.date), current.date]).size
   const comparisons = [1, 7, 30]
-    .map(days => comparisonFor(ordered, current, days))
+    .map(days => comparisonFor(comparable, current, days))
     .filter(Boolean)
   const primary = comparisons.find(item => item.label === '7D') || comparisons[0] || null
 
   if (!primary) {
     return {
       state: 'building',
-      headline: 'Building your market baseline',
-      summary: 'Today’s Trading and Sarwa Invest values are saved. Changes will appear after the next market-day snapshot.',
+      headline: baselineReset ? 'Starting a new market baseline' : 'Building your market baseline',
+      summary: baselineReset
+        ? 'Purchases and sales are not gains. A new baseline starts with the updated holdings; market changes appear after the next comparable daily snapshot.'
+        : 'Today’s Trading and Sarwa Invest values are saved. Changes will appear after the next market-day snapshot.',
       comparisons: [],
-      recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,
+      baselineReset,
+      recordedDays,
     }
   }
 
@@ -173,11 +184,10 @@ export function buildCapitalPulse(history, current) {
   return {
     state: 'ready',
     headline: `${primary.totalChange >= 0 ? 'Up' : 'Down'} ${usd(Math.abs(primary.totalChange))} over ${primary.days} day${primary.days === 1 ? '' : 's'}`,
-    summary: primary.positionsChanged
-      ? `Holdings changed during this period, so the ${usd(Math.abs(primary.totalChange))} move includes both position updates and market movement. Property is excluded.`
-      : `${leading.ticker} was the largest contributor at ${leading.value >= 0 ? '+' : '-'}${usd(Math.abs(leading.value))}. Property is unchanged and excluded.`,
+    summary: `${leading.ticker} was the largest contributor at ${leading.value >= 0 ? '+' : '-'}${usd(Math.abs(leading.value))}. Purchases, sales, and property are excluded.`,
     primary,
     comparisons,
-    recordedDays: new Set([...ordered.map(item => item.date), current.date]).size,
+    baselineReset,
+    recordedDays,
   }
 }

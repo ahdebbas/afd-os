@@ -119,8 +119,8 @@ export default function Finance() {
               <td>{comparison.changePct == null ? '—' : `${comparison.changePct > 0 ? '+' : ''}${comparison.changePct.toFixed(1)}%`}</td>
             </tr>)}</tbody>
           </table>}
-          <p className="capital-pulse-note">Trading + Sarwa Invest · Property excluded.{comparisons.some(comparison => comparison.positionsChanged) && ' Includes holding changes; not investment return.'}</p>
-        </> : <p className="capital-pulse-empty">No earlier snapshot to compare.</p>}
+          <p className="capital-pulse-note">Trading + Sarwa Invest · Purchases, sales, and property excluded.{capitalPulse.baselineReset && ' Baseline restarted after holdings changed.'}</p>
+        </> : <p className="capital-pulse-empty">{capitalPulse.baselineReset ? capitalPulse.summary : 'No earlier snapshot to compare.'}</p>}
       </section>
 
       <Trading finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} />

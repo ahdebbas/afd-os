@@ -55,14 +55,18 @@ only. Insights and goal explanations are calculated locally, not by external AI.
 
 Trading groups Microsoft with the fractional GOOGL, NVDA, and SPTE positions in
 one mobile/desktop Finance card, above Sarwa Invest. It shows a combined total,
-editable shares, individual values and daily moves, plus Microsoft's 52-week range;
+editable shares, individual values and daily moves, plus live 52-week range bars
+for MSFT, GOOGL, NVDA, and SPTE (explicitly unavailable when the feed has no range);
 it does not infer cost bases or lifetime returns. Trading is included in net worth,
-invested/liquid capital, allocations, and market-change snapshots. Adding or editing
-holdings is labelled as a position change rather than an investment return.
+invested/liquid capital, allocations, and market-change snapshots. Purchases, sales,
+and cash updates restart the whole portfolio's market-change baseline: invested
+principal is never shown as a gain. Changes resume after another daily snapshot
+with the same holdings; older snapshots are retained but are not compared across
+holding changes. Snapshots missing quantity metadata also start a new baseline.
 Existing Microsoft, Sarwa Trade, and Sarwa Invest saved quantities and history retain
 their storage format; this grouping does not move, reset, or duplicate holdings.
-Market refresh uses the same Yahoo Finance proxy as MSFT. Incomplete older caches
-refresh automatically; a failed symbol does not block successful quotes. Cached
+Market refresh uses the same Yahoo Finance proxy as MSFT. Older cache formats
+refresh automatically to fetch range data; a failed symbol does not block successful quotes. Cached
 prices or the supplied screenshot values remain labelled fallbacks when offline.
 Edited quantities scale the recorded fallback proportionally; screenshot quantities
 are rounded, so a live shares-times-price value may differ from the screenshot.

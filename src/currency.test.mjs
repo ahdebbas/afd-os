@@ -25,14 +25,20 @@ test('USD formatting does not convert balances or holding values', () => {
   assert.equal(holdingValue(holding, { 'ISDW.L': { price: 70 } }), holding.units * 70)
 })
 
-test('market summaries consistently label gains, losses, and position changes in USD', () => {
+test('market summaries consistently label real gains and losses in USD, excluding position changes', () => {
   const baseline = { date: '2026-09-24', msft: 1000, sarwa: 500, marketTotal: 1500, msftNetWorthShare: 50, positionsKey: 'original' }
   for (const change of [100, -100]) {
     for (const positionsKey of ['original', 'updated']) {
       const current = { ...baseline, date: '2026-10-01', msft: baseline.msft + change, marketTotal: baseline.marketTotal + change, positionsKey }
       const pulse = buildCapitalPulse([baseline], current)
-      assert.ok(pulse.headline.includes('USD\u00a0100'))
-      assert.ok(pulse.summary.includes('USD\u00a0100'))
+      if (positionsKey === baseline.positionsKey) {
+        assert.ok(pulse.headline.includes('USD\u00a0100'))
+        assert.ok(pulse.summary.includes('USD\u00a0100'))
+      } else {
+        assert.equal(pulse.primary, undefined)
+        assert.equal(pulse.baselineReset, true)
+        assert.ok(!pulse.headline.includes('USD'))
+      }
       assert.ok(!pulse.headline.includes('$'))
       assert.ok(!pulse.summary.includes('$'))
     }

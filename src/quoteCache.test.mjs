@@ -12,11 +12,28 @@ test('complete caches stay fresh for one hour, missing new symbols force refresh
   assert.equal(freshQuoteCache(cache, now + QUOTE_REFRESH_MS - 1), true)
   assert.equal(freshQuoteCache(cache, now + QUOTE_REFRESH_MS), false)
   assert.equal(freshQuoteCache(cache, now - 1), false)
+  const legacy = structuredClone(cache)
+  delete legacy.version
+  assert.equal(freshQuoteCache(legacy, now), false)
   for (const symbol of ['GOOGL', 'NVDA', 'SPTE']) {
     const old = structuredClone(cache)
     delete old.data[symbol]
     assert.equal(freshQuoteCache(old, now), false)
   }
+})
+
+test('52-week ranges survive caching and partial failures without inventing missing ranges', () => {
+  const ranged = results()
+  ranged[0].value = { ...ranged[0].value, low52: 50, high52: 150 }
+  const cache = mergeQuoteResults(null, ranged, syncedAt)
+  assert.equal(cache.data.MSFT.low52, 50)
+  assert.equal(cache.data.MSFT.high52, 150)
+  assert.equal(cache.data.SPTE.low52, undefined)
+  const failed = results()
+  failed[0] = { status: 'rejected', reason: new Error('Offline') }
+  const next = mergeQuoteResults(cache, failed, syncedAt)
+  assert.equal(next.data.MSFT.low52, 50)
+  assert.equal(next.data.MSFT.high52, 150)
 })
 
 test('one failed symbol preserves its cache but never blocks other successful quotes or claims freshness', () => {

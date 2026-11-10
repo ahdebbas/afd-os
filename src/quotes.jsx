@@ -26,7 +26,13 @@ async function fetchQuote(symbol) {
   if (!meta) throw new Error(`${symbol}: ${payload.chart?.error?.description ?? 'Missing quote'}`)
   const price = meta.regularMarketPrice
   const prev = meta.chartPreviousClose
-  const quote = { price, changePct: Number.isFinite(prev) && prev > 0 ? ((price / prev - 1) * 100) : 0, currency: meta.currency }
+  const quote = {
+    price,
+    changePct: Number.isFinite(prev) && prev > 0 ? ((price / prev - 1) * 100) : 0,
+    currency: meta.currency,
+    low52: Number.isFinite(meta.fiftyTwoWeekLow) && meta.fiftyTwoWeekLow > 0 ? meta.fiftyTwoWeekLow : null,
+    high52: Number.isFinite(meta.fiftyTwoWeekHigh) && meta.fiftyTwoWeekHigh > 0 ? meta.fiftyTwoWeekHigh : null,
+  }
   if (!validQuote(quote)) throw new Error(`${symbol}: Invalid USD quote`)
   return quote
 }

@@ -11,10 +11,6 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
     ...trade.holdings,
   ]
   const total = holdings.reduce((sum, holding) => sum + holdingValue(holding, quotes), 0)
-  const msftPrice = quotes?.MSFT?.price ?? msft.price
-  const rangePct = Math.max(0, Math.min(100, (msftPrice - msft.low52) / (msft.high52 - msft.low52) * 100))
-  const vsLow = ((msftPrice / msft.low52 - 1) * 100).toFixed(1)
-  const vsHigh = ((msftPrice / msft.high52 - 1) * 100).toFixed(1)
   const ink = desktop ? 'd-t1' : 't1'
   const muted = desktop ? 'd-t3' : 't3'
   const number = desktop ? 'd-num' : 'mono'
@@ -52,6 +48,12 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
             : holding.ticker === 'MSFT' ? `as of ${msft.priceDate}` : trade.lastUpdated
           const daily = quote?.changePct
           const price = quote?.price ?? holding.price ?? (holding.recordedUnits > 0 ? holding.value / holding.recordedUnits : null)
+          const low52 = quote ? quote.low52 : holding.ticker === 'MSFT' ? msft.low52 : null
+          const high52 = quote ? quote.high52 : holding.ticker === 'MSFT' ? msft.high52 : null
+          const hasRange = Number.isFinite(price) && Number.isFinite(low52) && Number.isFinite(high52) && low52 > 0 && high52 > low52
+          const rangePct = hasRange ? Math.max(0, Math.min(100, (price - low52) / (high52 - low52) * 100)) : null
+          const vsLow = hasRange ? ((price / low52 - 1) * 100).toFixed(1) : null
+          const vsHigh = hasRange ? ((price / high52 - 1) * 100).toFixed(1) : null
           return (
             <div key={holding.ticker} className={`py-3 ${desktop ? 'border-b border-[var(--d-border)] last:border-0' : 'hairline-t'}`}>
               <div className="flex items-start justify-between gap-3">
@@ -72,20 +74,21 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
                   : <p className={`text-[11px] mt-1 ${muted}`}>Daily move unavailable</p>}
               </div>
               </div>
-              {holding.ticker === 'MSFT' && (
-                <div className="mt-4" role="group" aria-label="MSFT 52-week range">
-                  <div className="relative h-1.5 rounded-full"
+              {hasRange ? (
+                <div className="mt-4" role="group" aria-label={`${holding.ticker} 52-week range`}>
+                  <div className="relative h-1.5 rounded-full" role="meter" aria-label={`${holding.ticker} position in 52-week range`}
+                    aria-valuemin={0} aria-valuemax={100} aria-valuenow={rangePct}
                     style={{ background: `linear-gradient(90deg, var(${desktop ? '--d-down' : '--down'}), var(${desktop ? '--d-warn' : '--warn'}), var(${desktop ? '--d-up' : '--up'}))`, opacity: 0.85 }}>
                     <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 rounded-full"
                       style={{ left: `${rangePct}%`, background: `var(${desktop ? '--d-text' : '--acc'})` }} />
                   </div>
                   <div className={`flex justify-between gap-2 mt-2 text-[10px] ${number} ${muted}`}>
-                    <span>{usd(msft.low52, 2)} <span className={desktop ? 'd-up' : 'up'}>+{vsLow}%</span></span>
+                    <span>{usd(low52, 2)} <span className={desktop ? price >= low52 ? 'd-up' : 'd-down' : price >= low52 ? 'up' : 'down'}>{price >= low52 ? '+' : ''}{vsLow}%</span></span>
                     <span>52w</span>
-                    <span><span className={desktop ? 'd-down' : 'down'}>{vsHigh}%</span> {usd(msft.high52, 2)}</span>
+                    <span><span className={desktop ? price > high52 ? 'd-up' : 'd-down' : price > high52 ? 'up' : 'down'}>{price > high52 ? '+' : ''}{vsHigh}%</span> {usd(high52, 2)}</span>
                   </div>
                 </div>
-              )}
+              ) : <p className={`text-[10px] mt-3 ${muted}`}>{holding.ticker} 52-week range unavailable</p>}
             </div>
           )
         })}

@@ -188,10 +188,16 @@ try {
   let marketChange = page.getByRole('region', { name: 'Market value change', exact: true })
   await marketChange.getByText('No earlier snapshot to compare.', { exact: true }).waitFor()
   assert.equal(await marketChange.getByRole('table').count(), 0)
+  const positionsKey = await page.evaluate(async () => {
+    const { FINANCE, reconcileFinance } = await import('/src/data.js')
+    const { buildFinanceSnapshot } = await import('/src/financePerformance.js')
+    const finance = reconcileFinance(JSON.parse(localStorage.getItem('afd-finance')) || FINANCE)
+    return buildFinanceSnapshot({ finance }).positionsKey
+  })
   const history = [3, 9, 35].map(days => {
     const date = new Date(today)
     date.setDate(date.getDate() - days)
-    return { date: localDate(date), msft: 80000000 + days, sarwa: 20000000, marketTotal: 100000000 + days, msftNetWorthShare: 80, positionsKey: 'earlier-positions' }
+    return { date: localDate(date), msft: 80000000 + days, sarwa: 20000000, sarwaTrade: 39000, marketTotal: 100039000 + days, msftNetWorthShare: 80, positionsKey }
   })
   await page.addInitScript(() => {
     const history = sessionStorage.getItem('finance-history-fixture')
@@ -202,7 +208,7 @@ try {
   marketChange = page.getByRole('region', { name: 'Market value change', exact: true })
   await marketChange.getByRole('table').waitFor()
   for (const days of [3, 9, 35]) await marketChange.getByRole('rowheader', { name: `${days} days`, exact: true }).waitFor()
-  await marketChange.getByText('Includes holding changes; not investment return.', { exact: false }).waitFor()
+  await marketChange.getByText('Purchases, sales, and property excluded.', { exact: false }).waitFor()
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 900 })
     const fits = await marketChange.evaluate(section => {
@@ -215,7 +221,12 @@ try {
   await page.reload()
   await marketChange.locator('.capital-pulse-result').waitFor()
   assert.equal(await marketChange.getByRole('table').count(), 0)
-  console.log('PASS: market change empty state, actual periods, holding-change caveat, deduplication and large-value layout')
+  await page.evaluate(history => sessionStorage.setItem('finance-history-fixture', JSON.stringify(history.map(item => ({ ...item, positionsKey: 'before-purchase' })))), history)
+  await page.reload()
+  await marketChange.getByText('Purchases and sales are not gains.', { exact: false }).waitFor()
+  assert.equal(await marketChange.locator('.capital-pulse-result').count(), 0)
+  assert.equal(await marketChange.getByRole('table').count(), 0)
+  console.log('PASS: market change empty state, actual periods, baseline resets, deduplication and large-value layout')
   const reviewContext = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' })
   await reviewContext.route('**/*', route => {
     const url = new URL(route.request().url())
