@@ -1,8 +1,10 @@
 // Current burn + intraday pacing vs prior days, for the logged-in user.
 // One call powers both the deficit KPIs (F1) and the pacing line (F2).
 import { userIdFromToken, validAccessToken, fetchTodayCalories, saveSample, intradayComparison } from '../../lib/whoop.js'
+import { handleNativeCors } from '../../lib/cors.js'
 
 export default async function handler(req, res) {
+  if (handleNativeCors(req, res, 'GET')) return
   try {
     const auth = req.headers.authorization || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : req.query.t

@@ -23,6 +23,16 @@ const TABS = [
   { id: 'food', label: 'Food', Icon: UtensilsCrossed, acc: 'var(--acc-food)', ambient: '#46B58C' },
   { id: 'fitness', label: 'Fitness', Icon: Dumbbell, acc: 'var(--acc-fit)', ambient: '#4FAFC0' },
 ]
+const DESKTOP_QUERY = '(min-width: 1024px) and (hover: hover) and (pointer: fine)'
+
+function isTextEntry(element) {
+  if (!(element instanceof HTMLElement)) return false
+  if (element.isContentEditable) return true
+  if (element instanceof HTMLTextAreaElement) return !element.disabled && !element.readOnly
+  return element instanceof HTMLInputElement && !element.disabled && !element.readOnly &&
+    !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(element.type)
+}
+
 function ModuleScreen({ tabId, onTabChange, onOpenLog, onOpenSettings, dark, onToggleTheme }) {
   if (tabId === 'today') return <Today goTo={onTabChange} openLog={onOpenLog} onOpenSettings={onOpenSettings} dark={dark} onToggleTheme={onToggleTheme} />
   if (tabId === 'finance') return <Finance />
@@ -176,6 +186,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
               </button>
             ))}
           </div>
+          <p className="text-[11px] t3 mt-2">Auto keeps touch navigation on foldable screens and uses Desktop on wide mouse or trackpad screens.</p>
           <p className="mono text-[9px] t3 mt-2">Desktop shortcuts: Cmd/Ctrl+1..5 modules, Cmd/Ctrl+L quick log, Cmd/Ctrl+, settings.</p>
         </div>
         {effectiveShell === 'mobile' && <div className="chip rounded-2xl px-4 py-3.5">
@@ -243,7 +254,7 @@ function Island({ dark, onTheme, onSettings }) {
       <div className="island-idle flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="w-2 h-2 rounded-full" style={{ background: 'var(--acc-food)', boxShadow: '0 0 8px var(--acc-food)' }} aria-hidden="true" />
-          <span className="display text-[19px] font-bold tracking-[0.06em] t1 uppercase">AFD&nbsp;OS</span>
+          <span className="display text-[19px] font-bold tracking-[0.06em] t1">Baseline</span>
         </div>
         <div className="flex items-center gap-2">
           {timer && (
@@ -370,7 +381,7 @@ function Shell() {
   const touch = useRef(null)
   const ignoreSwipe = useRef(false)
   const [viewportDesktop, setViewportDesktop] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : false)
+    typeof window !== 'undefined' ? window.matchMedia(DESKTOP_QUERY).matches : false)
 
   const idx = TABS.findIndex(t => t.id === tab)
   const activeTab = TABS[Math.max(0, idx)]
@@ -411,7 +422,7 @@ function Shell() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = window.matchMedia(DESKTOP_QUERY)
     const onChange = e => setViewportDesktop(e.matches)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
@@ -419,26 +430,18 @@ function Shell() {
 
   useEffect(() => {
     if (isDesktop) return
-    if (!window.visualViewport) return
-    const onResize = () => {
-      setKbOpen(window.visualViewport.height < window.innerHeight * 0.8)
-    }
-    const frame = requestAnimationFrame(onResize)
-    window.visualViewport.addEventListener('resize', onResize)
-    return () => {
-      cancelAnimationFrame(frame)
-      window.visualViewport.removeEventListener('resize', onResize)
-    }
-  }, [isDesktop])
-
-  useEffect(() => {
-    if (isDesktop || !standalone) return
     const shell = shellRef.current
+    const viewport = window.visualViewport
     let frame
     const measure = () => {
       frame = undefined
-      // WebKit's fixed edges can retain a shorter browser-toolbar viewport.
-      shell.style.setProperty('--app-viewport-height', `${window.innerHeight}px`)
+      const visibleHeight = viewport?.height ?? window.innerHeight
+      const keyboard = isTextEntry(document.activeElement) &&
+        window.innerHeight - visibleHeight > Math.max(100, window.innerHeight * 0.2)
+      setKbOpen(keyboard)
+      // Fit the visible viewport even when WebKit retains stale fixed-edge geometry.
+      shell.style.setProperty('--app-viewport-height', `${keyboard ? window.innerHeight : visibleHeight}px`)
+      shell.style.setProperty('--app-viewport-top', `${keyboard ? 0 : viewport?.offsetTop ?? 0}px`)
     }
     const schedule = () => {
       if (frame != null) cancelAnimationFrame(frame)
@@ -450,17 +453,24 @@ function Shell() {
     schedule()
     window.addEventListener('resize', schedule)
     window.addEventListener('pageshow', schedule)
-    window.visualViewport?.addEventListener('resize', schedule)
+    viewport?.addEventListener('resize', schedule)
+    viewport?.addEventListener('scroll', schedule)
+    document.addEventListener('focusin', schedule)
+    document.addEventListener('focusout', schedule)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       if (frame != null) cancelAnimationFrame(frame)
       window.removeEventListener('resize', schedule)
       window.removeEventListener('pageshow', schedule)
-      window.visualViewport?.removeEventListener('resize', schedule)
+      viewport?.removeEventListener('resize', schedule)
+      viewport?.removeEventListener('scroll', schedule)
+      document.removeEventListener('focusin', schedule)
+      document.removeEventListener('focusout', schedule)
       document.removeEventListener('visibilitychange', onVisible)
       shell.style.removeProperty('--app-viewport-height')
+      shell.style.removeProperty('--app-viewport-top')
     }
-  }, [isDesktop, standalone])
+  }, [isDesktop])
 
   // Keyboard navigation between modules
   useEffect(() => {
@@ -545,7 +555,7 @@ function Shell() {
 
   return (
     <div ref={shellRef} data-standalone={!isDesktop && standalone ? '' : undefined}
-      className={isDesktop ? 'h-dvh w-full relative' : `mobile-app h-dvh w-full max-w-md mx-auto relative flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
+      className={isDesktop ? 'h-dvh w-full relative' : `mobile-app w-full mx-auto flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
       <div className="ambient" style={{ '--ambient': isDesktop ? activeTab.ambient : 'var(--acc-fit)' }} aria-hidden="true" />
 
       {isDesktop ? (

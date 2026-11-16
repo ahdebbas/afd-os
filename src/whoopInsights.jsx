@@ -4,6 +4,9 @@ import { Label } from './ui'
 import { useFood } from './store'
 import { connectWhoop } from './whoop'
 import { projectBurn, recommendedIntake, fuelingFlag } from './whoopEnergy'
+import { isNativeApp } from './platform'
+
+const nativeApp = isNativeApp()
 
 const kcal = n => Math.round(n).toLocaleString('en-US')
 
@@ -42,8 +45,8 @@ function EmptyWhoop({ whoop, compact = false }) {
     : state === 'empty'
       ? 'WHOOP is connected; waiting for the current cycle burn.'
       : state === 'error'
-        ? 'WHOOP did not respond. Try again after reconnecting.'
-        : 'Connect WHOOP to turn burn, strain, and pace into food guidance.'
+        ? nativeApp ? 'WHOOP did not respond.' : 'WHOOP did not respond. Try again after reconnecting.'
+        : nativeApp ? 'Connect WHOOP from the Baseline website to add energy guidance.' : 'Connect WHOOP to turn burn, strain, and pace into food guidance.'
 
   return (
     <section className={`panel ${compact ? 'p-5' : 'p-6'}`} style={{ '--acc': 'var(--acc-fit)' }}>
@@ -60,7 +63,7 @@ function EmptyWhoop({ whoop, compact = false }) {
       ) : (
         <p className="mono text-[10px] t3 leading-relaxed">{message}</p>
       )}
-      {(state === 'disconnected' || state === 'error') && (
+      {!nativeApp && (state === 'disconnected' || state === 'error') && (
         <button onClick={connectWhoop}
           className="press mt-4 w-full flex items-center justify-center gap-2 mono text-[10px] font-semibold acc-chip rounded-xl py-3">
           <Activity size={13} strokeWidth={2.5} /> Connect WHOOP
@@ -183,6 +186,7 @@ export function WhoopBudgetFooter({ whoop, eaten, protein = 0 }) {
   const snap = whoopSnapshot(whoop, eaten)
   if (snap.state === 'loading') return null
   if (snap.state !== 'ready') {
+    if (nativeApp) return null
     return (
       <button onClick={connectWhoop}
         className="press mt-5 pt-4 hairline-t w-full flex items-center justify-center gap-2 mono text-[10px] font-semibold acc">

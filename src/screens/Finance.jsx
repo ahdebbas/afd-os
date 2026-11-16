@@ -71,7 +71,7 @@ export default function Finance() {
   })
 
   return (
-    <div className="space-y-4" style={{ '--acc': 'var(--acc-fin)' }}>
+    <div className="module-layout finance-layout space-y-4" style={{ '--acc': 'var(--acc-fin)' }}>
       {/* Net worth */}
       <section className="panel p-6">
         <div className="flex items-center justify-between mb-3">

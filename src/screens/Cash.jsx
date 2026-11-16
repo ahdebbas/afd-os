@@ -153,7 +153,7 @@ export default function Cash() {
   }
 
   return (
-    <div className="space-y-4 cash-page" style={{ '--acc': 'var(--acc-cash)' }}>
+    <div className="module-layout cash-layout space-y-4 cash-page" style={{ '--acc': 'var(--acc-cash)' }}>
       <section className="panel p-5 cash-overview">
         <div className="flex items-center justify-between mb-3">
           <Label>Cash pulse</Label>

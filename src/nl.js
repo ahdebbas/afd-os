@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { apiUrl } from './api'
 
 // Natural-language food parsing — calls the local /ai/parse-food endpoint
 // (headless Claude Code via the Vite middleware; not available on Netlify).
@@ -73,7 +74,7 @@ async function requestFoodAnalysis(payload, { signal } = {}) {
   const token = data.session?.access_token
   if (!token) throw new Error('Sign in to analyze food')
 
-  const response = await fetch('/api/ai/parse-food-image', {
+  const response = await fetch(apiUrl('/api/ai/parse-food-image'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),

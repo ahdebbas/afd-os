@@ -1,4 +1,5 @@
 import { userIdFromToken } from '../../lib/whoop.js'
+import { handleNativeCors } from '../../lib/cors.js'
 
 const MODEL = 'gemini-flash-lite-latest'
 const MAX_BODY_BYTES = 12_000
@@ -84,6 +85,7 @@ function normalizeBriefing(value, context) {
 }
 
 export default async function handler(req, res) {
+  if (handleNativeCors(req, res, 'POST')) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   try {
     const contentLength = Number(req.headers['content-length'] || 0)

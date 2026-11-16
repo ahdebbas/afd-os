@@ -116,3 +116,23 @@
   .trajectory-orbit-progress,
   .trajectory-bar span { transition: none; }
 }
+@container module (min-width: 680px) {
+  .trajectory-home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; align-items: start; }
+  .trajectory-home > * { min-width: 0; }
+  .trajectory-header,
+  .trajectory-date,
+  .trajectory-portfolio,
+  .trajectory-insight,
+  .trajectory-primary { grid-column: 1 / -1; }
+  .trajectory-date { margin-top: -6px; }
+  .trajectory-portfolio { margin: 4px 0 0; }
+  .trajectory-pinned { grid-column: 1; }
+  .trajectory-mini-goals { grid-column: 2; align-self: center; }
+  .trajectory-energy { grid-column: 1 / -1; margin-top: 0; }
+}
+.trajectory-mini-goal,
+.trajectory-orbit-wrap { container-type: inline-size; }
+.trajectory-financial-number { font-size: clamp(16px, 11cqi, 24px); }
+.trajectory-orbit-value { font-size: clamp(30px, 22cqi, 60px); }
+.trajectory-cash-value { font-size: clamp(20px, 15cqi, 38px); }
+.trajectory-long-value { font-size: clamp(18px, 11cqi, 27px); }

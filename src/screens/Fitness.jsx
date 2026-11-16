@@ -353,9 +353,9 @@ export default function Fitness() {
   ]
 
   return (
-    <div ref={screenRef} className="space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
+    <div ref={screenRef} className="module-layout fitness-layout space-y-4" style={{ '--acc': 'var(--acc-fit)' }}>
       {/* Day selector */}
-      <section className="panel p-4">
+      <section className="panel p-4 fitness-calendar-panel">
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
         {!isToday && <button onClick={() => setSelDate(today)} className="press acc-chip rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold">
           Back to today

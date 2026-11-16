@@ -131,6 +131,7 @@ const whoopProxy = {
 const devProxy = { ...yahooProxy, ...whoopProxy }
 
 export default defineConfig(({ mode }) => {
+  const isNative = mode === 'native'
   const serverEnv = loadEnv(mode, process.cwd(), '')
   process.env.GEMINI_API_KEY ||= serverEnv.GEMINI_API_KEY
   process.env.VITE_SUPABASE_URL ||= serverEnv.VITE_SUPABASE_URL
@@ -144,7 +145,7 @@ export default defineConfig(({ mode }) => {
     foodImageApi(),
     react(),
     tailwindcss(),
-    VitePWA({
+    !isNative && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       // Take over as soon as a new build is fetched so updates apply on the next
@@ -157,9 +158,9 @@ export default defineConfig(({ mode }) => {
         navigateFallbackDenylist: [/^\/api\//, /^\/yq\//],
       },
       manifest: {
-        name: 'AFD OS — personal mission control',
-        short_name: 'AFD OS',
-        description: 'Personal OS — finance, fitness & calorie tracking',
+        name: 'Baseline — personal dashboard',
+        short_name: 'Baseline',
+        description: 'Health, fitness, nutrition, and finance in one personal dashboard',
         theme_color: '#04060C',
         background_color: '#04060C',
         display: 'standalone',
@@ -172,6 +173,6 @@ export default defineConfig(({ mode }) => {
         ],
       },
     }),
-  ],
+  ].filter(Boolean),
   }
 })

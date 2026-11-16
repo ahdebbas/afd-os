@@ -119,7 +119,7 @@ export default function DesktopApp({
             <CommandIcon size={17} strokeWidth={2.4} />
           </span>
           <div className="leading-tight">
-            <div className="text-[14px] font-semibold d-t1">AFD OS</div>
+            <div className="text-[14px] font-semibold d-t1">Baseline</div>
             <div className="text-[11px] d-t3">Personal dashboard</div>
           </div>
         </div>

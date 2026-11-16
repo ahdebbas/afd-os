@@ -1,6 +1,7 @@
 // Client-side WHOOP helpers. The browser only ever holds the Supabase session
 // token; all WHOOP secrets live server-side in the /api/whoop/* functions.
 import { supabase } from './supabase'
+import { apiUrl } from './api'
 
 // Client refresh cadence for WHOOP surfaces while the app stays open.
 export const WHOOP_POLL_MS = 5 * 60 * 1000
@@ -86,15 +87,15 @@ async function cachedGet(key, url) {
   return c.inflight
 }
 
-export const fetchWhoopCalories = () => cachedGet('intraday', '/api/whoop/intraday')
+export const fetchWhoopCalories = () => cachedGet('intraday', apiUrl('/api/whoop/intraday'))
 
 // { connected, cycles: [{ date, kcal, partial }] } — per-day total burn.
-export const fetchWhoopCycles = () => cachedGet('cycles', '/api/whoop/cycles')
+export const fetchWhoopCycles = () => cachedGet('cycles', apiUrl('/api/whoop/cycles'))
 
 export async function disconnectWhoop() {
   const t = await accessToken()
   if (!t) return
-  const response = await fetch('/api/whoop/disconnect', { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
+  const response = await fetch(apiUrl('/api/whoop/disconnect'), { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
   if (!response.ok) throw new Error('Could not disconnect WHOOP')
   clearWhoopCache()
 }

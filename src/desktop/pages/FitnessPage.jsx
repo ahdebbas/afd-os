@@ -16,6 +16,7 @@ import { dateKey } from '../../dates'
 import { useFood } from '../../store'
 import { useOs } from '../../os'
 import { connectWhoop, fetchWhoopCycles, WHOOP_POLL_MS } from '../../whoop'
+import { isNativeApp } from '../../platform'
 import { Card, Segmented, Button, Badge, Ring, LineChart, NumberFlow, Stat } from '../primitives'
 
 const METRICS = [
@@ -48,8 +49,9 @@ function WeightCell({ weight, onCommit }) {
 }
 
 export default function FitnessPage() {
-  const os = useOs()
   const [{ goals }] = useHomeGoals()
+  const nativeApp = isNativeApp()
+  const os = useOs()
   const { logs: foodLogs } = useFood()
   const [sessions, setSessions] = usePersistentState('afd-sessions', [], Array.isArray)
   const [inbody] = useInbodyReadings()
@@ -220,8 +222,8 @@ export default function FitnessPage() {
       <Card eyebrow="WHOOP · 7 days" title="Energy balance">
         {!energy ? (
           <div className="flex items-center justify-between gap-4">
-            <p className="text-[13px] d-t3">Connect WHOOP and log food days to build the energy model.</p>
-            <Button size="sm" variant="primary" onClick={connectWhoop}>Connect WHOOP</Button>
+            <p className="text-[13px] d-t3">{nativeApp ? 'WHOOP data and logged food days build the energy model.' : 'Connect WHOOP and log food days to build the energy model.'}</p>
+            {!nativeApp && <Button size="sm" variant="primary" onClick={connectWhoop}>Connect WHOOP</Button>}
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-4">

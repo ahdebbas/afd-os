@@ -98,7 +98,7 @@ function AuthScreen() {
         <div className="w-12 h-12 rounded-2xl acc-chip flex items-center justify-center mb-5">
           <Shield size={22} strokeWidth={2.5} />
         </div>
-        <h1 className="display text-[42px] leading-none font-bold t1">AFD OS</h1>
+        <h1 className="display text-[42px] leading-none font-bold t1">Baseline</h1>
         <p className="text-sm t2 mt-2 leading-relaxed">Sign in to sync food, training, finance, and settings with Supabase.</p>
 
         <form onSubmit={submit} className="mt-6 space-y-3">

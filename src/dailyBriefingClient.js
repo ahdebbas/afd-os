@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { apiUrl } from './api'
 
 const CACHE_KEY = 'afd-daily-briefing'
 const COOLDOWN_MS = 2 * 60 * 60 * 1000
@@ -25,7 +26,7 @@ export async function requestDailyBriefing(context, { force = false } = {}) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('Not authenticated')
-  const response = await fetch('/api/ai/daily-briefing', {
+  const response = await fetch(apiUrl('/api/ai/daily-briefing'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ context }),

@@ -1,8 +1,10 @@
 // Returns the current WHOOP cycle's calories burned for the logged-in user.
 // { connected:false } if they haven't linked WHOOP yet.
 import { userIdFromToken, validAccessToken, fetchTodayCalories, saveSample } from '../../lib/whoop.js'
+import { handleNativeCors } from '../../lib/cors.js'
 
 export default async function handler(req, res) {
+  if (handleNativeCors(req, res, 'GET')) return
   try {
     const auth = req.headers.authorization || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : req.query.t

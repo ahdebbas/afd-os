@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Baseline / Home design lab</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.8);
+      --cp-panel: rgba(41, 41, 41, 0.86);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    :root, html[data-theme="dark"] {
+      --cp-accent: var(--cp-text);
+      --cp-accent-hover: var(--cp-text-soft);
+      --cp-accent-soft: color-mix(in srgb, var(--cp-text) 8%, transparent);
+      --cp-accent-fg: var(--cp-surface);
+      --cp-highlight: var(--cp-accent-soft);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 14px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+    button, input { font: inherit; }
+    button { cursor: pointer; color: inherit; }
+    button, input { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 4px; }
+    button { touch-action: manipulation; }
+    [hidden] { display: none !important; }
+    svg { display: block; flex-shrink: 0; }
+    h1, h2, h3, p { margin: 0; }
+    .mono, .eyebrow { font-family: Consolas, "Courier New", Courier, monospace; }
+    .eyebrow { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--cp-text-muted); }
+    .number { font-variant-numeric: tabular-nums; letter-spacing: -.055em; font-weight: 500; line-height: 1; }
+    .muted { color: var(--cp-text-muted); }
+    .accent { color: var(--cp-accent); }
+    .icon { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .lab { max-width: 1320px; margin: auto; padding: 28px 32px 40px; }
+    .lab-header { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding-bottom: 26px; }
+    .lab-brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 30px; height: 30px; color: var(--cp-accent); }
+    .lab-title { font-weight: 600; font-size: 15px; letter-spacing: -.02em; }
+    .lab-subtitle { color: var(--cp-text-muted); font-size: 11px; margin-top: 2px; }
+    .safe-badge { display: flex; gap: 7px; align-items: center; font-size: 11px; color: var(--cp-text-muted); }
+    .safe-badge .icon { width: 14px; height: 14px; }
+    .workspace { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 36px; align-items: start; }
+    .sidebar { padding-top: 12px; }
+    .sidebar h1 { font-size: 28px; letter-spacing: -.045em; font-weight: 500; line-height: 1.15; margin: 10px 0; }
+    .sidebar-intro { font-size: 12px; color: var(--cp-text-muted); max-width: 210px; margin-bottom: 26px; }
+    .concept-options { display: grid; gap: 8px; }
+    .concept-option { width: 100%; padding: 16px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); text-align: left; transition: border-color .18s, background .18s; }
+    .concept-option[aria-pressed="true"] { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+    .concept-number { display: inline-block; font-size: 10px; color: var(--cp-text-muted); margin-right: 8px; }
+    .concept-option[aria-pressed="true"] .concept-number { color: var(--cp-accent); }
+    .concept-name { font-size: 14px; font-weight: 600; }
+    .concept-description { display: block; color: var(--cp-text-muted); font-size: 11px; margin: 5px 0 0 25px; }
+    .sidebar-note { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--cp-border); }
+    .sidebar-note h2 { font-weight: 600; font-size: 12px; margin-bottom: 7px; }
+    .sidebar-note p { font-size: 12px; color: var(--cp-text-muted); line-height: 1.7; }
+    .demo-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .small-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 11px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); font-size: 11px; min-height: 36px; }
+    .small-button:hover { border-color: var(--cp-border-strong); }
+    .small-button .icon { width: 14px; height: 14px; }
+    .stage-wrap { min-width: 0; }
+    .stage-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .toolbar-actions { display: flex; align-items: center; gap: 10px; }
+    .view-switch { display: flex; padding: 3px; border: 1px solid var(--cp-border); border-radius: 10px; }
+    .view-switch button { border: 0; background: transparent; border-radius: 7px; padding: 6px 10px; color: var(--cp-text-muted); font-size: 11px; }
+    .view-switch button[aria-pressed="true"] { background: var(--cp-surface); color: var(--cp-text); }
+    .icon-button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); }
+    .stage { min-height: 820px; display: flex; align-items: start; justify-content: center; padding: 32px; border: 1px solid var(--cp-border); border-radius: 16px; background-color: var(--cp-bg-elevated); background-image: linear-gradient(color-mix(in srgb, var(--cp-border) 28%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--cp-border) 28%, transparent) 1px, transparent 1px); background-size: 32px 32px; }
+    .device { width: 100%; max-width: 414px; min-width: 0; background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; overflow: hidden; transition: max-width .3s ease; }
+    .stage[data-view="wide"] .device { max-width: 100%; }
+    .app-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 0; }
+    .app-wordmark { display: flex; gap: 8px; align-items: center; letter-spacing: .16em; font-weight: 600; font-size: 10px; }
+    .app-wordmark .brand-mark { width: 20px; height: 20px; }
+    .app-header .icon-button { width: 32px; height: 32px; border-color: transparent; background: transparent; color: var(--cp-text-muted); }
+    .app-date { padding: 10px 24px 0; font-size: 9px; color: var(--cp-text-muted); letter-spacing: .12em; }
+    .concept { padding: 28px 24px 20px; }
+    .intro { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .goal-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 9px; margin-left: -9px; border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; }
+    .goal-switch:hover, .goal-switch[aria-expanded="true"] { border-color: var(--cp-border); background: var(--cp-bg-elevated); }
+    .goal-switch .icon { width: 13px; height: 13px; color: var(--cp-text-muted); }
+    .location { border: 1px solid var(--cp-border); background: transparent; border-radius: 7px; padding: 5px 8px; font-size: 10px; display: flex; align-items: center; gap: 5px; color: var(--cp-text-muted); }
+    .location .icon { width: 11px; height: 11px; }
+    .headline { font-size: 44px; font-weight: 400; line-height: 1.02; letter-spacing: -.065em; }
+    .headline .soft { color: var(--cp-text-muted); }
+    .portfolio-signal { padding-bottom: 20px; margin-bottom: 16px; border-bottom: 1px solid var(--cp-border); }
+    .portfolio-signal h2 { margin-top: 10px; font-size: 23px; font-weight: 400; letter-spacing: -.035em; line-height: 1.25; }
+    .portfolio-link { display: flex; align-items: start; gap: 14px; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; font: inherit; }
+    .portfolio-link > span { flex: 1; }
+    .portfolio-link .icon { width: 16px; height: 16px; margin-top: 6px; color: var(--cp-text-muted); }
+    .portfolio-link:hover .icon { color: var(--cp-text); }
+    .portfolio-holdings { display: grid; gap: 16px; margin: 24px 0; }
+    .holding-labels { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; }
+    .holding-labels span:last-child { color: var(--cp-text-muted); font-variant-numeric: tabular-nums; }
+    .portfolio-holdings .bar { margin-top: 8px; }
+    .portfolio-holdings > div + div .bar span { background: var(--cp-border-strong); }
+    .orbit-wrap { position: relative; height: 278px; max-width: 300px; margin: 12px auto 8px; display: grid; place-items: center; }
+    .orbit { width: 278px; height: 278px; overflow: visible; }
+    .orbit-progress { transition: stroke-dashoffset .7s ease; }
+    .orbit-copy { position: absolute; text-align: center; }
+    .orbit-label { margin-bottom: 10px; font-size: 9px; letter-spacing: .18em; }
+    .orbit-value { font-size: 62px; }
+    .orbit-value[data-goal="cash"] { font-size: 44px; }
+    .orbit-value[data-goal="cash"].long-value { font-size: 30px; }
+    .orbit-value .unit { font-size: 26px; letter-spacing: -.03em; color: var(--cp-text-muted); }
+    .orbit-target { margin-top: 12px; font-size: 11px; color: var(--cp-text-muted); }
+    .orbit-target strong { color: var(--cp-text); font-weight: 500; }
+    .distance-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: -8px; padding-bottom: 22px; font-size: 11px; color: var(--cp-text-muted); }
+    .distance-row strong { font-weight: 500; color: var(--cp-accent); }
+    .goal-progress-note { text-align: center; font-size: 9px; color: var(--cp-text-muted); margin: -14px 0 20px; }
+    .mini-goals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mini-goal { padding: 14px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-surface); }
+    .mini-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10px; color: var(--cp-text-muted); margin-bottom: 12px; }
+    .mini-heading .icon { width: 14px; height: 14px; }
+    .mini-number { font-size: 27px; }
+    .mini-number small { font-size: 13px; color: var(--cp-text-muted); letter-spacing: -.02em; }
+    .mini-caption { margin-top: 7px; color: var(--cp-text-muted); font-size: 10px; }
+    .segments { display: flex; gap: 4px; margin-top: 14px; }
+    .segment { flex: 1; height: 3px; background: var(--cp-border); border-radius: 2px; }
+    .segment.done { background: var(--cp-accent); }
+    .bar { height: 3px; background: var(--cp-border); border-radius: 2px; margin-top: 14px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: var(--cp-accent); transform-origin: left; transition: transform .5s ease; }
+    .whisper { width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; margin: 18px 0; padding: 0; background: transparent; border: 0; font-size: 11px; color: var(--cp-text-muted); }
+    .whisper .icon { color: var(--cp-accent); width: 14px; height: 14px; }
+    .whisper:hover { color: var(--cp-text); }
+    .primary { width: 100%; min-height: 48px; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--cp-accent); border-radius: 10px; background: var(--cp-accent); color: var(--cp-accent-fg); font-size: 13px; font-weight: 600; }
+    .primary:hover { background: var(--cp-accent-hover); border-color: var(--cp-accent-hover); }
+    .primary:disabled { cursor: default; opacity: .65; }
+    .primary .icon { width: 17px; height: 17px; }
+    .secondary { min-height: 42px; padding: 10px 14px; background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 10px; font-size: 12px; }
+    .app-footer { margin: 20px 24px 0; padding: 14px 0 18px; display: flex; justify-content: space-between; border-top: 1px solid var(--cp-border); }
+    .footer-button { padding: 4px 0; display: flex; gap: 6px; align-items: center; border: 0; background: transparent; color: var(--cp-text-muted); font-size: 10px; min-height: 28px; }
+    .footer-button .icon { width: 13px; height: 13px; }
+    .footer-button:hover { color: var(--cp-accent); }
+    .focus-intro { margin-bottom: 30px; }
+    .focus-card { position: relative; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); border-radius: 16px; padding: 24px 20px 20px; margin: 0 0 20px; }
+    .focus-card::before, .focus-card::after { content: ""; position: absolute; width: 16px; height: 16px; pointer-events: none; }
+    .focus-card::before { left: -1px; top: -1px; border-top: 1px solid var(--cp-accent); border-left: 1px solid var(--cp-accent); border-radius: 16px 0 0; }
+    .focus-card::after { right: -1px; bottom: -1px; border-bottom: 1px solid var(--cp-accent); border-right: 1px solid var(--cp-accent); border-radius: 0 0 16px; }
+    .focus-glyph { width: 64px; height: 64px; color: var(--cp-accent); margin: 26px 0; }
+    .focus-title { font-size: 34px; font-weight: 400; letter-spacing: -.055em; line-height: 1.1; max-width: 260px; }
+    .focus-context { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 18px 0 22px; font-size: 11px; color: var(--cp-text-muted); }
+    .focus-context strong { color: var(--cp-text); font-weight: 500; }
+    .focus-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 4px 0 20px; }
+    .focus-strip .mini-number { font-size: 21px; margin-top: 8px; }
+    .focus-strip > div + div { border-left: 1px solid var(--cp-border); padding-left: 20px; }
+    .ask-entry { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; border: 1px solid var(--cp-border); border-radius: 10px; background: transparent; color: var(--cp-text-muted); font-size: 12px; text-align: left; }
+    .ask-entry .icon { width: 15px; height: 15px; color: var(--cp-accent); }
+    .map-intro { margin-bottom: 28px; }
+    .goal-lanes { display: grid; gap: 12px; }
+    .goal-lane { width: 100%; border: 1px solid var(--cp-border); border-radius: 10px; padding: 17px 16px; background: transparent; text-align: left; }
+    .goal-lane:hover { background: var(--cp-bg-elevated); }
+    .lane-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .lane-title { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--cp-text-muted); }
+    .lane-title .icon { width: 15px; height: 15px; }
+    .lane-number { font-size: 28px; }
+    .lane-number small { color: var(--cp-text-muted); font-size: 13px; letter-spacing: -.02em; }
+    .lane-bottom { display: flex; justify-content: space-between; gap: 8px; color: var(--cp-text-muted); font-size: 10px; margin-top: 12px; }
+    .lane-bottom span:last-child { color: var(--cp-accent); }
+    .trajectory-track { height: 20px; width: 100%; }
+    .map-next { border-top: 1px solid var(--cp-border); padding-top: 20px; margin-top: 22px; }
+    .map-next-label { margin-bottom: 12px; }
+    .map-next .whisper { margin-top: 0; }
+    .stage-caption { text-align: center; margin: 14px auto 0; max-width: 520px; font-size: 11px; color: var(--cp-text-muted); }
+    .stage[data-view="wide"] .concept { padding: 36px; }
+    .stage[data-view="wide"] .trajectory-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+    .stage[data-view="wide"] .trajectory-layout .orbit-wrap { margin-top: 20px; }
+    .stage[data-view="wide"] .headline { font-size: 52px; }
+    .stage[data-view="wide"] .trajectory-support { padding-top: 20px; }
+    .stage[data-view="wide"] .mini-goals { grid-template-columns: 1fr; }
+    .stage[data-view="wide"] .focus-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: center; }
+    .stage[data-view="wide"] .focus-card { margin-bottom: 0; }
+    .stage[data-view="wide"] .focus-strip { grid-template-columns: 1fr; }
+    .stage[data-view="wide"] .focus-strip > div + div { border-left: 0; border-top: 1px solid var(--cp-border); padding: 20px 0 0; }
+    .stage[data-view="wide"] .goal-lanes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .stage[data-view="wide"] .lane-top { align-items: start; flex-direction: column; }
+    .stage[data-view="wide"] .lane-bottom { flex-direction: column; }
+    .stage[data-view="wide"] .map-next { max-width: 360px; margin-left: auto; }
+    .stage[data-view="wide"] .device { min-height: 680px; display: flex; flex-direction: column; }
+    .stage[data-view="wide"] .app-footer { margin-top: auto; }
+    dialog { width: min(420px, calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 24px; border: 1px solid var(--cp-border-strong); border-radius: 16px; color: var(--cp-text); background: var(--cp-surface); box-shadow: var(--cp-shadow); }
+    dialog::backdrop { background: var(--cp-overlay); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .dialog-head h2 { font-size: 22px; font-weight: 500; letter-spacing: -.04em; }
+    .dialog-copy { font-size: 12px; color: var(--cp-text-muted); line-height: 1.7; }
+    .goal-form { display: grid; gap: 16px; margin-top: 20px; }
+    .goal-form label { display: block; font-size: 11px; color: var(--cp-text-muted); }
+    .goal-form input { display: block; width: 100%; margin-top: 7px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); color: var(--cp-text); padding: 11px 12px; font-variant-numeric: tabular-nums; }
+    .dialog-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .dialog-buttons .primary { min-height: 42px; justify-content: center; font-size: 12px; }
+    .form-error { color: var(--cp-danger); font-size: 12px; }
+    .workout-summary { display: flex; align-items: center; gap: 14px; margin: 24px 0; padding: 18px; border: 1px solid var(--cp-border); border-radius: 10px; }
+    .workout-summary .icon { width: 30px; height: 30px; color: var(--cp-accent); }
+    .workout-summary strong { display: block; font-size: 15px; font-weight: 500; }
+    .workout-summary span { color: var(--cp-text-muted); font-size: 11px; }
+    .question-options { display: grid; gap: 8px; margin: 18px 0; }
+    .question-options button { width: 100%; padding: 12px; text-align: left; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); border-radius: 10px; font-size: 12px; }
+    .question-options button:hover { border-color: var(--cp-accent); }
+    .goal-options { display: grid; gap: 10px; margin: 20px 0; }
+    .goal-option { display: flex; align-items: center; gap: 12px; padding: 16px; width: 100%; border: 1px solid var(--cp-border); border-radius: 10px; background: transparent; text-align: left; }
+    .goal-option[aria-pressed="true"] { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+    .goal-option > .icon { color: var(--cp-text-muted); }
+    .goal-option-copy { flex: 1; min-width: 0; }
+    .goal-option-copy strong { display: block; font-size: 13px; font-weight: 500; }
+    .goal-option-copy small { display: block; font-size: 11px; color: var(--cp-text-muted); margin-top: 4px; }
+    .goal-option .selected-goal { width: 15px; height: 15px; visibility: hidden; }
+    .goal-option[aria-pressed="true"] .selected-goal { visibility: visible; }
+    .answer { border-left: 2px solid var(--cp-accent); padding-left: 14px; font-size: 14px; line-height: 1.7; margin: 18px 0 8px; }
+    .ai-disclosure { color: var(--cp-text-muted); font-size: 10px; margin-top: 16px; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100% - 32px); width: max-content; background: var(--cp-surface); border: 1px solid var(--cp-border-strong); border-radius: 10px; padding: 12px 18px; font-size: 12px; box-shadow: var(--cp-shadow); z-index: 20; pointer-events: none; }
+    @media (min-width: 1500px) { .lab { padding-top: 40px; } }
+    @media (max-width: 1000px) {
+      .lab { padding: 20px; }
+      .workspace { grid-template-columns: 200px minmax(0, 1fr); gap: 24px; }
+      .stage { padding: 20px; }
+      .stage[data-view="wide"] .trajectory-layout, .stage[data-view="wide"] .focus-layout { grid-template-columns: 1fr; }
+      .stage[data-view="wide"] .mini-goals { grid-template-columns: 1fr 1fr; }
+      .stage[data-view="wide"] .goal-lanes { grid-template-columns: 1fr; }
+      .stage[data-view="wide"] .lane-top { flex-direction: row; align-items: center; }
+      .stage[data-view="wide"] .lane-bottom { flex-direction: row; }
+      .stage[data-view="wide"] .concept { padding: 24px; }
+      .stage[data-view="wide"] .map-next { max-width: none; }
+    }
+    @media (max-width: 700px) {
+      .lab { padding: 16px 12px 24px; }
+      .lab-header { padding: 0 4px 18px; }
+      .safe-badge span { display: none; }
+      .workspace { display: block; }
+      .sidebar { padding: 0; }
+      .sidebar > .eyebrow, .sidebar h1, .sidebar-intro { display: none; }
+      .concept-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+      .concept-option { padding: 11px 8px; text-align: center; }
+      .concept-name { font-size: 11px; }
+      .concept-number { display: block; margin: 0 0 3px; font-size: 9px; }
+      .concept-description { display: none; }
+      .sidebar-note { margin-top: 14px; padding: 0 4px; border: 0; }
+      .sidebar-note h2 { font-size: 12px; }
+      .sidebar-note p { font-size: 11px; }
+      .demo-tools { position: static; margin: 12px 0 16px; }
+      .demo-tools .small-button { flex: 1; }
+      .stage-toolbar { padding: 0 4px; }
+      .stage-toolbar > .eyebrow { font-size: 9px; }
+      .view-switch { display: none; }
+      .stage { padding: 0; border: 0; border-radius: 0; background: transparent; min-height: auto; }
+      .device { max-width: 414px; }
+      .app-header { padding: 20px 20px 0; }
+      .app-date { padding-left: 20px; }
+      .concept { padding: 24px 20px 16px; }
+      .headline { font-size: 42px; }
+      .orbit-wrap { height: 254px; }
+      .orbit { width: 254px; height: 254px; }
+      .orbit-value { font-size: 56px; }
+      .app-footer { margin: 16px 20px 0; }
+      .stage[data-view="wide"] .headline { font-size: 42px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <defs>
+      <symbol id="i-brand" viewBox="0 0 32 32"><path d="M16 2 29 9.5v13L16 30 3 22.5v-13Z" fill="none" stroke="currentColor"/><path d="M9 20.5V11l7-4 7 4v9.5L16 25Z" fill="none" stroke="currentColor"/><path d="m9 11 7 4 7-4M16 15v10" fill="none" stroke="currentColor"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m12 12 8-8m-3 0h3v3"/></symbol>
+      <symbol id="i-lift" viewBox="0 0 24 24"><path d="m4 8 4-4m8 16 4-4M3 5l4 4m10 6 4 4M8 7l9 10m-11-7 4-4m4 12 4-4"/></symbol>
+      <symbol id="i-protein" viewBox="0 0 24 24"><path d="m12 3 8 5v8l-8 5-8-5V8Z"/><path d="m4 8 8 5 8-5m-8 5v8"/></symbol>
+      <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M20 8H5a2 2 0 0 1 0-4h13v4M3 6v13a2 2 0 0 0 2 2h15V8"/><path d="M20 12h-6v5h6m-3-2.5h.01"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></symbol>
+      <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 9a8 8 0 1 1 0 6m0-11v5h5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    </defs>
+  </svg>
+
+  <main class="lab">
+    <header class="lab-header">
+      <div class="lab-brand">
+        <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+        <div><div class="lab-title">Baseline / Home experiments</div><div class="lab-subtitle">Three directions. Nothing committed.</div></div>
+      </div>
+      <div class="safe-badge"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Isolated preview &middot; demo data only</span></div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Prototype controls">
+        <div class="eyebrow">Design study / 01</div>
+        <h1>Home<br>design lab.</h1>
+        <p class="sidebar-intro">Find a Home you would actually want to open.</p>
+        <div class="concept-options" role="group" aria-label="Choose a Home concept">
+          <button class="concept-option" type="button" data-concept="trajectory" aria-pressed="true" aria-controls="concept-trajectory"><span class="concept-number mono">01</span><span class="concept-name">Trajectory</span><span class="concept-description">See the gap getting smaller.</span></button>
+          <button class="concept-option" type="button" data-concept="next-move" aria-pressed="false" aria-controls="concept-next-move"><span class="concept-number mono">02</span><span class="concept-name">Next move</span><span class="concept-description">One useful thing. Not a dashboard.</span></button>
+          <button class="concept-option" type="button" data-concept="balance" aria-pressed="false" aria-controls="concept-balance"><span class="concept-number mono">03</span><span class="concept-name">In balance</span><span class="concept-description">Health and money, in perspective.</span></button>
+        </div>
+        <div class="sidebar-note">
+          <h2 id="concept-summary-title">One primary goal.</h2>
+          <p id="concept-summary">A portfolio signal, one pinned goal, and two secondary metrics. Use the small goal picker to change focus.</p>
+        </div>
+        <div class="demo-tools">
+          <button class="small-button" type="button" data-action="check-in"><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg>Try progress</button>
+          <button class="small-button" type="button" data-action="reset"><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg>Reset demo</button>
+        </div>
+      </aside>
+
+      <section class="stage-wrap" aria-label="Home concept preview">
+        <div class="stage-toolbar">
+          <span class="eyebrow" id="preview-label">01 / Trajectory</span>
+          <div class="toolbar-actions">
+            <div class="view-switch" role="group" aria-label="Preview width">
+              <button type="button" data-view="phone" aria-pressed="true">Phone</button>
+              <button type="button" data-view="wide" aria-pressed="false">Wide</button>
+            </div>
+            <button class="icon-button" id="theme-button" type="button" aria-label="Switch color theme"><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+          </div>
+        </div>
+
+        <div class="stage" id="stage" data-view="phone">
+          <div class="device">
+            <header class="app-header">
+              <div class="app-wordmark"><svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>BASELINE</div>
+              <button type="button" class="icon-button" data-action="goals" aria-label="Edit demo goals"><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg></button>
+            </header>
+            <div class="app-date mono">SUNDAY, 25 OCT &nbsp;/&nbsp; DEMO</div>
+
+            <section class="concept" id="concept-trajectory" aria-label="Trajectory concept">
+              <div class="trajectory-layout">
+                <div>
+                  <div class="portfolio-signal">
+                    <span class="eyebrow">Portfolio signal / demo</span>
+                    <h2><button type="button" class="portfolio-link" data-action="portfolio" aria-haspopup="dialog" aria-controls="portfolio-dialog"><span data-text="portfolioInsight">MSFT is 58% of your invested portfolio.</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></h2>
+                  </div>
+                  <div class="intro">
+                    <button type="button" class="goal-switch" id="main-goal-switch" data-action="pick-goal" aria-haspopup="dialog" aria-controls="main-goal-dialog" aria-expanded="false" aria-label="Choose main goal"><span class="eyebrow" data-text="heroLabel">Body fat</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+                    <button type="button" class="location" id="trajectory-gym" data-action="gym" aria-label="Switch demo gym"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span data-text="gym">Beirut</span></button>
+                  </div>
+                  <div class="orbit-wrap">
+                    <svg class="orbit" viewBox="0 0 300 300" aria-hidden="true">
+                      <circle cx="150" cy="150" r="133" fill="none" stroke="var(--cp-border)" stroke-width="1" stroke-dasharray="1 10"/>
+                      <path d="M9 150h10m262 0h10M150 9v10m0 262v10" fill="none" stroke="var(--cp-border-strong)" stroke-width="1"/>
+                      <circle cx="150" cy="150" r="112" fill="none" stroke="var(--cp-border)" stroke-width="1"/>
+                      <circle cx="150" cy="150" r="104" fill="none" stroke="var(--cp-border)" stroke-width="3"/>
+                      <circle class="orbit-progress" id="hero-ring" cx="150" cy="150" r="104" fill="none" stroke="var(--cp-accent)" stroke-width="3" pathLength="100" stroke-dasharray="100" stroke-dashoffset="33" transform="rotate(-90 150 150)"/>
+                      <circle id="hero-dot" cx="59" cy="201" r="5" fill="var(--cp-accent)" stroke="var(--cp-surface)" stroke-width="3"/>
+                    </svg>
+                    <div class="orbit-copy">
+                      <div class="orbit-label eyebrow" data-text="heroLabel">Body fat</div>
+                      <div class="orbit-value number" id="hero-value" data-goal="body"><span data-text="heroValue">16.3</span><span class="unit" data-text="heroUnit">%</span></div>
+                      <div class="orbit-target"><span data-text="heroTargetLabel">Target</span> <strong data-text="heroTarget">13.5%</strong></div>
+                    </div>
+                  </div>
+                  <div class="distance-row"><strong data-text="heroGap">2.8 pts to go</strong><span>&middot;</span><span data-text="heroDetail">5.7 pts down</span></div>
+                  <p class="goal-progress-note" data-text="heroProgressNote">Progress from your first demo check-in</p>
+                </div>
+                <div class="trajectory-support">
+                  <div class="mini-goals">
+                    <div class="mini-goal" id="training-mini">
+                      <div class="mini-heading"><span>Training</span><svg class="icon" aria-hidden="true"><use href="#i-lift"/></svg></div>
+                      <div class="mini-number number"><span data-text="workouts">3</span><small> / <span data-text="workoutTarget">4</span></small></div>
+                      <div class="mini-caption">sessions this week</div>
+                      <div class="segments" data-segments="training" aria-hidden="true"></div>
+                    </div>
+                    <div class="mini-goal" id="body-mini" hidden>
+                      <div class="mini-heading"><span>Body fat</span><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg></div>
+                      <div class="mini-number number"><span data-text="bodyCurrent">16.3</span><small>%</small></div>
+                      <div class="mini-caption" data-text="bodyGap">2.8 pts to go</div>
+                      <div class="bar" aria-hidden="true"><span data-bar="body"></span></div>
+                    </div>
+                    <div class="mini-goal">
+                      <div class="mini-heading"><span>Protein</span><svg class="icon" aria-hidden="true"><use href="#i-protein"/></svg></div>
+                      <div class="mini-number number"><span data-text="proteinLeft">44</span><small>g</small></div>
+                      <div class="mini-caption" data-text="proteinCaption">left today</div>
+                      <div class="bar" aria-hidden="true"><span data-bar="protein"></span></div>
+                    </div>
+                  </div>
+                  <button type="button" class="whisper" data-action="insight" aria-label="Explain this demo insight"><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg><span data-text="heroInsight">One more session closes your training week.</span></button>
+                  <button type="button" class="primary" data-action="trajectory-next"><span data-text="heroAction">Start Beirut Day B</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                </div>
+              </div>
+            </section>
+
+            <section class="concept" id="concept-next-move" aria-label="Next move concept" hidden>
+              <div class="intro"><span class="eyebrow">Today, simplified</span><button type="button" class="location" data-action="gym" aria-label="Switch demo gym"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span data-text="gym">Beirut</span></button></div>
+              <h2 class="headline focus-intro">One thing.<br><span class="soft">Then done.</span></h2>
+              <div class="focus-layout">
+                <div class="focus-card">
+                  <div class="eyebrow accent">Your next move</div>
+                  <svg class="focus-glyph" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 3 58 18v28L32 61 6 46V18Z" fill="none" stroke="currentColor" stroke-width="1"/><path d="M32 14 48 23v18L32 50 16 41V23Z" fill="none" stroke="currentColor" stroke-width="1"/><path d="m24 32 6 6 12-13" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                  <h3 class="focus-title" data-text="focusTitle">Close your training week.</h3>
+                  <div class="focus-context"><strong data-text="focusContext">Beirut Day B</strong><span data-text="focusCount">3 of 4 complete</span></div>
+                  <button type="button" class="primary" data-action="next"><span data-text="focusAction">Start workout</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                </div>
+                <div>
+                  <div class="focus-strip">
+                    <div><div class="eyebrow">Body-fat goal</div><div class="mini-number number" data-text="bodyGap">2.8 pts to go</div><div class="mini-caption">one check-in at a time</div></div>
+                    <div><div class="eyebrow">Protein today</div><div class="mini-number number"><span data-text="proteinLeft">44</span><small>g left</small></div><div class="mini-caption">based on demo meals</div></div>
+                  </div>
+                  <button type="button" class="ask-entry" data-action="ask"><span>Ask about my goals</span><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg></button>
+                </div>
+              </div>
+            </section>
+
+            <section class="concept" id="concept-balance" aria-label="In balance concept" hidden>
+              <div class="intro"><span class="eyebrow">Three goals. One direction.</span></div>
+              <h2 class="headline map-intro">In balance.<br><span class="soft">In motion.</span></h2>
+              <div class="goal-lanes">
+                <button type="button" class="goal-lane" data-action="goals" aria-label="Edit body-fat demo goal">
+                  <div class="lane-top"><span class="lane-title"><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg>Body fat</span><span class="lane-number number"><span data-text="bodyCurrent">16.3</span><small>%</small></span></div>
+                  <svg class="trajectory-track" viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10h300" stroke="var(--cp-border)" fill="none"/><path id="body-lane-progress" d="M0 10h201" stroke="var(--cp-accent)" fill="none"/><circle id="body-lane-dot" cx="201" cy="10" r="3" fill="var(--cp-accent)"/><path d="M299 5v10" stroke="var(--cp-border-strong)" fill="none"/></svg>
+                  <div class="lane-bottom"><span>Target <span data-text="bodyTarget">13.5</span>%</span><span data-text="bodyGap">2.8 pts to go</span></div>
+                </button>
+                <button type="button" class="goal-lane" data-action="goals" aria-label="Edit training demo goal">
+                  <div class="lane-top"><span class="lane-title"><svg class="icon" aria-hidden="true"><use href="#i-lift"/></svg>Training</span><span class="lane-number number"><span data-text="workouts">3</span><small> / <span data-text="workoutTarget">4</span></small></span></div>
+                  <div class="segments" data-segments="training" aria-hidden="true"></div>
+                  <div class="lane-bottom"><span>This week</span><span data-text="workoutGap">1 session to go</span></div>
+                </button>
+                <button type="button" class="goal-lane" data-action="goals" aria-label="Edit cash-buffer demo goal">
+                  <div class="lane-top"><span class="lane-title"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>Cash buffer</span><span class="lane-number number" data-text="cashCurrent">$8,200</span></div>
+                  <div class="bar" aria-hidden="true"><span data-bar="cash"></span></div>
+                  <div class="lane-bottom"><span>Target <span data-text="cashTarget">$10,000</span></span><span data-text="cashGap">$1,800 to go</span></div>
+                </button>
+              </div>
+              <div class="map-next">
+                <div class="eyebrow map-next-label">The next small win</div>
+                <button type="button" class="whisper" data-action="insight" aria-label="Explain this demo insight"><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg><span data-text="insight">One more session closes your training week.</span></button>
+                <button type="button" class="primary" data-action="next"><span data-text="primaryLabel">Start Beirut Day B</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+              </div>
+            </section>
+
+            <footer class="app-footer">
+              <button type="button" class="footer-button" data-action="goals"><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg>My goals</button>
+              <button type="button" class="footer-button" data-action="protein"><svg class="icon" aria-hidden="true"><use href="#i-protein"/></svg>Log protein</button>
+              <button type="button" class="footer-button" data-action="ask"><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg>Ask Baseline</button>
+            </footer>
+          </div>
+        </div>
+        <p class="stage-caption">All values are illustrative. Goals and actions affect this preview only.<br>Your real Home, workout history, and saved data are unchanged.</p>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="main-goal-dialog" aria-labelledby="main-goal-title">
+    <div class="dialog-head"><h2 id="main-goal-title">Main goal</h2><button type="button" class="icon-button" data-close aria-label="Close main-goal picker"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p class="dialog-copy">One main goal at a time. It stays in focus until you change it.</p>
+    <div class="goal-options" role="group" aria-label="Main goal">
+      <button type="button" class="goal-option" data-pick-goal="body" aria-pressed="true">
+        <svg class="icon" aria-hidden="true"><use href="#i-target"/></svg><span class="goal-option-copy"><strong>Body fat</strong><small><span data-text="bodyCurrent">16.3</span>% &rarr; <span data-text="bodyTarget">13.5</span>%</small></span><svg class="icon selected-goal" aria-hidden="true"><use href="#i-check"/></svg>
+      </button>
+      <button type="button" class="goal-option" data-pick-goal="training" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-lift"/></svg><span class="goal-option-copy"><strong>Training</strong><small><span data-text="workouts">3</span> of <span data-text="workoutTarget">4</span> sessions this week</small></span><svg class="icon selected-goal" aria-hidden="true"><use href="#i-check"/></svg>
+      </button>
+      <button type="button" class="goal-option" data-pick-goal="cash" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><span class="goal-option-copy"><strong>Cash buffer</strong><small><span data-text="cashCurrent">$8,200</span> &rarr; <span data-text="cashTarget">$10,000</span></small></span><svg class="icon selected-goal" aria-hidden="true"><use href="#i-check"/></svg>
+      </button>
+    </div>
+    <p class="ai-disclosure">Demo goals only. This preview remembers the selected goal in its URL, not in your app settings.</p>
+  </dialog>
+
+  <dialog id="goals-dialog" aria-labelledby="goals-title">
+    <div class="dialog-head"><h2 id="goals-title">Goal targets</h2><button type="button" class="icon-button" data-close aria-label="Close goal editor"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <p class="dialog-copy">Try different targets and watch the concepts respond. Nothing here is saved to your app.</p>
+    <form id="goal-form" class="goal-form">
+      <label for="body-target">Body-fat target (%)<input id="body-target" name="bodyTarget" type="number" min="5" max="40" step="0.1" required></label>
+      <label for="workout-target">Sessions per week<input id="workout-target" name="workoutTarget" type="number" min="1" max="7" step="1" required></label>
+      <label for="protein-target">Daily protein (g)<input id="protein-target" name="proteinTarget" type="number" min="1" max="500" step="1" required></label>
+      <label for="cash-target">Cash buffer (USD)<input id="cash-target" name="cashTarget" type="number" min="1" max="10000000" step="1" required></label>
+      <p id="goal-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-buttons"><button type="button" class="secondary" data-close>Cancel</button><button type="submit" class="primary">Try these goals</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="workout-dialog" aria-labelledby="workout-title">
+    <div class="dialog-head"><h2 id="workout-title">Workout preview</h2><button type="button" class="icon-button" data-close aria-label="Close workout preview"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="eyebrow accent">Preview action / not a real workout log</div>
+    <div class="workout-summary"><svg class="icon" aria-hidden="true"><use href="#i-lift"/></svg><div><strong id="workout-name">Beirut Day B</strong><span id="workout-description">9 exercises &middot; glutes + back</span></div></div>
+    <p class="dialog-copy">In the real design, this would open your Fitness page. Here, you can preview how completing a session changes Home.</p>
+    <button type="button" class="primary" data-action="finish" style="margin-top:24px"><span>Simulate finishing a session</span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+  </dialog>
+
+  <dialog id="protein-dialog" aria-labelledby="protein-title">
+    <div class="dialog-head"><h2 id="protein-title">Food preview</h2><button type="button" class="icon-button" data-close aria-label="Close protein preview"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="eyebrow accent">Preview action / not a real food log</div>
+    <div class="workout-summary"><svg class="icon" aria-hidden="true"><use href="#i-protein"/></svg><div><strong>One protein-rich meal</strong><span>Illustrative entry &middot; 30g protein</span></div></div>
+    <p class="dialog-copy">Try adding a demo meal. Your actual food diary will not change.</p>
+    <button type="button" class="primary" data-action="add-protein" style="margin-top:24px"><span>Add 30g to the preview</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+  </dialog>
+
+  <dialog id="ask-dialog" aria-labelledby="ask-title">
+    <div class="dialog-head"><h2 id="ask-title">Goal insight</h2><button type="button" class="icon-button" data-close aria-label="Close AI preview"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="eyebrow accent">AI interaction concept</div>
+    <div class="question-options" role="group" aria-label="Demo questions">
+      <button type="button" data-question="focus">What should I focus on?</button>
+      <button type="button" data-question="distance">How far am I from my goals?</button>
+      <button type="button" data-question="why">Why this next action?</button>
+    </div>
+    <p class="answer" id="demo-answer" role="status"></p>
+    <p class="ai-disclosure">Simulated answers calculated from demo values, not a connected AI model. No data leaves this page.</p>
+  </dialog>
+
+  <dialog id="cash-dialog" aria-labelledby="cash-title">
+    <div class="dialog-head"><h2 id="cash-title">Cash preview</h2><button type="button" class="icon-button" data-close aria-label="Close cash preview"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="eyebrow accent">Preview action / no real transfer</div>
+    <p class="dialog-copy" style="margin-top:16px">Try a contribution to see your goal move closer. This will not change Cash or move any money.</p>
+    <form id="cash-form" class="goal-form">
+      <label for="cash-contribution">Demo contribution (USD)<input id="cash-contribution" name="contribution" type="number" min="1" max="10000000" step="1" value="400" required></label>
+      <p class="form-error" id="cash-error" role="alert" hidden></p>
+      <button type="submit" class="primary"><span>Add to the preview</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    </form>
+  </dialog>
+
+  <dialog id="portfolio-dialog" aria-labelledby="portfolio-title">
+    <div class="dialog-head"><h2 id="portfolio-title">Portfolio snapshot</h2><button type="button" class="icon-button" data-close aria-label="Close portfolio insight"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="eyebrow">Illustrative holdings / not live prices</div>
+    <p class="dialog-copy" style="margin-top:16px">The signal highlights your largest allocation. It describes the example portfolio; it is not a buy or sell recommendation.</p>
+    <div class="portfolio-holdings" id="portfolio-holdings"></div>
+    <div class="holding-labels"><strong>Invested total</strong><span data-text="investedTotal">$100,000</span></div>
+    <p class="ai-disclosure">Demo investments only. Cash and property are excluded. No real holdings or market data are loaded.</p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script>
+    const initialDemo = {
+      bodyStart: 22, bodyCurrent: 16.3, bodyTarget: 13.5,
+      workouts: 3, workoutTarget: 4,
+      protein: 136, proteinTarget: 180,
+      cash: 8200, cashTarget: 10000, gym: 'Beirut'
+    };
+    const demoInvestments = [
+      { name: 'MSFT', value: 58000 },
+      { name: 'Global ETFs', value: 42000 }
+    ];
+    const concepts = {
+      trajectory: { label: '01 / Trajectory', title: 'One primary goal.', description: 'A portfolio signal, one pinned goal, and two secondary metrics. Use the small goal picker to change focus.' },
+      'next-move': { label: '02 / Next move', title: 'A Home that gets out of your way.', description: 'One action, chosen from your goals. Finish it, and Home moves on with you.' },
+      balance: { label: '03 / In balance', title: 'The whole picture. Three lines.', description: 'Health, training, and a cash buffer. Enough context, without a wall of numbers.' }
+    };
+    let demo = { ...initialDemo };
+    let activeConcept = 'trajectory';
+    let activeQuestion = 'focus';
+    const mainGoals = { body: 'Body fat', training: 'Training', cash: 'Cash buffer' };
+    const initialGoal = new URLSearchParams(location.search).get('goal');
+    let mainGoal = Object.hasOwn(mainGoals, initialGoal) ? initialGoal : 'body';
+    let toastTimeout;
+    const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+    const clamp = value => Math.min(1, Math.max(0, value));
+    const oneDecimal = value => (Math.round(value * 10) / 10).toFixed(1);
+    const text = (key, value) => document.querySelectorAll(`[data-text="${key}"]`).forEach(node => { node.textContent = value; });
+    const bodyProgress = () => demo.bodyCurrent <= demo.bodyTarget ? 1 : clamp((demo.bodyStart - demo.bodyCurrent) / (demo.bodyStart - demo.bodyTarget));
+    const sessionsLeft = () => Math.max(0, demo.workoutTarget - demo.workouts);
+    const proteinLeft = () => Math.max(0, demo.proteinTarget - demo.protein);
+    const nextAction = () => sessionsLeft() > 0 ? 'workout' : proteinLeft() > 0 ? 'protein' : 'complete';
+    const workoutName = () => demo.gym === 'Beirut' ? 'Beirut Day B' : 'Back & Biceps';
+    const insight = () => {
+      if (sessionsLeft() === 1) return 'One more session closes your training week.';
+      if (sessionsLeft() > 1) return `${sessionsLeft()} sessions left this week. One at a time.`;
+      if (proteinLeft() > 0) return 'Training goal complete. Make your next meal count.';
+      return 'Today is covered. No extra tasks to chase.';
+    };
+    function trajectoryState() {
+      if (mainGoal === 'cash') {
+        const remaining = Math.max(0, demo.cashTarget - demo.cash);
+        const progress = clamp(demo.cash / demo.cashTarget);
+        return {
+          label: 'Cash buffer', value: money(demo.cash), unit: '',
+          targetLabel: 'Target', target: money(demo.cashTarget),
+          gap: remaining ? `${money(remaining)} to go` : 'Buffer covered',
+          detail: `${Math.round(progress * 100)}% funded`, progress,
+          note: 'Demo balance / no automatic transfers',
+          action: remaining ? 'cash' : 'pick-goal',
+          actionLabel: remaining ? 'Add to your buffer' : 'Buffer covered. View goals',
+          insight: remaining ? 'Build margin at your pace. Nothing moves automatically.' : 'Your buffer target is covered. A little more room.',
+          why: `${money(demo.cash)} of your ${money(demo.cashTarget)} demo buffer is funded. ${remaining ? `${money(remaining)} remains. The button previews a manual contribution, not a transfer or a savings recommendation.` : 'This goal is complete. No additional contribution is needed to reach it.'}`
+        };
+      }
+      if (mainGoal === 'training') {
+        const remaining = sessionsLeft();
+        return {
+          label: 'Training', value: String(demo.workouts), unit: `/${demo.workoutTarget}`,
+          targetLabel: 'This week', target: `${demo.workoutTarget} sessions`,
+          gap: remaining ? `${remaining} session${remaining === 1 ? '' : 's'} to go` : 'Week complete',
+          detail: 'Your weekly rhythm', progress: clamp(demo.workouts / demo.workoutTarget),
+          note: 'Logged demo sessions / not a readiness assessment',
+          action: remaining ? 'workout' : 'pick-goal',
+          actionLabel: remaining ? `Start ${workoutName()}` : 'Week complete. View goals',
+          insight: remaining ? `${remaining === 1 ? 'One more session closes' : `${remaining} sessions left in`} your training week.` : 'Your weekly goal is complete. No bonus tasks.',
+          why: `You have logged ${demo.workouts} of ${demo.workoutTarget} sessions this week in the demo. ${remaining ? `${workoutName()} is next in your rotation, not a recommendation about recovery or when to train.` : 'The weekly target is covered. Your pinned goal stays here; Home does not automatically give you more work.'}`
+        };
+      }
+      const remaining = Math.max(0, demo.bodyCurrent - demo.bodyTarget);
+      return {
+        label: 'Body fat', value: oneDecimal(demo.bodyCurrent), unit: '%',
+        targetLabel: 'Target', target: `${oneDecimal(demo.bodyTarget)}%`,
+        gap: remaining ? `${oneDecimal(remaining)} pts to go` : 'Target reached',
+        detail: `${oneDecimal(demo.bodyStart - demo.bodyCurrent)} pts down`, progress: bodyProgress(),
+        note: `Progress from ${oneDecimal(demo.bodyStart)}% at your first demo check-in`,
+        action: remaining ? nextAction() : 'pick-goal',
+        actionLabel: !remaining ? 'Target reached. View goals' : nextAction() === 'workout' ? `Start ${workoutName()}` : nextAction() === 'protein' ? 'Log a protein-rich meal' : 'Daily habits covered. View goals',
+        insight: remaining ? insight() : 'A long-term milestone reached. Let that count.',
+        why: `Your demo reading is ${oneDecimal(demo.bodyCurrent)}%, against a ${oneDecimal(demo.bodyTarget)}% target. The orbit measures progress from ${oneDecimal(demo.bodyStart)}%, not today's body-fat percentage. ${remaining ? 'Training and protein are the two habits shown alongside it; neither is a prediction of fat loss.' : 'The target is reached. Your goal stays pinned until you change it.'}`
+      };
+    }
+    function notify(message) {
+      const toast = document.getElementById('toast');
+      clearTimeout(toastTimeout);
+      toast.textContent = message;
+      toast.hidden = false;
+      toastTimeout = setTimeout(() => { toast.hidden = true; }, 4200);
+    }
+    function showConcept(id, updateHash = true) {
+      if (!Object.hasOwn(concepts, id)) return;
+      activeConcept = id;
+      document.querySelectorAll('[data-concept]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.concept === id)));
+      document.querySelectorAll('.concept').forEach(section => { section.hidden = section.id !== `concept-${id}`; });
+      document.getElementById('preview-label').textContent = concepts[id].label;
+      document.getElementById('concept-summary-title').textContent = concepts[id].title;
+      document.getElementById('concept-summary').textContent = concepts[id].description;
+      if (updateHash) history.replaceState(null, '', `#${id}`);
+    }
+    function answer(question) {
+      activeQuestion = question;
+      let result;
+      if (activeConcept === 'trajectory') {
+        const goal = trajectoryState();
+        result = question === 'why' ? goal.why
+          : question === 'distance' ? `${goal.gap}. ${goal.label}: ${goal.value}${goal.unit}; ${goal.targetLabel.toLowerCase()}: ${goal.target}.`
+            : goal.insight;
+      } else if (question === 'distance') {
+        const body = demo.bodyCurrent <= demo.bodyTarget ? 'Your body-fat target is reached' : `${oneDecimal(demo.bodyCurrent - demo.bodyTarget)} body-fat points to go`;
+        result = `${body}; ${sessionsLeft()} sessions left this week; ${money(Math.max(0, demo.cashTarget - demo.cash))} left to your cash buffer.`;
+      } else if (question === 'why') {
+        result = nextAction() === 'workout'
+          ? `You have logged ${demo.workouts} of ${demo.workoutTarget} weekly sessions in this demo. ${workoutName()} is the next session, not a recovery recommendation.`
+          : nextAction() === 'protein'
+            ? `Your training target is complete. Demo meals account for ${demo.protein}g of your ${demo.proteinTarget}g protein target, leaving ${proteinLeft()}g.`
+            : 'Both daily protein and weekly training targets are covered. Home does not invent another task to keep you busy.';
+      } else {
+        result = nextAction() === 'workout'
+          ? `${workoutName()} is your next training step. ${sessionsLeft() === 1 ? 'One session completes' : `${sessionsLeft()} more sessions complete`} your weekly goal.`
+          : nextAction() === 'protein'
+            ? `Training is covered for the week. Your next meal can help close the remaining ${proteinLeft()}g protein gap.`
+            : 'Your training and protein targets are covered. Keep the longer-term goals in view; nothing else needs your attention here.';
+      }
+      document.getElementById('demo-answer').textContent = result;
+    }
+    function render() {
+      const progress = bodyProgress();
+      const hero = trajectoryState();
+      const investedTotal = demoInvestments.reduce((sum, holding) => sum + holding.value, 0);
+      const largestHolding = demoInvestments.reduce((largest, holding) => holding.value > largest.value ? holding : largest);
+      text('portfolioInsight', `${largestHolding.name} is ${Math.round(largestHolding.value / investedTotal * 100)}% of your invested portfolio.`);
+      text('investedTotal', money(investedTotal));
+      document.getElementById('portfolio-holdings').replaceChildren(...demoInvestments.map(holding => {
+        const share = holding.value / investedTotal;
+        const row = document.createElement('div');
+        const labels = document.createElement('div');
+        labels.className = 'holding-labels';
+        const name = document.createElement('span');
+        name.textContent = holding.name;
+        const value = document.createElement('span');
+        value.textContent = `${money(holding.value)} / ${Math.round(share * 100)}%`;
+        labels.append(name, value);
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.setAttribute('aria-hidden', 'true');
+        const fill = document.createElement('span');
+        fill.style.transform = `scaleX(${share})`;
+        bar.append(fill);
+        row.append(labels, bar);
+        return row;
+      }));
+      const gap = Math.max(0, demo.bodyCurrent - demo.bodyTarget);
+      const cashLeft = Math.max(0, demo.cashTarget - demo.cash);
+      text('gym', demo.gym);
+      text('bodyCurrent', oneDecimal(demo.bodyCurrent));
+      text('bodyTarget', oneDecimal(demo.bodyTarget));
+      text('bodyGap', gap === 0 ? 'Target reached' : `${oneDecimal(gap)} pts to go`);
+      text('bodyChange', `${oneDecimal(demo.bodyStart - demo.bodyCurrent)} pts down`);
+      text('workouts', demo.workouts);
+      text('workoutTarget', demo.workoutTarget);
+      text('workoutGap', sessionsLeft() ? `${sessionsLeft()} session${sessionsLeft() === 1 ? '' : 's'} to go` : 'Week complete');
+      text('proteinLeft', proteinLeft());
+      text('proteinCaption', proteinLeft() ? 'left today' : 'daily target reached');
+      text('cashCurrent', money(demo.cash));
+      text('cashTarget', money(demo.cashTarget));
+      text('cashGap', cashLeft ? `${money(cashLeft)} to go` : 'Buffer covered');
+      text('insight', insight());
+      text('primaryLabel', nextAction() === 'workout' ? `Start ${workoutName()}` : nextAction() === 'protein' ? 'Log a protein-rich meal' : 'All set. See your goals');
+      text('focusTitle', nextAction() === 'workout' ? 'Close your training week.' : nextAction() === 'protein' ? 'Make your next meal count.' : 'Made it. That counts.');
+      text('focusContext', nextAction() === 'workout' ? workoutName() : nextAction() === 'protein' ? 'Protein today' : 'No extra tasks');
+      text('focusCount', nextAction() === 'workout' ? `${demo.workouts} of ${demo.workoutTarget} complete` : nextAction() === 'protein' ? `${proteinLeft()}g left` : 'Enjoy the space');
+      text('focusAction', nextAction() === 'workout' ? 'Start workout' : nextAction() === 'protein' ? 'Log a meal' : 'See my goals');
+      for (const [key, value] of Object.entries({
+        heroLabel: hero.label, heroValue: hero.value, heroUnit: hero.unit,
+        heroTargetLabel: hero.targetLabel, heroTarget: hero.target,
+        heroGap: hero.gap, heroDetail: hero.detail, heroProgressNote: hero.note,
+        heroInsight: hero.insight, heroAction: hero.actionLabel
+      })) text(key, value);
+      document.getElementById('hero-value').dataset.goal = mainGoal;
+      document.getElementById('hero-value').classList.toggle('long-value', hero.value.length > 7);
+      document.getElementById('hero-ring').setAttribute('stroke-dashoffset', String(100 - hero.progress * 100));
+      const angle = -Math.PI / 2 + hero.progress * Math.PI * 2;
+      document.getElementById('hero-dot').setAttribute('cx', String(150 + 104 * Math.cos(angle)));
+      document.getElementById('hero-dot').setAttribute('cy', String(150 + 104 * Math.sin(angle)));
+      document.getElementById('training-mini').hidden = mainGoal === 'training';
+      document.getElementById('body-mini').hidden = mainGoal !== 'training';
+      document.getElementById('trajectory-gym').hidden = mainGoal === 'cash';
+      document.querySelectorAll('[data-pick-goal]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pickGoal === mainGoal)));
+      document.getElementById('body-lane-progress').setAttribute('d', `M0 10h${progress * 299}`);
+      document.getElementById('body-lane-dot').setAttribute('cx', String(progress * 299));
+      document.querySelectorAll('[data-bar]').forEach(bar => {
+        const value = bar.dataset.bar === 'body' ? progress : bar.dataset.bar === 'protein' ? demo.protein / demo.proteinTarget : demo.cash / demo.cashTarget;
+        bar.style.transform = `scaleX(${clamp(value)})`;
+      });
+      document.querySelectorAll('[data-segments="training"]').forEach(container => {
+        const segments = Array.from({ length: demo.workoutTarget }, (_, index) => {
+          const segment = document.createElement('span');
+          segment.className = `segment${index < demo.workouts ? ' done' : ''}`;
+          return segment;
+        });
+        container.replaceChildren(...segments);
+      });
+      document.getElementById('workout-name').textContent = workoutName();
+      document.getElementById('workout-description').textContent = demo.gym === 'Beirut' ? '9 exercises / glutes + back' : '6 exercises / back + biceps';
+      answer(activeQuestion);
+    }
+    function openGoals() {
+      const form = document.getElementById('goal-form');
+      for (const key of ['bodyTarget', 'workoutTarget', 'proteinTarget', 'cashTarget']) form.elements.namedItem(key).value = demo[key];
+      document.getElementById('goal-error').hidden = true;
+      document.getElementById('goals-dialog').showModal();
+    }
+    function openNext() {
+      if (nextAction() === 'workout') document.getElementById('workout-dialog').showModal();
+      else if (nextAction() === 'protein') document.getElementById('protein-dialog').showModal();
+      else openGoals();
+    }
+    function openGoalPicker() {
+      document.getElementById('main-goal-switch').setAttribute('aria-expanded', 'true');
+      document.getElementById('main-goal-dialog').showModal();
+    }
+    function openTrajectoryNext() {
+      const action = trajectoryState().action;
+      if (action === 'workout') document.getElementById('workout-dialog').showModal();
+      else if (action === 'protein') document.getElementById('protein-dialog').showModal();
+      else if (action === 'cash') {
+        document.getElementById('cash-contribution').value = '400';
+        document.getElementById('cash-error').hidden = true;
+        document.getElementById('cash-dialog').showModal();
+      } else if (action === 'pick-goal') openGoalPicker();
+      else openGoals();
+    }
+    document.getElementById('main-goal-dialog').addEventListener('close', () => document.getElementById('main-goal-switch').setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('[data-pick-goal]').forEach(button => button.addEventListener('click', () => {
+      mainGoal = button.dataset.pickGoal;
+      const url = new URL(location.href);
+      url.searchParams.set('goal', mainGoal);
+      history.replaceState(null, '', url);
+      document.getElementById('main-goal-dialog').close();
+      render();
+      notify(`${mainGoals[mainGoal]} is your main preview goal. Your app settings are unchanged.`);
+    }));
+    document.querySelectorAll('[data-concept]').forEach(button => button.addEventListener('click', () => showConcept(button.dataset.concept)));
+    document.querySelectorAll('[data-view]').forEach(button => {
+      if (button.tagName !== 'BUTTON') return;
+      button.addEventListener('click', () => {
+        document.getElementById('stage').dataset.view = button.dataset.view;
+        document.querySelectorAll('button[data-view]').forEach(control => control.setAttribute('aria-pressed', String(control === button)));
+      });
+    });
+    document.getElementById('theme-button').addEventListener('click', () => {
+      const dark = document.documentElement.dataset.theme !== 'dark';
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.getElementById('theme-button').setAttribute('aria-label', `Switch to ${dark ? 'light' : 'dark'} theme`);
+    });
+    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+    document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        dialog.close();
+      }
+    }));
+    document.querySelectorAll('[data-question]').forEach(button => button.addEventListener('click', () => answer(button.dataset.question)));
+    document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => {
+      switch (button.dataset.action) {
+        case 'goals': openGoals(); break;
+        case 'pick-goal': openGoalPicker(); break;
+        case 'trajectory-next': openTrajectoryNext(); break;
+        case 'portfolio': document.getElementById('portfolio-dialog').showModal(); break;
+        case 'next': openNext(); break;
+        case 'protein': document.getElementById('protein-dialog').showModal(); break;
+        case 'ask': answer('focus'); document.getElementById('ask-dialog').showModal(); break;
+        case 'insight': answer('why'); document.getElementById('ask-dialog').showModal(); break;
+        case 'gym':
+          demo.gym = demo.gym === 'Beirut' ? 'Current gym' : 'Beirut';
+          render();
+          notify(`Preview switched to ${demo.gym}. Your real gym choice is unchanged.`);
+          break;
+        case 'finish':
+          demo.workouts += 1;
+          document.getElementById('workout-dialog').close();
+          render();
+          notify(sessionsLeft() ? 'Demo session complete. Another step forward.' : 'Weekly training goal complete. That counts.');
+          break;
+        case 'add-protein':
+          demo.protein += 30;
+          document.getElementById('protein-dialog').close();
+          render();
+          notify('Added 30g to this preview only.');
+          break;
+        case 'check-in': {
+          if (activeConcept === 'trajectory' && mainGoal === 'training') {
+            if (sessionsLeft()) {
+              demo.workouts += 1;
+              render();
+              notify(sessionsLeft() ? 'Demo session complete. Another step forward.' : 'Weekly training goal complete. That counts.');
+            } else notify('Your weekly demo goal is already complete. No extra sessions needed.');
+            break;
+          }
+          const previousBody = demo.bodyCurrent;
+          const previousCash = demo.cash;
+          if ((activeConcept !== 'trajectory' || mainGoal === 'body') && demo.bodyCurrent > demo.bodyTarget) demo.bodyCurrent = Math.max(demo.bodyTarget, Math.round((demo.bodyCurrent - .5) * 10) / 10);
+          if ((activeConcept !== 'trajectory' || mainGoal === 'cash') && demo.cash < demo.cashTarget) demo.cash = Math.min(demo.cashTarget, demo.cash + 400);
+          render();
+          const bodyChange = previousBody - demo.bodyCurrent;
+          const cashChange = demo.cash - previousCash;
+          const changes = [];
+          if (bodyChange) changes.push(`body fat -${oneDecimal(bodyChange)} pts`);
+          if (cashChange) changes.push(`cash +${money(cashChange)}`);
+          notify(changes.length
+            ? `Demo check-in: ${changes.join(', ')}. Nothing saved to your app.`
+            : 'These demo targets are already reached. Try different goals or reset the preview.');
+          break;
+        }
+        case 'reset':
+          demo = { ...initialDemo };
+          render();
+          notify('Demo reset. Your real data was never touched.');
+          break;
+      }
+    }));
+    document.getElementById('goal-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const values = Object.fromEntries(['bodyTarget', 'workoutTarget', 'proteinTarget', 'cashTarget'].map(key => [key, Number(form.elements.namedItem(key).value)]));
+      const valid = Number.isFinite(values.bodyTarget) && values.bodyTarget >= 5 && values.bodyTarget <= 40
+        && Number.isInteger(values.workoutTarget) && values.workoutTarget >= 1 && values.workoutTarget <= 7
+        && Number.isInteger(values.proteinTarget) && values.proteinTarget >= 1 && values.proteinTarget <= 500
+        && Number.isInteger(values.cashTarget) && values.cashTarget >= 1 && values.cashTarget <= 10000000;
+      if (!valid) {
+        const error = document.getElementById('goal-error');
+        error.textContent = 'Check the targets: body fat 5-40%, workouts 1-7, protein 1-500g, and a positive cash target up to USD 10,000,000.';
+        error.hidden = false;
+        return;
+      }
+      demo = { ...demo, ...values };
+      render();
+      document.getElementById('goals-dialog').close();
+      notify('Preview goals updated. Your app settings are unchanged.');
+    });
+    document.getElementById('cash-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const amount = Number(document.getElementById('cash-contribution').value);
+      if (!Number.isInteger(amount) || amount < 1 || amount > 10000000) {
+        const error = document.getElementById('cash-error');
+        error.textContent = 'Enter a whole USD amount between 1 and 10,000,000.';
+        error.hidden = false;
+        return;
+      }
+      demo.cash += amount;
+      render();
+      document.getElementById('cash-dialog').close();
+      notify(`Added ${money(amount)} to the demo buffer only. No money moved.`);
+    });
+    window.addEventListener('hashchange', () => showConcept(window.location.hash.slice(1), false));
+    const initialConcept = window.location.hash.slice(1);
+    showConcept(Object.hasOwn(concepts, initialConcept) ? initialConcept : activeConcept, false);
+    render();
+  </script>
+</body>
+</html>

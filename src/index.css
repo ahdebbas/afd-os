@@ -206,6 +206,10 @@ html.dark .day-disc {
 
 /* ---------- Mobile food journal ---------- */
 .mobile-app {
+  position: fixed;
+  inset: var(--app-viewport-top, 0px) 0 auto;
+  height: var(--app-viewport-height, 100dvh);
+  max-width: 1120px;
   --font-ui: var(--font-body);
   --mobile-dock-height: 70px;
   --mobile-dock-bottom: max(12px, env(safe-area-inset-bottom, 0px));
@@ -218,13 +222,17 @@ html.dark .day-disc {
     radial-gradient(130% 60% at 50% -10%, rgba(143,162,216,0.10), transparent 52%),
     var(--bg);
 }
-.mobile-app[data-standalone] {
-  position: fixed;
-  inset: 0;
-  height: var(--app-viewport-height, 100dvh);
+.mobile-app .app-header {
+  container: header / inline-size;
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 12px) + 8px);
+  padding-bottom: 4px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
 }
-.mobile-app .app-header { padding-bottom: 4px; }
 .mobile-app .screen-scroll {
+  container: module / inline-size;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
   padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-dock-bottom) + 16px);
   scroll-padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-dock-bottom) + 16px);
 }
@@ -2278,4 +2286,71 @@ html.dark .today-whoop .panel > p:first-child > span {
   .boot > *, .sheet-in, .backdrop { animation: none; }
   .gauge-val, .seg-cell, .press, .tile, .panel, .odo-reel, .carousel, .dock-pill, .hbar, .ambient { transition: none; }
   .nl-busy { animation: none; }
+}
+
+/* Touch layouts respond to the module's usable width, not the device model. */
+.mobile-app .module-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.mobile-app .module-layout > * { min-width: 0; margin-block: 0; }
+.mobile-app .module-layout > .panel,
+.mobile-app .food-layout > section { container-type: inline-size; }
+.mobile-app .fitness-console { container-name: workout; }
+.mobile-app .finance-total { font-size: clamp(32px, 11cqi, 58px); max-width: 100%; }
+.mobile-app .food-fuel-body { grid-template-columns: minmax(0, 1fr); }
+.mobile-app .food-fuel-macro-top { flex-wrap: wrap; }
+.mobile-app .food-fuel-macro-value { font-size: 13px; }
+.mobile-app .food-fuel-kicker { flex-wrap: wrap; gap: 10px; font-size: 12px; }
+.mobile-app .food-entry-head { gap: 8px; flex-wrap: wrap; }
+.mobile-app .food-date-controls { flex-wrap: wrap; gap: 8px; }
+.mobile-app .food-date-controls label { min-width: 0; }
+.mobile-app .food-date-controls input { max-width: 100%; }
+.mobile-app .workout-exercise-row { gap: 10px; }
+.mobile-app .workout-exercise-row > span { min-width: 0; }
+.mobile-app .workout-exercise-toggle { width: 44px; height: 44px; }
+.mobile-app .workout-exercise-row button { min-height: 44px; }
+.mobile-app .fitness-table-heading > div:last-child { gap: 8px; }
+.mobile-app .fitness-table-heading > div:last-child > span:first-child { width: 54px; }
+.mobile-app .island-toast { align-items: flex-start; overflow-y: auto; padding-block: 8px; }
+.mobile-app .island-live .island-toast { pointer-events: auto; }
+.mobile-app .island-toast > div { gap: 8px; }
+.mobile-app .island-toast > div > div { min-width: 0; align-items: flex-start; }
+.mobile-app .island-toast svg { flex-shrink: 0; }
+.mobile-app .island-toast span { overflow-wrap: anywhere; }
+.mobile-app .island-toast button { flex-shrink: 0; }
+
+@container header (max-width: 350px) {
+  .mobile-app .island-idle { flex-wrap: wrap; gap: 8px; }
+  .mobile-app .island-idle > div:last-child { flex: 1 1 100%; justify-content: space-between; }
+}
+@container workout (max-width: 360px) {
+  .mobile-app .workout-exercise-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .mobile-app .workout-exercise-row > div { justify-self: end; }
+  .mobile-app .fitness-table-heading { align-items: end; gap: 8px; }
+}
+@container module (max-width: 350px) {
+  .mobile-app .module-layout > .panel { padding: 16px; }
+  .mobile-app .food-layout > section { padding: 14px; }
+  .mobile-app .food-entry-panel .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-app .food-journal-entry { flex-wrap: wrap; }
+  .mobile-app .today-head { flex-wrap: wrap; gap: 8px; }
+  .mobile-app .today-fuel-hero-body { grid-template-columns: minmax(0, 1fr); }
+  .mobile-app .today-finance-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container module (min-width: 680px) {
+  .mobile-app .module-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-app .cash-overview { grid-column: 1; grid-row: 1; }
+  .mobile-app .cash-alerts { grid-column: 1; grid-row: 2; }
+  .mobile-app .cash-calendar { grid-column: 2; grid-row: 1 / span 2; }
+  .mobile-app .food-day-picker,
+  .mobile-app .food-undo,
+  .mobile-app .fitness-calendar-panel { grid-column: 1 / -1; }
+  .mobile-app .fitness-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .mobile-app .fitness-console { grid-column: 1; grid-row: span 3; }
+  .mobile-app .today-restored .today-compact-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; }
+  .mobile-app .today-restored { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .mobile-app .today-restored .today-whoop { grid-column: 1 / -1; }
 }

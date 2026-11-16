@@ -40,7 +40,7 @@ export function exportData() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `afd-os-backup-${todayKey()}.json`
+  a.download = `baseline-backup-${todayKey()}.json`
   document.body.appendChild(a)
   a.click()
   a.remove()
@@ -52,7 +52,7 @@ export async function importData(file) {
   const text = await file.text()
   const parsed = JSON.parse(text)
   if (!parsed || parsed.app !== 'afd-os' || !parsed.data || typeof parsed.data !== 'object' || Array.isArray(parsed.data)) {
-    throw new Error('Not a valid AFD OS backup file')
+    throw new Error('Not a valid Baseline backup file')
   }
   let restored = 0
   for (const key of BACKUP_KEYS) {

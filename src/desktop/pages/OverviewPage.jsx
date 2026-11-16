@@ -11,6 +11,7 @@ import { useInbodyReadings } from '../../useInbodyReadings'
 import { useWorkoutPrograms } from '../../useWorkoutPrograms'
 import { nextProgramWorkoutIdx } from '../../workoutPrograms'
 import { connectWhoop, fetchWhoopCalories, WHOOP_POLL_MS } from '../../whoop'
+import { isNativeApp } from '../../platform'
 import { fuelingFlag, projectBurn, recommendedIntake } from '../../whoopEnergy'
 import { Card, Button, Ring, Meter, NumberFlow, Badge } from '../primitives'
 
@@ -62,8 +63,9 @@ function MiniKpi({ label, value, tone = 't1', sub }) {
 }
 
 function WhoopInsightsCard({ whoop, eaten, protein }) {
-  const [adaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
   const { targets } = useFood()
+  const nativeApp = isNativeApp()
+  const [adaptive] = usePersistentState('afd-whoop-adaptive', true, v => typeof v === 'boolean')
   const snap = whoopSnapshot(whoop, eaten)
 
   if (snap.state !== 'ready') {
@@ -79,7 +81,7 @@ function WhoopInsightsCard({ whoop, eaten, protein }) {
       <Card eyebrow="WHOOP" title="Energy insights">
         <div className="flex items-center justify-between gap-4">
           <p className="text-[13px] d-t3">{message}</p>
-          {(snap.state === 'disconnected' || snap.state === 'error') && (
+          {!nativeApp && (snap.state === 'disconnected' || snap.state === 'error') && (
             <Button size="sm" variant="primary" onClick={connectWhoop}>Connect WHOOP</Button>
           )}
         </div>

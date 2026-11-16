@@ -104,13 +104,34 @@ widget and shared polling as the Original layout, including its loading,
 disconnected, and error states. The mobile dock is a compact, frosted floating
 pill with an active-tab highlight, inset above the home indicator. Each module
 reserves the pill's height and bottom inset so its final controls scroll clear.
-When installed on the Home Screen, the mobile shell fills the viewport using
-fixed edges and the measured window height rather than relying on `100dvh` or
-Safari's fixed-edge height, avoiding unused space below the dock when its layout
-viewport retains browser-toolbar space. It remeasures on resize, rotation, and
-app resume. The pill sits outside the home-indicator safe area rather than
-stretching its background through that space. Browser tabs and
-the desktop shell keep their existing sizing.
+The touch shell fills the measured visible viewport, in both browser tabs and
+Home Screen installations, rather than relying on Safari's fixed-edge height.
+It remeasures on resize, rotation, folding/unfolding, focus changes, and app resume.
+The pill sits outside the home-indicator safe area rather than stretching its
+background through that space. It hides for a significant keyboard-sized viewport
+reduction only while an editable field is focused, and returns after keyboard
+dismissal or blur. A viewport change without text entry does not hide navigation.
+
+All five tabs use the available width up to 1120 CSS pixels instead of retaining a
+448px phone column. Narrow screens stack cards; at 680px of usable module width,
+Home and the other tabs arrange complementary sections in two columns. Fitness
+gives the workout console more space alongside supporting panels. Exercise rows
+stack their controls when the console itself is narrow. Layout changes keep the
+same mounted modules, selected dates, workout progress, and form drafts.
+
+**Settings → Shell mode → Auto** uses the desktop shell only with a wide
+(at least 1024px), hover-capable, fine-pointer viewport. Touch-first devices keep
+bottom navigation when unfolded. Explicit Mobile and Desktop settings still
+override Auto. The existing desktop dashboard's styling is unchanged.
+
+With the dev server running, `node scripts/check-mobile-viewport.mjs` checks
+320–1100px viewports, repeated fold/unfold transitions, all tabs, both Home
+layouts/themes, safe-area clearance, keyboard recovery, and workout draft state.
+The harness requires Playwright and Chrome; set `PLAYWRIGHT_MODULE` to an existing
+Playwright module path if it is not installed locally. Use
+`PLAYWRIGHT_BROWSER=webkit` for the installed Playwright WebKit engine.
+Installed-mode viewport behavior is simulated: confirm folding, unfolding, and
+app resume on the actual installed device as well.
 **Settings → Mobile Home → Original** restores the previous mobile dashboard
 without changing saved data. Home layout, selected goal, and targets sync and
 are included in JSON backups.

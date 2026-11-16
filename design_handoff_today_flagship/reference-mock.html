@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AFD OS — Today (reference mock · light + dark)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* ============================================================
+     AFD OS — DUAL-THEME tokens. Light = :root (default),
+     Dark (OLED) = html.dark. Toggle flips the .dark class on <html>.
+     ============================================================ */
+
+  /* LIGHT — "daylight": cool off-white canvas, white cards that lift,
+     vivid accents, near-black numerics, NO glow. */
+  :root {
+    --bg:#EAECEF; --surface:#FFFFFF; --surface-2:#F4F5F8;
+    --ink:#15171C; --ink-2:rgba(21,23,28,.60); --ink-3:rgba(21,23,28,.42);
+    --line:rgba(21,23,28,.08); --track:rgba(21,23,28,.10);
+    --chip:rgba(21,23,28,.04); --field:rgba(21,23,28,.04);
+    --acc-os:#3B4FA8; --acc-fin:#2E5BC7; --acc-food:#157A57; --acc-fit:#157E92;
+    --up:#157A57; --down:#C4453B; --warn:#9A6516; --ring:#3B4FA8;
+    --panel-shadow: 0 1px 2px rgba(21,23,28,.05), 0 8px 20px rgba(21,23,28,.07);
+    --panel-top: transparent;          /* card top-highlight (dark only) */
+    --backdrop: radial-gradient(130% 55% at 50% -8%, rgba(46,91,199,.05), transparent 50%);
+    --frame:#FFFFFF; --frame-shadow:0 40px 90px rgba(0,0,0,.22), inset 0 0 0 1px rgba(0,0,0,.06);
+
+    --font-display:"Barlow Condensed",system-ui,sans-serif;
+    --font-body:"Barlow",-apple-system,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+    --r-panel:16px; --r-tile:14px; --r-chip:10px; --r-pill:9999px;
+    --ease-out:cubic-bezier(.22,1,.36,1);
+  }
+
+  /* DARK — "instrument": OLED black, muted accents, restrained glow. */
+  html.dark {
+    --bg:#04060C; --surface:#0A0E17; --surface-2:#11151F;
+    --ink:#EDF1F7; --ink-2:rgba(237,241,247,.62); --ink-3:rgba(237,241,247,.46);
+    --line:rgba(237,241,247,.07); --track:rgba(237,241,247,.09);
+    --chip:rgba(237,241,247,.045); --field:rgba(0,0,0,.35);
+    --acc-os:#8FA2D8; --acc-fin:#6E93CC; --acc-food:#46B58C; --acc-fit:#4FAFC0;
+    --up:#46B58C; --down:#E0796F; --warn:#D6A84E; --ring:#8FA2D8;
+    --panel-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 1px 0 rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+    --panel-top: rgba(255,255,255,.04);
+    --backdrop: radial-gradient(130% 60% at 50% -10%, rgba(143,162,216,.10), transparent 52%);
+    --frame:#000000; --frame-shadow:0 40px 90px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:#d9dbdf; min-height:100vh; display:flex; align-items:flex-start;
+    justify-content:center; padding:28px 16px; font-family:var(--font-body); transition:background .3s ease; }
+  html.dark body { background:#16181d; }
+
+  /* theme toggle (demo chrome — not part of the screen) */
+  .themebar { position:fixed; top:18px; left:18px; z-index:10; display:flex; gap:6px;
+    padding:4px; border-radius:999px; background:rgba(127,127,127,.16); backdrop-filter:blur(8px); }
+  .themebar button { border:0; cursor:pointer; height:30px; padding:0 14px; border-radius:999px;
+    font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:.06em;
+    background:transparent; color:#888; transition:background .2s, color .2s; }
+  .themebar button.on { background:#fff; color:#111; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  html.dark .themebar button.on { background:#2A3040; color:#EDF1F7; }
+
+  .phone { width:402px; border-radius:46px; background:var(--frame); padding:10px; box-shadow:var(--frame-shadow);
+    transition:background .3s ease, box-shadow .3s ease; }
+  .screen { position:relative; border-radius:38px; overflow:hidden; background:var(--bg); height:844px;
+    color:var(--ink); transition:background .3s ease, color .3s ease; }
+  .screen::before { content:""; position:absolute; inset:0; pointer-events:none; background:var(--backdrop); }
+
+  .card { background:var(--surface);
+    background-image:linear-gradient(168deg, var(--panel-top), transparent 34%);
+    border:1px solid var(--line); border-radius:var(--r-panel); box-shadow:var(--panel-shadow);
+    transition:background .3s ease, border-color .3s ease, box-shadow .3s ease; }
+  .tile-int { transition:transform var(--ease-out) .25s, border-color .25s; }
+  .tile-int:active { transform:scale(.98); }
+
+  .statusbar { position:relative; height:50px; display:flex; align-items:center;
+    justify-content:space-between; padding:0 28px; font-family:var(--font-mono); font-size:14px; font-weight:600; }
+  .statusbar .icons { display:flex; gap:7px; align-items:center; }
+  .statusbar .icons svg { width:16px; height:16px; }
+
+  .body { position:relative; height:calc(844px - 50px - 84px); overflow-y:auto;
+    padding:4px 16px 28px; display:flex; flex-direction:column; gap:16px; }
+  .body::-webkit-scrollbar { width:0; }
+
+  .apphead { display:flex; align-items:center; justify-content:space-between; padding:8px 4px 0; }
+  .apphead .avatar { width:38px; height:38px; border-radius:var(--r-pill); display:grid; place-items:center;
+    background:var(--surface); border:1px solid var(--line); font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--ink-2); }
+  .apphead .gear { width:38px; height:38px; border-radius:var(--r-chip); background:var(--surface);
+    border:1px solid var(--line); display:grid; place-items:center; color:var(--ink-2); cursor:pointer; transition:transform .15s var(--ease-out); }
+  .apphead .gear:active { transform:scale(.94); }
+  .apphead .gear svg { width:18px; height:18px; }
+
+  .eyebrow { display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono);
+    font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; }
+  .eyebrow::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--acc); }
+  html.dark .eyebrow::before { box-shadow:0 0 8px var(--acc); }  /* glow: dark only */
+
+  /* hero */
+  .hero { padding:22px 22px 8px; }
+  .hero .net { font-family:var(--font-display); font-weight:800; font-size:56px; line-height:.95;
+    letter-spacing:.005em; font-variant-numeric:tabular-nums; margin:12px 0 0; display:flex; align-items:baseline; }
+  .hero .net .cur { font-size:30px; color:var(--ink-2); font-weight:600; margin-right:2px; }
+  .hero .deltas { display:flex; align-items:center; gap:10px; margin-top:12px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:99px;
+    font-family:var(--font-mono); font-size:12px; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .chip svg { width:12px; height:12px; }
+  .hero .sub { font-family:var(--font-mono); font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+
+  .spark { width:100%; height:76px; margin-top:16px; display:block; overflow:visible; }
+  .spark .line { fill:none; stroke:var(--acc); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  /* LIGHT dot: solid + white ring + soft shadow (no glow) */
+  .spark .dot { fill:var(--acc); stroke:#fff; stroke-width:2.5; filter:drop-shadow(0 2px 4px rgba(21,23,28,.25)); }
+  .spark .dot-ring { display:none; }
+  /* DARK dot: glow + pulsing ring */
+  html.dark .spark .dot { stroke:none; stroke-width:0; filter:drop-shadow(0 0 5px var(--acc)); }
+  html.dark .spark .dot-ring { display:block; fill:none; stroke:var(--acc); stroke-width:1.5; opacity:.4; }
+
+  .rangebar { display:flex; gap:4px; margin-top:14px; }
+  .rangebar button { flex:1; height:28px; border-radius:var(--r-chip); border:1px solid transparent;
+    background:transparent; color:var(--ink-3); font-family:var(--font-mono); font-size:11px; font-weight:600;
+    letter-spacing:.08em; cursor:pointer; transition:background .25s, color .25s; }
+  .rangebar button.on { background:color-mix(in srgb, var(--acc) 14%, transparent);
+    border-color:color-mix(in srgb, var(--acc) 24%, transparent); color:var(--acc); }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .tile { padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .tile .top { display:flex; align-items:center; justify-content:space-between; }
+  .ico { width:32px; height:32px; border-radius:var(--r-chip); display:grid; place-items:center;
+    color:var(--acc); background:color-mix(in srgb, var(--acc) 14%, transparent); }
+  .ico svg { width:16px; height:16px; }
+  .lbl { font-family:var(--font-mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); }
+  .val { font-family:var(--font-display); font-size:27px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+  .minispark { width:100%; height:30px; display:block; overflow:visible; }
+  .minispark .line { fill:none; stroke:var(--acc); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+  .ring-wrap { position:relative; width:64px; height:64px; flex-shrink:0; }
+  .ring-wrap svg { transform:rotate(-90deg); }
+  .ring-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:16px; font-variant-numeric:tabular-nums; }
+  .fuel-row { display:flex; align-items:center; gap:14px; }
+  .fuel-meta { display:flex; flex-direction:column; gap:3px; }
+
+  .list { padding:6px 6px 8px; }
+  .list .head { display:flex; align-items:center; justify-content:space-between; padding:8px 10px 6px; }
+  .lrow { display:flex; align-items:center; gap:12px; padding:10px; border-radius:var(--r-tile); }
+  .lrow + .lrow { border-top:1px solid var(--line); }
+  .lrow .tk { width:42px; font-family:var(--font-mono); font-weight:600; font-size:13px; }
+  .lrow .nm { flex:1; font-size:13px; color:var(--ink-2); }
+  .lrow .ms { width:44px; height:22px; }
+  .lrow .ms .line { fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .lrow .px { width:64px; text-align:right; font-family:var(--font-mono); font-size:13px; font-variant-numeric:tabular-nums; }
+
+  .dock { position:absolute; bottom:0; left:0; right:0; height:84px; padding:10px 22px 26px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:linear-gradient(to top, var(--bg) 62%, transparent); border-top:1px solid var(--line); }
+  .dockbtn { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:0;
+    cursor:pointer; color:var(--ink-3); font-family:var(--font-mono); font-size:9px; letter-spacing:.1em;
+    text-transform:uppercase; transition:color .25s; }
+  .dockbtn svg { width:22px; height:22px; }
+  .dockbtn.active { color:var(--acc-os); }
+  .dockbtn:active { transform:scale(.92); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .boot > * { animation:rise .55s var(--ease-out); }
+    .boot > *:nth-child(1){animation-delay:40ms}
+    .boot > *:nth-child(2){animation-delay:100ms}
+    .boot > *:nth-child(3){animation-delay:160ms}
+    .boot > *:nth-child(4){animation-delay:220ms}
+    .spark .line { animation:draw 1.3s var(--ease-out); animation-delay:.25s; }
+    @keyframes draw { from { stroke-dasharray:1000; stroke-dashoffset:1000; } to { stroke-dashoffset:0; } }
+    @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    .dot-pulse { animation:pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{ opacity:.4; r:7 } 50%{ opacity:0; r:12 } }
+  }
+</style>
+</head>
+<body>
+
+<div class="themebar">
+  <button data-theme="light" class="on">LIGHT</button>
+  <button data-theme="dark">DARK</button>
+</div>
+
+<div class="phone">
+  <div class="screen">
+
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="icons"><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></div>
+    </div>
+
+    <div class="body boot">
+
+      <div class="apphead">
+        <div>
+          <span class="eyebrow" style="--acc: var(--acc-os)">Evening systems check</span>
+          <div style="font-family:var(--font-display); font-size:15px; font-weight:600; color:var(--ink-2); margin-top:6px; letter-spacing:.04em">FRI · JUN 13</div>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="gear" aria-label="Settings"><i data-lucide="settings-2"></i></button>
+          <div class="avatar">A</div>
+        </div>
+      </div>
+
+      <!-- HERO: net worth -->
+      <section class="card hero" style="--acc: var(--acc-fin)">
+        <span class="eyebrow">Net worth</span>
+        <div class="net"><span class="cur">$</span>463,540</div>
+        <div class="deltas">
+          <span class="chip" style="color:var(--up); background:color-mix(in srgb,var(--up) 15%,transparent)"><i data-lucide="trending-up"></i>1.85%</span>
+          <span class="sub">+$8,420 today · +$41,900 90d</span>
+        </div>
+        <svg class="spark" id="netspark" viewBox="0 0 340 76" preserveAspectRatio="none"></svg>
+        <div class="rangebar">
+          <button>1W</button><button>1M</button><button class="on">3M</button><button>1Y</button><button>ALL</button>
+        </div>
+      </section>
+
+      <!-- module row -->
+      <div class="grid2">
+        <section class="card tile-int tile" style="--acc: var(--acc-food)">
+          <div class="top">
+            <span class="ico"><i data-lucide="utensils-crossed"></i></span>
+            <span class="lbl">663 left</span>
+          </div>
+          <div class="fuel-row">
+            <div class="ring-wrap">
+              <svg width="64" height="64" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="27" fill="none" stroke="var(--track)" stroke-width="6"/>
+                <circle cx="32" cy="32" r="27" fill="none" stroke="var(--acc)" stroke-width="6" stroke-linecap="round" stroke-dasharray="112 170"/>
+              </svg>
+              <div class="ring-center">66%</div>
+            </div>
+            <div class="fuel-meta">
+              <span class="val" style="font-size:22px">1,287</span>
+              <span class="lbl">of 1,950 kcal</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tile-int tile" style="--acc: var(--acc-fit)">
+          <div class="top">
+            <span class="ico"><i data-lucide="dumbbell"></i></span>
+            <span class="chip" style="color:var(--up); background:color-mix(in srgb,var(--up) 15%,transparent)">−3.7</span>
+          </div>
+          <div>
+            <span class="lbl">Body fat</span>
+            <div class="val">16.3<span style="font-size:16px; color:var(--ink-3)">%</span></div>
+          </div>
+          <svg class="minispark" id="bfspark" viewBox="0 0 150 30" preserveAspectRatio="none"></svg>
+        </section>
+      </div>
+
+      <!-- market -->
+      <section class="card list" style="--acc: var(--acc-fin)">
+        <div class="head">
+          <span class="eyebrow">Market sync</span>
+          <span style="font-family:var(--font-mono); font-size:10px; color:var(--ink-3); letter-spacing:.1em">16:42 EST</span>
+        </div>
+        <div class="lrow">
+          <span class="tk">MSFT</span><span class="nm">Microsoft</span>
+          <svg class="ms" viewBox="0 0 44 22" preserveAspectRatio="none" data-spark="down"></svg>
+          <span class="px">$411.74</span>
+        </div>
+        <div class="lrow">
+          <span class="tk">VOO</span><span class="nm">S&amp;P 500</span>
+          <svg class="ms" viewBox="0 0 44 22" preserveAspectRatio="none" data-spark="up"></svg>
+          <span class="px">$512.30</span>
+        </div>
+        <div class="lrow">
+          <span class="tk">NVDA</span><span class="nm">Nvidia</span>
+          <svg class="ms" viewBox="0 0 44 22" preserveAspectRatio="none" data-spark="up2"></svg>
+          <span class="px">$138.07</span>
+        </div>
+      </section>
+
+    </div>
+
+    <nav class="dock">
+      <button class="dockbtn active"><i data-lucide="layout-grid"></i>Today</button>
+      <button class="dockbtn"><i data-lucide="wallet"></i>Finance</button>
+      <button class="dockbtn"><i data-lucide="utensils-crossed"></i>Food</button>
+      <button class="dockbtn"><i data-lucide="dumbbell"></i>Fitness</button>
+    </nav>
+
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+// ---- theme toggle (persists) ----
+const THEME_KEY = 'afd-mock-theme';
+function applyTheme(t) {
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  document.querySelectorAll('.themebar button').forEach(b => b.classList.toggle('on', b.dataset.theme === t));
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+}
+document.querySelectorAll('.themebar button').forEach(b =>
+  b.addEventListener('click', () => applyTheme(b.dataset.theme)));
+applyTheme((() => { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; } })());
+
+// ---- sparkline helpers ----
+function sparkPath(data, w, h, pad = 6) {
+  const min = Math.min(...data), max = Math.max(...data), span = (max - min) || 1;
+  return data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = pad + (1 - (v - min) / span) * (h - pad * 2);
+    return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(' ');
+}
+function lastPoint(data, w, h, pad = 6) {
+  const min = Math.min(...data), max = Math.max(...data), span = (max - min) || 1;
+  return { x: w, y: pad + (1 - (data[data.length-1]-min)/span) * (h - pad*2) };
+}
+
+const net = []; let nv = 421;
+for (let i=0;i<46;i++){ nv += Math.sin(i/4)*2.1 + (Math.random()*2.2-0.6) + 0.55; net.push(nv); }
+net[net.length-1] = 463.5;
+(function(){
+  const w=340,h=76,pad=8, d=sparkPath(net,w,h,pad), p=lastPoint(net,w,h,pad);
+  document.getElementById('netspark').innerHTML =
+    `<defs><linearGradient id="ng" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--acc)" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs>
+     <path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#ng)"/>
+     <path class="line" d="${d}"/>
+     <circle class="dot-ring dot-pulse" cx="${p.x}" cy="${p.y}" r="7"/>
+     <circle class="dot" cx="${p.x}" cy="${p.y}" r="3.5"/>`;
+})();
+
+const bf=[18.9,18.7,18.4,18.5,18.1,17.8,17.6,17.7,17.3,17.0,16.8,16.6,16.5,16.3];
+document.getElementById('bfspark').innerHTML = `<path class="line" d="${sparkPath(bf,150,30,4)}"/>`;
+
+const sparks = { up:[3,4,3.5,5,4.6,6,5.8,7], up2:[2,3,2.6,4,5,4.7,6.2,7.5], down:[7,6.4,6.8,5.5,5.8,4.6,4.9,4] };
+document.querySelectorAll('.ms[data-spark]').forEach(svg => {
+  const k = svg.dataset.spark, up = k.startsWith('up');
+  svg.innerHTML = `<path class="line" style="stroke:${up?'var(--up)':'var(--down)'}" d="${sparkPath(sparks[k],44,22,3)}"/>`;
+});
+</script>
+</body>
+</html>

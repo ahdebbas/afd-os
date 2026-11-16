@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useOs } from './os'
 import { todayKey } from './dates'
+import { apiUrl } from './api'
 import { formatUsd } from './currency.js'
 import { FINANCE } from './data.js'
 import { usePersistentState } from './hooks'
@@ -21,7 +22,7 @@ const loadCache = () => {
 const isFresh = freshQuoteCache
 
 async function fetchQuote(symbol, { signal } = {}) {
-  const res = await fetch(`/yq/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`, { signal })
+  const res = await fetch(apiUrl(`/yq/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`), { signal })
   if (!res.ok) throw new Error(`${symbol}: HTTP ${res.status}`)
   const payload = await res.json()
   const meta = payload.chart?.result?.[0]?.meta

@@ -1,6 +1,6 @@
 {
-  "name": "AFD OS",
-  "short_name": "AFD OS",
+  "name": "Baseline",
+  "short_name": "Baseline",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#04060C",

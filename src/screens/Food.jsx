@@ -416,7 +416,7 @@ export default function Food() {
   }
 
   return (
-    <div className="food-journal space-y-4 pb-24" style={{ '--acc': 'var(--acc-food)' }}>
+    <div className="module-layout food-layout food-journal space-y-4" style={{ '--acc': 'var(--acc-food)' }}>
       <section className="food-day-picker">
         <DayStrip value={date} onChange={value => { closeCustomForm(); setPortionFor(null); setEntryEditor(null); setDate(value) }} status={dayStatus} />
         <div className="food-date-controls"><label>Log date<input type="date" value={date} max={todayKey()} onChange={event => {

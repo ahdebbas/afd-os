@@ -224,7 +224,7 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
           {' \u00b7 '}{portfolio.missingCount ? 'Update investment values' : portfolio.source}
         </p>
       </section>
-      <section aria-label="Pinned goal">
+      <section className="trajectory-pinned" aria-label="Pinned goal">
         <div className="trajectory-goal-row">
           <h2 id="home-main-kpi" className="trajectory-eyebrow trajectory-goal-title" aria-live="polite">{label}</h2>
           {mainGoal !== 'cash' && <button type="button" className="trajectory-location" onClick={() => setSheet('gym')} aria-label={`Change workout gym, ${gym.label}`} aria-haspopup="dialog">
