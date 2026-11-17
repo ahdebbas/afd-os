@@ -26,6 +26,7 @@ test('Cash uses USD without converting entered balances or payments', () => {
     assert.deepEqual(normalized.oneOffs.map(item => item.amount), input.oneOffs.map(item => item.amount))
     assert.deepEqual(normalized.coverage, input.coverage)
     assert.deepEqual(reconcileCashPulse(normalized, now), normalized)
+    assert.equal(reconcileCashPulse(normalized, now), normalized, 'mounting normalized cash must not create a dirty edit')
     assert.equal(input.currency, currency)
     assert.equal(buildCashProjection(input, now).state.currency, 'USD')
   }

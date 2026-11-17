@@ -205,6 +205,10 @@ Cash section ordering, disclosure, and editing checks:
 Installed-app dock/viewport browser checks: `node scripts/check-mobile-viewport.mjs`
 with the dev server running (uses the same `PLAYWRIGHT_MODULE` / `PULSE_URL`
 overrides as `scripts/check-pulse.mjs`).
+Real-provider cloud hydration and recovery checks:
+`node scripts/check-cloud-hydration.mjs` with the dev server running. This mocks
+Supabase responses, not the cloud provider, and uses synthetic data only. It accepts
+the same URL/module overrides and `PLAYWRIGHT_BROWSER=webkit` for Safari coverage.
 Currency and workout date checks:
 `node --test src/currency.test.mjs src/monthlyWorkoutRecap.test.mjs`.
 Workout checks: `node --test src/workoutPrograms.test.mjs src/workoutHistory.test.mjs src/monthlyWorkoutRecap.test.mjs`.
@@ -219,6 +223,12 @@ module swipes.
 
 Personal data is cached **locally in the browser** (`localStorage`) and eligible
 datasets sync to your authenticated account when cloud sync is configured.
+Signed-in startup waits for a successful cloud read before mounting modules or
+enabling uploads. An authentication token alone does not count as a hydrated cache.
+If the read fails, previously hydrated data for that account remains available
+offline, with uploads paused; use **Settings → Retry cloud sync** to reconnect.
+On a new device, the loading error screen provides the same retry action.
+Clean local caches yield to cloud records; unsynced same-account edits are preserved.
 Home insights are calculated locally and do not make external AI requests.
 
 | Key               | Contents                          |

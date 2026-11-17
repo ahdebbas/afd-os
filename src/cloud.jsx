@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
 import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, confirmCloudStateSynced, discardCloudStateDirty, hasUnsyncedCloudState, isCloudStateDirty, queueCloudState, setCloudSyncSink, shouldPreserveHydrationChange } from './cloudSync'
-import { getCachedSupabaseUserId, hasSupabaseConfig, supabase } from './supabase'
+import { hasSupabaseConfig, supabase } from './supabase'
 
 const CloudCtx = createContext(null)
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
@@ -138,12 +138,17 @@ function AuthScreen() {
   )
 }
 
-function HydratingScreen() {
+function HydratingScreen({ error, onRetry }) {
   return (
     <div className="min-h-dvh w-full max-w-md mx-auto flex items-center justify-center px-6">
       <section className="panel p-6 w-full text-center" style={{ '--acc': 'var(--acc-os)' }}>
-        <Cloud size={22} className="mx-auto acc nl-busy" />
-        <p className="mono text-[10px] tracking-[0.18em] uppercase t2 mt-4">Loading cloud state</p>
+        <Cloud size={22} className={`mx-auto acc ${error ? '' : 'nl-busy'}`} />
+        <p className="mono text-[10px] tracking-[0.18em] uppercase t2 mt-4">{error ? 'Could not load cloud state' : 'Loading cloud state'}</p>
+        {error && <>
+          <p className="text-sm down mt-3" role="alert">{error}</p>
+          <p className="text-[12px] t2 mt-3">Uploads are paused so empty local data cannot replace your saved records.</p>
+          <button onClick={onRetry} className="press acc-chip rounded-xl px-4 py-3 mt-4 text-sm font-semibold">Retry cloud sync</button>
+        </>}
       </section>
     </div>
   )
@@ -154,14 +159,21 @@ export function CloudProvider({ children }) {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [cloudReady, setCloudReady] = useState(false)
+  const [hydrationAttempt, setHydrationAttempt] = useState(0)
   const [syncStatus, setSyncStatus] = useState('idle')
   const [syncError, setSyncError] = useState(null)
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState(null)
   const [authMessage, setAuthMessage] = useState(null)
   const userId = session?.user?.id ?? null
-  const cachedUserId = localStorage.getItem(CLOUD_USER_KEY) || getCachedSupabaseUserId()
+  const cachedUserId = localStorage.getItem(CLOUD_USER_KEY)
   const hasCachedState = Boolean(cachedUserId && (!userId || cachedUserId === userId))
+  const retrySync = useCallback(() => {
+    setCloudReady(false)
+    setSyncStatus('syncing')
+    setSyncError(null)
+    setHydrationAttempt(attempt => attempt + 1)
+  }, [])
 
   useEffect(() => {
     if (!supabase) return
@@ -195,7 +207,7 @@ export function CloudProvider({ children }) {
     }
 
     let cancelled = false
-    const hydrationUserId = localStorage.getItem(CLOUD_USER_KEY) || getCachedSupabaseUserId()
+    const hydrationUserId = localStorage.getItem(CLOUD_USER_KEY)
     const localSnapshot = new Map(CLOUD_STATE_KEYS.map(key => [key, localStorage.getItem(key)]))
 
     const connectSync = () => {
@@ -249,11 +261,9 @@ export function CloudProvider({ children }) {
       }
 
       if (cancelled) return
-      if (error) {
-        setSyncError(error?.message || 'Could not load cloud state')
+      if (error || !Array.isArray(data)) {
+        setSyncError(error?.message || 'The cloud returned an invalid state response')
         setSyncStatus('error')
-        setCloudReady(true)
-        connectSync()
         return
       }
 
@@ -286,7 +296,7 @@ export function CloudProvider({ children }) {
       cancelled = true
       clearCloudSyncSink()
     }
-  }, [userId])
+  }, [hydrationAttempt, userId])
 
   const signIn = async (email, password, captchaToken) => {
     setAuthBusy(true)
@@ -353,14 +363,17 @@ export function CloudProvider({ children }) {
     signIn,
     signUp,
     signOut,
-  }), [session, cloudReady, syncStatus, syncError, authBusy, authError, authMessage])
+    retrySync,
+  }), [session, cloudReady, syncStatus, syncError, authBusy, authError, authMessage, retrySync])
 
   if (!hasSupabaseConfig) return <ConfigMissing />
-  if (authLoading && !hasCachedState) return <HydratingScreen />
+  if (authLoading) return <HydratingScreen />
+
+  const showWorkspace = cloudReady || (hasCachedState && syncStatus === 'error')
 
   return (
     <CloudCtx.Provider value={value}>
-      {authLoading ? children : !session ? <AuthScreen /> : !cloudReady && !hasCachedState ? <HydratingScreen /> : children}
+      {!session ? <AuthScreen /> : showWorkspace ? children : <HydratingScreen error={syncError} onRetry={retrySync} />}
     </CloudCtx.Provider>
   )
 }
@@ -382,6 +395,7 @@ export function CloudStatus() {
           </p>
           <p className="text-[12px] t3 mt-1 truncate">{cloud.user.email}</p>
           {cloud.syncError && <p className="text-[12px] down mt-1 leading-relaxed">{cloud.syncError}</p>}
+          {cloud.syncStatus === 'error' && <button onClick={cloud.retrySync} className="press acc-chip rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold">Retry cloud sync</button>}
         </div>
         <button onClick={cloud.signOut} className="press chip rounded-xl w-9 h-9 flex items-center justify-center t2" aria-label="Sign out">
           <LogOut size={15} strokeWidth={2.25} />

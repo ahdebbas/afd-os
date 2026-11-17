@@ -75,7 +75,7 @@ export function reconcileCashPulse(value, now = new Date()) {
       }))
     : []
 
-  return {
+  const normalized = {
     currency: DEFAULT_CASH_PULSE.currency,
     currentCash: asAmount(source.currentCash),
     cashAsOf: source.cashAsOf || null,
@@ -83,6 +83,7 @@ export function reconcileCashPulse(value, now = new Date()) {
     oneOffs,
     coverage: source.coverage && typeof source.coverage === 'object' ? source.coverage : {},
   }
+  return JSON.stringify(source) === JSON.stringify(normalized) ? source : normalized
 }
 
 export function isCommitmentCovered(coverage, commitmentId, month) {
