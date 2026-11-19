@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
 import { TARGETS } from './data'
 import { useOs } from './os'
 import { useClock, usePersistentState } from './hooks'
@@ -52,7 +52,6 @@ export function FoodProvider({ children }) {
   const [presets, setPresets] = usePersistentState('afd-presets', DEFAULT_PRESETS, Array.isArray)
   const [logs, setLogs] = usePersistentState('afd-food-log', {}, v => v && typeof v === 'object' && !Array.isArray(v))
   const [removed, setRemoved] = useState(null)
-  const [syncSeen, setSyncSeen] = usePersistentState('afd-food-sync-seen', {}, value => value && typeof value === 'object' && !Array.isArray(value))
 
   const today = dateKey(useClock())
   const entries = useMemo(() => logs[today] || [], [logs, today])
@@ -60,32 +59,6 @@ export function FoodProvider({ children }) {
     (a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + (e.protein || 0), carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0) }),
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   ), [entries])
-
-  useEffect(() => {
-    let cancelled = false
-    fetch('/food-sync.json')
-      .then(r => r.ok ? r.json() : null)
-      .catch(() => null)
-      .then(data => {
-        if (cancelled || !data?.logs) return
-        const incoming = Object.entries(data.logs).flatMap(([date, entries]) => Array.isArray(entries)
-          ? entries.filter(entry => entry?.uid && !syncSeen[entry.uid] && nutrition(entry)).map(entry => ({ date, entry: { ...entry, ...nutrition(entry) } })) : [])
-        if (!incoming.length) return
-        setLogs(prev => {
-          const next = { ...prev }
-          let changed = false
-          for (const { date, entry } of incoming) {
-            if (!(next[date] || []).some(existing => existing.uid === entry.uid)) {
-              next[date] = [...(next[date] || []), entry]
-              changed = true
-            }
-          }
-          return changed ? next : prev
-        })
-        setSyncSeen(previous => ({ ...previous, ...Object.fromEntries(incoming.map(({ entry }) => [entry.uid, true])) }))
-      })
-    return () => { cancelled = true }
-  }, [syncSeen, setLogs, setSyncSeen])
 
   const addEntry = (item, day = todayKey()) => {
     const values = nutrition(item)

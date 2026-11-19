@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, mock, test } from 'node:test'
 import { clearCloudSyncSink, confirmCloudStateSynced, hasUnsyncedCloudState, queueCloudState, setCloudSyncSink } from './cloudSync.js'
-import { FINANCE } from './data.js'
+import { SAMPLE_FINANCE as FINANCE } from '../scripts/fixtures/finance.mjs'
 import { addTradingStock, removeTradingStock, tradingHoldings } from './tradingHoldings.js'
 
 beforeEach(() => {

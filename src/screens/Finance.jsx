@@ -29,7 +29,6 @@ export default function Finance() {
   const sync = SYNC[status] ?? SYNC.idle
   const live = q?.MSFT
   const price = live?.price ?? msft.price
-  const dayChangePct = live ? live.changePct : msft.dayChangePct
   const msftValue = msft.shares * price
   // Any live ETF quote drives the Sarwa valuation; otherwise the recorded total.
   const etfLive = sarwa.holdings.some(h => q?.[ETF_SYMBOL[h.ticker]])
@@ -38,8 +37,6 @@ export default function Finance() {
   const tradingValue = msftValue + tradeValue
   const propertyValue = propertyTotal(FINANCE)
   const total = msftValue + sarwaValue + tradeValue + propertyValue
-  const msftUp = dayChangePct >= 0
-  const Trend = msftUp ? TrendingUp : TrendingDown
   const financeSnapshot = useMemo(() => buildFinanceSnapshot({
     finance: FINANCE, quotes: q, quoteStatus: status, syncedAt,
   }), [FINANCE, q, status, syncedAt])
@@ -72,15 +69,13 @@ export default function Finance() {
 
   return (
     <div className="module-layout finance-layout space-y-4" style={{ '--acc': 'var(--acc-fin)' }}>
-      {/* Net worth */}
-      <section className="panel p-6">
+      <div className="finance-summary">
+      <section className="panel p-6 finance-overview">
         <div className="flex items-center justify-between mb-3">
-          <Label>Capital module</Label>
-          <span className={`mono text-[10px] flex items-center gap-1 ${msftUp ? 'up' : 'down'}`}>
-            <Trend size={11} strokeWidth={2.5} /> {msftUp ? '+' : ''}{dayChangePct.toFixed(2)}% MSFT
-          </span>
+          <Label>Tracked assets</Label>
         </div>
         <Odometer value={total} format={usd} className="finance-total display text-[58px] font-bold tracking-tight t1" />
+        <p className="module-description">Stocks, funds and property. Cash is tracked separately.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="acc-chip rounded-lg px-3 py-1.5 mono text-[10px]">TRADING {usd(tradingValue)}</span>
           <span className="chip rounded-lg px-3 py-1.5 mono text-[10px] t2">SARWA INVEST {usd(sarwaValue)}</span>
@@ -124,11 +119,16 @@ export default function Finance() {
           <p className="capital-pulse-note">Trading + Sarwa Invest · Purchases, sales, and property excluded.{capitalPulse.baselineReset && ' Baseline restarted after holdings changed.'}</p>
         </> : <p className="capital-pulse-empty">{capitalPulse.baselineReset ? capitalPulse.summary : 'No earlier snapshot to compare.'}</p>}
       </section>
+      </div>
 
+      <div className="finance-workspace">
+      <div className="finance-main">
       <Trading finance={FINANCE} setFinance={setFinance} quotes={q} status={status} syncedAt={syncedAt} />
+      <RealEstate finance={FINANCE} setFinance={setFinance} netWorth={total} />
+      </div>
 
       {/* Sarwa */}
-      <section className="panel p-6" aria-label="Sarwa Invest">
+      <section className="panel p-6 finance-funds" aria-label="Sarwa Invest">
         <div className="flex items-center justify-between mb-3">
           <Label>Sarwa Invest · halal</Label>
           <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function Finance() {
         </div>
       </section>
 
-      <RealEstate finance={FINANCE} setFinance={setFinance} netWorth={total} />
+      </div>
     </div>
   )
 }

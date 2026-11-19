@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { FINANCE, reconcileFinance, holdingValue, sarwaTotal } from './data.js'
+import { FINANCE as EMPTY_FINANCE, FITNESS, DEFAULT_WEIGHTS, reconcileFinance, holdingValue, sarwaTotal } from './data.js'
+import { SAMPLE_FINANCE as FINANCE } from '../scripts/fixtures/finance.mjs'
 import { buildFinanceSnapshot, toMarketSnapshot, buildCapitalPulse } from './financePerformance.js'
 
 const quotes = {
@@ -11,9 +12,20 @@ const quotes = {
 }
 const snapshot = finance => buildFinanceSnapshot({ finance, quotes, quoteStatus: 'live', syncedAt: '2026-11-10T12:00:00Z' })
 
-test('Trade seeds screenshot quantities and recorded values, never inferred costs', () => {
+test('new accounts do not inherit personal records', () => {
+  assert.equal(reconcileFinance(undefined), EMPTY_FINANCE)
+  assert.deepEqual(EMPTY_FINANCE.properties, [])
+  assert.equal(EMPTY_FINANCE.msft.shares, 0)
+  assert.deepEqual(EMPTY_FINANCE.sarwaTrade.holdings, [])
+  assert.deepEqual(EMPTY_FINANCE.sarwa.holdings, [])
+  assert.deepEqual(FITNESS.inbody, [])
+  assert.deepEqual(FITNESS.injuries, [])
+  assert.deepEqual(DEFAULT_WEIGHTS, {})
+})
+
+test('Trade uses saved quantities and recorded values without inferring costs', () => {
   assert.deepEqual(FINANCE.sarwaTrade.holdings.map(h => [h.ticker, h.units, h.value]), [
-    ['GOOGL', 41.21, 11968.58], ['NVDA', 68.27, 12201.51], ['SPTE', 348.3, 15255.58],
+    ['GOOGL', 4, 1000], ['NVDA', 6, 900], ['SPTE', 8, 200],
   ])
   for (const holding of FINANCE.sarwaTrade.holdings) {
     assert.equal(holding.cost, undefined)
@@ -23,8 +35,8 @@ test('Trade seeds screenshot quantities and recorded values, never inferred cost
     assert.equal(holdingValue({ ...holding, units: 0 }, null), 0)
     assert.equal(holdingValue({ ...holding, units: holding.units * 2 }, null), holding.value * 2)
   }
-  assert.ok(Math.abs(sarwaTotal(FINANCE.sarwaTrade, null) - 39425.67) < 1e-8)
-  assert.equal(sarwaTotal(FINANCE.sarwaTrade, quotes), 43432)
+  assert.equal(sarwaTotal(FINANCE.sarwaTrade, null), 2100)
+  assert.equal(sarwaTotal(FINANCE.sarwaTrade, quotes), 2800)
 })
 
 test('version 2 migration adds Trade without resetting saved holdings, values, or quantities', () => {
@@ -41,33 +53,31 @@ test('version 2 migration adds Trade without resetting saved holdings, values, o
   assert.equal(migrated.properties[0].currentValue, saved.property.value)
   assert.equal(migrated.properties[0].name, saved.property.name)
   assert.equal(migrated.sarwa, saved.sarwa)
-  assert.deepEqual(migrated.sarwaTrade, FINANCE.sarwaTrade)
+  assert.deepEqual(migrated.sarwaTrade.holdings, [])
   assert.equal(reconcileFinance(migrated), migrated)
-  migrated.sarwaTrade = structuredClone(migrated.sarwaTrade)
-  migrated.sarwaTrade.holdings[0].units = 9
-  assert.equal(reconcileFinance(migrated).sarwaTrade.holdings[0].units, 9)
   const restored = JSON.parse(JSON.stringify(migrated))
   assert.deepEqual(reconcileFinance(restored), migrated)
 })
 
-test('legacy migration still refreshes old halal data and preserves edited units', () => {
-  const migrated = reconcileFinance({ version: 1, msft: { shares: 12 }, sarwa: { holdings: [{ ticker: 'ISDW', units: 11 }] } })
+test('legacy migration preserves saved holdings and does not fill them from defaults', () => {
+  const sarwa = { holdings: [{ ticker: 'ISDW', units: 11, cost: 100 }] }
+  const migrated = reconcileFinance({ version: 1, msft: { shares: 12 }, sarwa })
   assert.equal(migrated.sarwa.holdings[0].units, 11)
-  assert.equal(migrated.sarwa.holdings[0].cost, FINANCE.sarwa.holdings[0].cost)
+  assert.equal(migrated.sarwa, sarwa)
   assert.equal(migrated.msft.shares, 12)
-  assert.deepEqual(migrated.sarwaTrade, FINANCE.sarwaTrade)
+  assert.deepEqual(migrated.sarwaTrade.holdings, [])
 })
 
 test('Finance totals, allocations, and market snapshots include Trade exactly once and exclude property from market totals', () => {
   const result = snapshot(FINANCE)
-  assert.equal(result.sarwaTrade.value, 43432)
-  assert.equal(result.totalValue, Math.round(552 * 500 + sarwaTotal(FINANCE.sarwa, quotes) + 43432 + 420000))
+  assert.equal(result.sarwaTrade.value, 2800)
+  assert.equal(result.totalValue, Math.round(12 * 500 + sarwaTotal(FINANCE.sarwa, quotes) + 2800 + 120000))
   assert.equal(result.sarwaTrade.totalReturn, null)
   assert.deepEqual(result.sarwaTrade.holdings.map(h => h.dayChange), [2, -3, 0.5])
   assert.ok(Math.abs(Object.values(result.allocations).reduce((a, b) => a + b) - 100) < 0.2)
   const market = toMarketSnapshot(result)
-  assert.equal(market.sarwaTrade, 43432)
-  assert.equal(market.marketTotal, result.msft.value + result.sarwa.value + 43432)
+  assert.equal(market.sarwaTrade, 2800)
+  assert.equal(market.marketTotal, result.msft.value + result.sarwa.value + 2800)
 })
 
 test('Trade price changes affect market contributors without marking positions changed', () => {
@@ -135,8 +145,8 @@ test('market changes resume from the first snapshot with the new holdings', () =
   const current = { ...toMarketSnapshot(moved), date: '2026-11-10' }
   const pulse = buildCapitalPulse([old, purchased], current)
   assert.equal(pulse.primary.baselineDate, purchased.date)
-  assert.equal(pulse.primary.totalChange, 412)
-  assert.equal(pulse.primary.sarwaTradeChange, 412)
+  assert.equal(pulse.primary.totalChange, 40)
+  assert.equal(pulse.primary.sarwaTradeChange, 40)
   assert.equal(pulse.comparisons.length, 1)
   assert.equal(pulse.recordedDays, 2)
 })

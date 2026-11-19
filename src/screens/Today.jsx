@@ -1,20 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Moon, Settings2, Sun } from 'lucide-react'
 import TodayPulse from '../TodayPulse'
 import TrajectoryHome from '../TrajectoryHome'
 import { useHomeGoals } from '../useHomeGoals'
 import { useClock } from '../hooks'
 import { fetchWhoopCalories, fetchWhoopCycles, WHOOP_POLL_MS } from '../whoop'
 
-function OriginalToday({ goTo, onOpenSettings, dark, onToggleTheme, whoop, cycles }) {
+function OriginalToday({ goTo, whoop, cycles }) {
   const now = useClock()
   return (
     <div className="today-flagship">
       <header className="today-head">
         <div><h1 className="today-eyebrow" style={{ '--acc': 'var(--acc-os)' }}>Today</h1><div className="today-date">{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '').replace(' ', ' · ').toUpperCase()}</div></div>
         <div className="today-head-actions">
-          <button onClick={onToggleTheme} className="today-gear press" title={dark ? 'Light theme' : 'Dark theme'} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
-          <button onClick={onOpenSettings} className="today-gear press" title="Settings" aria-label="Settings"><Settings2 size={18} /></button>
           <div className="today-avatar" aria-hidden="true">A</div>
         </div>
       </header>

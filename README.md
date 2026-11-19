@@ -4,7 +4,7 @@ A personal, mobile-first **PVA (personal-vault app)** for tracking finances, fit
 
 ## Modules
 
-- **Home** — mobile Trajectory: one pinned goal, four supporting KPI cards, liquid capital, daily WHOOP burn analysis, and one contextual action. Desktop keeps its existing overview.
+- **Home** — mobile Trajectory: a pinned goal and next action, today's training/protein status, a financial snapshot, and daily WHOOP burn analysis. Desktop keeps its existing overview.
 - **Finance** — Trading (MSFT, GOOGL, NVDA, SPTE) above Sarwa Invest (halal), with hourly market sync and manual refresh.
 - **Cash** — manual USD balance, monthly commitments, planned one-offs, and three-month payment coverage. Uses the active shell's theme in light and dark mode; marking payments covered never deducts from the cash snapshot.
 - **Food** — calorie/macro logging, presets, day timeline, 7-day trend & streak.
@@ -14,16 +14,16 @@ All monetary amounts use explicit **USD** labels (including stock prices and
 market-change summaries); saved balances and holdings are not converted or changed.
 The workout calendar starts on the current local day, advances after midnight or
 app resume, and allows historical selection until the next day or reload.
-The latest bundled InBody scan is added to existing saved histories by date;
-saved readings for that date take precedence, and newer readings remain latest.
-Home and Fitness use the same history on mobile and desktop. Scan data is
-bundled in the client, just like the earlier readings, not private server-only data.
+Home and Fitness use the same account-saved history on mobile and desktop.
+Personal finance, body-composition, and food records are not seeded from public
+files. New accounts start without those records.
 
 ### Mobile Home
 
-All five mobile pages share the Fitness visual system: Barlow body text,
-Barlow Condensed display numbers/headings, JetBrains Mono labels, shared
-light/dark surfaces, and the Fitness accent. Desktop styling is unchanged.
+All five touch pages share a calm neutral visual system: system-font body text,
+readable metadata, restrained teal accents, and light/dark surfaces. Each page has
+a shared title bar with settings, theme, timer, and status feedback. Desktop
+styling is unchanged.
 
 Use the left/right arrows beside the orbit to switch between **Body fat**,
 **Training**, and **Cash buffer** in one tap. The sequence wraps in both directions;
@@ -101,32 +101,47 @@ Home actions open today's Food/Fitness; a body check-in opens the actual InBody
 form. Normal tab navigation preserves historical browsing.
 The daily WHOOP calorie-burn analysis remains on Home, using the same energy
 widget and shared polling as the Original layout, including its loading,
-disconnected, and error states. The mobile dock is a compact, frosted floating
-pill with an active-tab highlight, inset above the home indicator. Each module
-reserves the pill's height and bottom inset so its final controls scroll clear.
+disconnected, and error states. Folded navigation occupies a dedicated bottom
+row above the home-indicator safe area. At 800 CSS pixels of viewport width it
+becomes a labeled trailing rail. Neither layout floats over page content.
+The touch interface uses system typography, grouped surfaces, and platform-aware
+light/dark colors; the expanded rail stays at the right edge.
+Unfolded Home balances the pinned goal against a compact Today and financial
+column, with energy below; folded Home presents those sections in a single
+scrolling flow. The trailing navigation track owns the right safe-area inset so
+the content does not reserve it twice.
 The touch shell fills the measured visible viewport, in both browser tabs and
 Home Screen installations, rather than relying on Safari's fixed-edge height.
 It remeasures on resize, rotation, folding/unfolding, focus changes, and app resume.
-The pill sits outside the home-indicator safe area rather than stretching its
-background through that space. It hides for a significant keyboard-sized viewport
+Navigation respects the system safe areas. It hides for a significant keyboard-sized viewport
 reduction only while an editable field is focused, and returns after keyboard
 dismissal or blur. A viewport change without text entry does not hide navigation.
 
-All five tabs use the available width up to 1120 CSS pixels instead of retaining a
-448px phone column. Narrow screens stack cards; at 680px of usable module width,
-Home and the other tabs arrange complementary sections in two columns. Fitness
-gives the workout console more space alongside supporting panels. Exercise rows
-stack their controls when the console itself is narrow. Layout changes keep the
+All five tabs use the available screen width. At 680px of usable module width,
+Food keeps its composer and journal in the main pane with nutrition and saved
+plates alongside; Fitness pairs the workout console with supporting panels;
+Finance pairs holdings with funds; and Cash pairs payment management with the
+manual balance and forecast. Home adapts at the navigation breakpoint. Narrow
+screens stack content, with Food's nutrition summary directly after the composer.
+Shared date controls show the last seven days plus a date picker for older dates.
+Exercise controls stack when their console is narrow. Layout changes retain the
 same mounted modules, selected dates, workout progress, and form drafts.
+
+Trading's price sources and 52-week ranges expand per holding on touch screens.
+Finance's tracked-assets total includes stocks, funds and property, not the
+separate Cash balance. Shared editors use bottom sheets folded and bounded
+dialogs unfolded. Sign-in supports password visibility and autofill; password
+recovery is not part of this redesign.
 
 **Settings → Shell mode → Auto** uses the desktop shell only with a wide
 (at least 1024px), hover-capable, fine-pointer viewport. Touch-first devices keep
-bottom navigation when unfolded. Explicit Mobile and Desktop settings still
+touch navigation (a right-side rail when unfolded). Explicit Mobile and Desktop settings still
 override Auto. The existing desktop dashboard's styling is unchanged.
 
 With the dev server running, `node scripts/check-mobile-viewport.mjs` checks
-320–1100px viewports, repeated fold/unfold transitions, all tabs, both Home
-layouts/themes, safe-area clearance, keyboard recovery, and workout draft state.
+320–1280px viewports, repeated fold/unfold transitions, all tabs, both Home
+layouts/themes, reserved navigation space, safe-area clearance, palette contrast,
+keyboard recovery, dialog sizing, and workout/meal/payment draft state.
 The harness requires Playwright and Chrome; set `PLAYWRIGHT_MODULE` to an existing
 Playwright module path if it is not installed locally. Use
 `PLAYWRIGHT_BROWSER=webkit` for the installed Playwright WebKit engine.
@@ -244,8 +259,9 @@ Use **Settings → Export backup** to download a JSON snapshot, and **Restore ba
 to import one. Clearing browser data removes the local copy; unsynced changes are
 lost unless backed up.
 
-> Note: finance figures are bundled into the client. Treat any public deployment as
-> publicly visible, or keep the site access-restricted.
+Use account sync or the JSON backup importer for personal records. Do not put
+them in source files or `public/`. Removing old defaults from the current build
+does not remove them from prior Git commits or deployments.
 
 ## Market data
 

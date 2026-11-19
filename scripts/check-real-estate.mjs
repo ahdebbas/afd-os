@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { FINANCE, reconcileFinance, sarwaTotal, usd } from '../src/data.js'
+import { reconcileFinance, sarwaTotal, usd } from '../src/data.js'
+import { SAMPLE_FINANCE as FINANCE } from './fixtures/finance.mjs'
 import { DEFAULT_HOME_STATE } from '../src/homeGoals.js'
 import { buildFinanceSnapshot, toMarketSnapshot } from '../src/financePerformance.js'
 import { QUOTE_SYMBOLS, mergeQuoteResults } from '../src/quoteCache.js'
@@ -11,7 +12,8 @@ const syncedAt = new Date().toISOString()
 const cache = mergeQuoteResults(null, QUOTE_SYMBOLS.map(() => ({
   status: 'fulfilled', value: { price: 100, currency: 'USD', changePct: 0, low52: 50, high52: 150 },
 })), syncedAt)
-const finance = { ...FINANCE, version: 3, property: { name: 'Beirut apartment', location: 'Beirut, Lebanon', value: 420000 } }
+const { properties, ...accounts } = FINANCE
+const finance = { ...accounts, version: 3, property: { name: properties[0].name, location: properties[0].location, value: properties[0].currentValue } }
 delete finance.properties
 const reconciled = reconcileFinance(finance)
 const stockValue = reconciled.msft.shares * 100 + sarwaTotal(reconciled.sarwa, cache.data) + sarwaTotal(reconciled.sarwaTrade, cache.data)
@@ -69,14 +71,14 @@ try {
     await waitProperties(1)
     assert.equal((await stored()).version, FINANCE.version)
     await estate.getByText('Not set', { exact: true }).waitFor()
-    await assertTotals(420000)
+    await assertTotals(finance.property.value)
 
-    await estate.getByRole('button', { name: 'Edit Beirut apartment', exact: true }).click()
+    await estate.getByRole('button', { name: `Edit ${finance.property.name}`, exact: true }).click()
     let form = estate.getByRole('form', { name: 'Edit property', exact: true })
     await form.getByLabel('Current value (USD)', { exact: true }).fill('999999')
     await form.getByRole('button', { name: 'Cancel', exact: true }).click()
-    assert.equal((await stored()).properties[0].currentValue, 420000)
-    await estate.getByRole('button', { name: 'Edit Beirut apartment', exact: true }).click()
+    assert.equal((await stored()).properties[0].currentValue, finance.property.value)
+    await estate.getByRole('button', { name: `Edit ${finance.property.name}`, exact: true }).click()
     form = estate.getByRole('form', { name: 'Edit property', exact: true })
     await form.getByLabel('Property name', { exact: true }).fill('Property X')
     await form.getByLabel('Purchase value (USD, optional)', { exact: true }).fill('200000')

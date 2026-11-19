@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { formatUsd } from './currency.js'
-import { usd, FINANCE, holdingValue } from './data.js'
+import { usd, holdingValue } from './data.js'
+import { SAMPLE_FINANCE as FINANCE } from '../scripts/fixtures/finance.mjs'
 import { formatCash, reconcileCashPulse } from './cashPulse.js'
 import { buildCapitalPulse } from './financePerformance.js'
 

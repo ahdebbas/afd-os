@@ -20,6 +20,7 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
   const ink = desktop ? 'd-t1' : 't1'
   const muted = desktop ? 'd-t3' : 't3'
   const number = desktop ? 'd-num' : 'mono'
+  const HoldingDetails = desktop ? 'div' : 'details'
   const field = `${desktop ? 'd-inset d-t1' : 'field'} ${number} w-full rounded px-2 py-2 text-[13px]`
   const button = `press rounded-md px-3 py-2 text-[12px] ${desktop ? 'd-inset d-t2' : 'chip t2'}`
   const cancelAdd = () => {
@@ -140,7 +141,7 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
                   className={`press flex items-center gap-1 mt-2 py-1 text-[11px] ${desktop ? 'd-down' : 'down'}`}>
                   <Trash2 size={12} />Remove
                 </button>}
-                <p className={`text-[10px] mt-1 ${muted}`}>{source}</p>
+                {desktop && <p className={`text-[10px] mt-1 ${muted}`}>{source}</p>}
               </div>
               <div className={`text-right shrink-0 ${number}`}>
                 <p className={`font-semibold text-[14px] ${ink}`}>{usd(holdingValue(holding, quotes), 2)}</p>
@@ -149,6 +150,8 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
                   : <p className={`text-[11px] mt-1 ${muted}`}>Daily move unavailable</p>}
               </div>
               </div>
+              <HoldingDetails className="holding-details">
+              {!desktop && <><summary>Price source &amp; 52-week range</summary><p className={`text-[12px] mb-3 ${muted}`}>{source}</p></>}
               {hasRange ? (
                 <div className="mt-4" role="group" aria-label={`${holding.ticker} 52-week range`}>
                   <div className="relative h-1.5 rounded-full" role="meter" aria-label={`${holding.ticker} position in 52-week range`}
@@ -164,6 +167,7 @@ export default function Trading({ finance, setFinance, quotes, status, syncedAt,
                   </div>
                 </div>
               ) : <p className={`text-[10px] mt-3 ${muted}`}>{holding.ticker} 52-week range unavailable</p>}
+              </HoldingDetails>
             </div>
           )
         })}

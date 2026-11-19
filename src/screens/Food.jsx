@@ -416,15 +416,13 @@ export default function Food() {
   }
 
   return (
-    <div className="module-layout food-layout food-journal space-y-4" style={{ '--acc': 'var(--acc-food)' }}>
+    <div className="module-layout food-layout food-journal ios-food space-y-4" style={{ '--acc': 'var(--acc-food)' }}>
       <section className="food-day-picker">
         <DayStrip value={date} onChange={value => { closeCustomForm(); setPortionFor(null); setEntryEditor(null); setDate(value) }} status={dayStatus} />
-        <div className="food-date-controls"><label>Log date<input type="date" value={date} max={todayKey()} onChange={event => {
-          if (!event.target.value || event.target.value > todayKey()) return
-          closeCustomForm(); setPortionFor(null); setEntryEditor(null); setDate(event.target.value)
-        }} /></label>{!isToday && <button onClick={() => { closeCustomForm(); setEntryEditor(null); setDate(todayKey()) }}>Today</button>}</div>
       </section>
 
+      <div className="food-workspace">
+      <div className="food-main">
       <FoodUndo />
       {canEdit && (
         <section className="food-entry-panel" aria-labelledby="food-entry-title">
@@ -494,6 +492,37 @@ export default function Food() {
         </section>
       )}
 
+      <RecentMeals day={date} />
+      <section className="food-logbook">
+        <div className="food-journal-head px-1 mb-3">
+          <Label>Journal · {entries.length}</Label>
+          <span className="mono text-[10px] t3">{insight}</span>
+        </div>
+        {entries.length === 0 ? (
+          <div className="food-empty">
+            <p className="text-[15px] font-semibold t1">Nothing logged yet</p>
+            <p className="text-[13px] t3 mt-1">{isToday ? 'Tap a quick plate or use the meal logger above.' : 'No food logged this day.'}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {journalGroups.map((group, index) => (
+              <JournalEntry
+                key={group.items.map(e => e.uid).join('-')}
+                entry={group.entry}
+                preset={presetByName.get(group.entry.name)}
+                count={group.items.length}
+                hideTime={index > 0 && journalGroups[index - 1].entry.time === group.entry.time}
+                canRemove={canEdit}
+                onEdit={() => setEntryEditor({ entry: group.entry, day: date })}
+                onRemove={() => removeEntry(group.items.map(entry => entry.uid), date)}
+              />
+            ))}
+            <p className="food-note">{dayNote(entries, totals, remaining, isToday, targets.protein)}</p>
+          </div>
+        )}
+      </section>
+      </div>
+      <div className="food-support">
       <section className="food-hero">
         <div className="food-fuel-kicker">
           <span className="food-fuel-dot" />
@@ -504,7 +533,7 @@ export default function Food() {
 
         <div className="food-fuel-body">
           <div className="food-fuel-gauge">
-            <Gauge pct={progress} size={196} stroke={17} color={remaining < 0 ? 'var(--down)' : 'var(--fuel-protein)'} label="Calorie target progress">
+            <Gauge pct={progress} size={144} stroke={12} color={remaining < 0 ? 'var(--down)' : 'var(--fuel-protein)'} label="Calorie target progress">
               <Odometer value={Math.max(0, remaining)} className="display food-fuel-kcal" />
               <span className="food-fuel-label">Kcal left</span>
             </Gauge>
@@ -528,7 +557,6 @@ export default function Food() {
         {isToday && <WhoopBudgetFooter whoop={whoop} eaten={totals.kcal} protein={totals.protein} />}
       </section>
 
-      <RecentMeals day={date} />
       {canEdit && (
       <section className="food-presets">
         <div className="flex items-center justify-between px-1 mb-3">
@@ -585,36 +613,9 @@ export default function Food() {
       </section>
       )}
 
-      <section className="food-logbook">
-        <div className="food-journal-head px-1 mb-3">
-          <Label>Journal · {entries.length}</Label>
-          <span className="mono text-[10px] t3">{insight}</span>
-        </div>
-        {entries.length === 0 ? (
-          <div className="food-empty">
-            <p className="text-[15px] font-semibold t1">Nothing logged yet</p>
-            <p className="text-[13px] t3 mt-1">{isToday ? 'Tap a quick plate or use the meal logger above.' : 'No food logged this day.'}</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {journalGroups.map((group, index) => (
-              <JournalEntry
-                key={group.items.map(e => e.uid).join('-')}
-                entry={group.entry}
-                preset={presetByName.get(group.entry.name)}
-                count={group.items.length}
-                hideTime={index > 0 && journalGroups[index - 1].entry.time === group.entry.time}
-                canRemove={canEdit}
-                onEdit={() => setEntryEditor({ entry: group.entry, day: date })}
-                onRemove={() => removeEntry(group.items.map(entry => entry.uid), date)}
-              />
-            ))}
-            <p className="food-note">{dayNote(entries, totals, remaining, isToday, targets.protein)}</p>
-          </div>
-        )}
-      </section>
-
       <History logs={logs} />
+      </div>
+      </div>
 
       {canEdit && showForm && form.editId && (
         <div className="food-form-sheet">

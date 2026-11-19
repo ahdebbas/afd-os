@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { FINANCE, holdingValue, reconcileFinance, sarwaTotal } from './data.js'
+import { holdingValue, reconcileFinance, sarwaTotal } from './data.js'
+import { SAMPLE_FINANCE as FINANCE } from '../scripts/fixtures/finance.mjs'
 import { addTradingStock, normalizeTicker, removeTradingStock, tradingHoldings, validateTradingStock } from './tradingHoldings.js'
 import { financeQuoteSymbols, freshQuoteCache, mergeQuoteResults } from './quoteCache.js'
 import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from './financePerformance.js'

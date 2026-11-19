@@ -75,13 +75,13 @@ export function QuotesProvider({ children }) {
         setStatus(isFresh(next, Date.now(), symbolsRef.current) ? 'live' : Object.keys(next.data).length ? 'stale' : 'error')
         if (next.errors.length) {
           console.error('Market sync incomplete:', next.errors)
-          announce?.(`MARKET SYNC INCOMPLETE · ${next.errors.join(' · ')}`, 'var(--warn)')
+          announce?.(`${next.errors.length} market quotes unavailable. Last known prices shown.`, 'var(--warn)')
         }
         const m = next.data.MSFT
         if (!next.errors.length && m) announce?.(`MARKET SYNC · MSFT ${formatUsd(m.price, 2)}${m.changePct == null ? '' : ` ${m.changePct >= 0 ? '+' : ''}${m.changePct.toFixed(1)}%`}`, 'var(--acc-fin)')
       } catch (error) {
         console.error('Market sync failed:', error)
-        announce?.(`MARKET SYNC FAILED · ${error.message}`, 'var(--down)')
+        announce?.('Market refresh failed. Last known prices shown.', 'var(--down)')
         // Offline or proxy unavailable — keep cached/static values, flag freshness.
         setStatus(loadCache() ? 'stale' : 'error')
       }

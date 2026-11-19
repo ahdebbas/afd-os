@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { FINANCE, propertyTotal, reconcileFinance } from './data.js'
+import { propertyTotal, reconcileFinance } from './data.js'
+import { SAMPLE_FINANCE as FINANCE } from '../scripts/fixtures/finance.mjs'
 import { buildCapitalPulse, buildFinanceSnapshot, toMarketSnapshot } from './financePerformance.js'
 
 test('legacy single-property data migrates once without inventing a purchase value', () => {
@@ -36,7 +37,7 @@ test('multiple properties total current values only, never purchase values', () 
   assert.equal(propertyTotal(finance), 350000.75)
   const before = buildFinanceSnapshot({ finance: FINANCE })
   const after = buildFinanceSnapshot({ finance })
-  assert.equal(after.totalValue, Math.round(before.totalValue - 420000 + 350000.75))
+  assert.equal(after.totalValue, Math.round(before.totalValue - propertyTotal(FINANCE) + 350000.75))
   assert.equal(after.property.value, 350001)
   assert.equal(after.positionsKey, before.positionsKey)
   assert.equal(toMarketSnapshot(after).marketTotal, toMarketSnapshot(before).marketTotal)

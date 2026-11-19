@@ -357,9 +357,7 @@ export default function Fitness() {
       {/* Day selector */}
       <section className="panel p-4 fitness-calendar-panel">
         <DayStrip value={selDate} onChange={setSelDate} status={dayStatus} />
-        {!isToday && <button onClick={() => setSelDate(today)} className="press acc-chip rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold">
-          Back to today
-        </button>}
+        <div className="fitness-calendar-stats">
         <div className="mt-3 pt-3 hairline-t flex items-center justify-between">
           <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">This week</span>
           <span className="mono text-[10px] t2"><span className={weekCount >= goal.weeklyWorkouts ? 'acc' : 't1'}>{weekCount}</span> / {goal.weeklyWorkouts} sessions</span>
@@ -372,6 +370,7 @@ export default function Fitness() {
             <ChevronDown size={13} strokeWidth={2.5} className={`t3 transition-transform ${monthExpanded ? 'rotate-180' : ''}`} />
           </span>
         </button>
+        </div>
         {monthExpanded && (
           <div className="mt-3 pt-3 hairline-t">
             <p className="mono text-[10px] t3">{monthlyRecap.paceNote}</p>
@@ -424,6 +423,8 @@ export default function Fitness() {
         )}
       </section>
 
+      <div className="fitness-workspace">
+      <div className="fitness-main">
       {/* Workout — rotation + inline weights (backlog any day) */}
       <section className="panel p-6 fitness-console">
         <WorkoutGymSelector value={activeProgramId} onChange={id => {
@@ -526,6 +527,8 @@ export default function Fitness() {
           {done ? `${isToday ? 'Finished' : dayLabel} ${selSession.name} ✓ · tap to undo` : `${isToday ? 'Finish' : `Log ${dayLabel} ·`} ${program[day].name}`}
         </button>
       </section>
+      </div>
+      <div className="fitness-support">
 
       {isToday && <WhoopEnergyPanel whoop={whoop} eaten={(foodLogs[today] || []).reduce((a, e) => a + e.kcal, 0)} protein={(foodLogs[today] || []).reduce((a, e) => a + (e.protein || 0), 0)} />}
 
@@ -702,6 +705,8 @@ export default function Fitness() {
           ))}
         </div>
       </section>
+      </div>
+      </div>
     </div>
   )
 }

@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { FINANCE, propertyTotal, sarwaTotal, usd } from '../src/data.js'
+import { propertyTotal, sarwaTotal, usd } from '../src/data.js'
+import { SAMPLE_FINANCE as FINANCE } from './fixtures/finance.mjs'
 import { DEFAULT_HOME_STATE } from '../src/homeGoals.js'
-import { QUOTE_SYMBOLS, mergeQuoteResults } from '../src/quoteCache.js'
+import { financeQuoteSymbols, mergeQuoteResults } from '../src/quoteCache.js'
 import { buildFinanceSnapshot, toMarketSnapshot } from '../src/financePerformance.js'
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const origin = process.env.PULSE_URL || 'http://127.0.0.1:5173'
 const syncedAt = new Date().toISOString()
-const cache = mergeQuoteResults(null, QUOTE_SYMBOLS.map(() => ({
+const symbols = financeQuoteSymbols(FINANCE)
+const cache = mergeQuoteResults(null, symbols.map(() => ({
   status: 'fulfilled', value: { price: 100, currency: 'USD', changePct: 0, low52: 50, high52: 300 },
-})), syncedAt)
+})), syncedAt, symbols)
 const baseline = { ...toMarketSnapshot(buildFinanceSnapshot({ finance: FINANCE, quotes: cache.data })), date: '2020-01-01' }
 const initialTotal = FINANCE.msft.shares * 100 + sarwaTotal(FINANCE.sarwaTrade, cache.data)
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
@@ -56,6 +58,11 @@ try {
     await page.goto(origin)
     const trading = page.getByRole('region', { name: 'Trading', exact: true })
     const row = ticker => trading.getByRole('group', { name: `${ticker} holding`, exact: true })
+    const showDetails = async ticker => {
+      if (width >= 1024) return
+      const details = row(ticker).locator('details')
+      if (await details.getAttribute('open') === null) await details.locator('summary').click()
+    }
     const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('afd-finance')))
     const waitCache = ticker => page.waitForFunction(ticker => {
       const cache = JSON.parse(localStorage.getItem('afd-quotes'))
@@ -113,6 +120,8 @@ try {
     await waitCache('AAPL')
     await trading.getByText(usd(initialTotal + 500), { exact: true }).waitFor()
     await assertNetWorth()
+    if (width < 1024) assert.equal(await row('AAPL').locator('details').getAttribute('open'), null)
+    await showDetails('AAPL')
     await row('AAPL').getByRole('meter').waitFor()
     assert.equal((await stored()).sarwaTrade.holdings.at(-1).units, 2.5)
     if (width < 1024) await page.getByText('Purchases and sales are not gains.', { exact: false }).first().waitFor()
@@ -135,10 +144,11 @@ try {
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('afd-quotes')).errors.some(error => error.startsWith('AAPL:')))
     await row('AAPL').getByText(usd(975, 2), { exact: true }).waitFor()
     await page.clock.fastForward(250)
-    assert.equal(requests.length - beforeFailure, QUOTE_SYMBOLS.length + 1, 'a failed symbol must not trigger a retry loop')
+    assert.equal(requests.length - beforeFailure, symbols.length + 1, 'a failed symbol must not trigger a retry loop')
     await remove('AAPL', false)
     assert.equal(await row('AAPL').count(), 1)
     await remove('AAPL')
+    await showDetails('GOOGL')
     await row('GOOGL').getByText(/^Live/).waitFor()
     const afterRemoval = requests.length
     await refresh()
@@ -156,6 +166,7 @@ try {
     assert.equal((await stored()).sarwaTrade.holdings.some(holding => holding.ticker === 'MSFT'), false)
     assert.equal((await stored()).msft.shares, 1.25)
     await add('BRK-B', '0')
+    await showDetails('BRK-B')
     await row('BRK-B').getByText('BRK-B 52-week range unavailable', { exact: true }).waitFor()
     await waitCache('BRK-B')
     await trading.getByRole('button', { name: 'Edit Trading shares', exact: true }).click()

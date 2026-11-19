@@ -1,4 +1,4 @@
-// Static personal data shared across screens
+// Shared app defaults. Account records are loaded from saved state.
 
 export const TARGETS = { kcal: 1950, protein: 180, carbs: 170, fat: 54 }
 
@@ -6,21 +6,7 @@ export const TARGETS = { kcal: 1950, protein: 180, carbs: 170, fat: 54 }
 export const DEFICIT_GOAL = 500
 
 export const FITNESS = {
-  // InBody readings over time (most recent last). Latest drives the cards/gauge.
-  inbody: [
-    { date: '2024-03-30', weight: 97.5, smm: 43.4, fatMass: 21.4, fatPct: 22.0 },
-    { date: '2025-03-02', weight: 98.4, smm: 45.0, fatMass: 19.7, fatPct: 20.0 },
-    { date: '2025-04-02', weight: 97.7, smm: 45.6, fatMass: 18.2, fatPct: 18.6 },
-    { date: '2025-06-30', weight: 93.3, smm: 42.8, fatMass: 18.4, fatPct: 19.7 },
-    { date: '2025-12-06', weight: 95.3, smm: 44.5, fatMass: 17.7, fatPct: 18.6 },
-    { date: '2026-01-26', weight: 93.0, smm: 43.0, fatMass: 17.7, fatPct: 19.0 },
-    { date: '2026-04-03', weight: 93.4, smm: 43.6, fatMass: 17.3, fatPct: 18.5 },
-    { date: '2026-05-09', weight: 90.7, smm: 42.7, fatMass: 16.0, fatPct: 17.7 },
-    { date: '2026-05-23', weight: 90.4, smm: 43.3, fatMass: 14.8, fatPct: 16.3 },
-    { date: '2026-06-13', weight: 88.3, smm: 42.2, fatMass: 14.4, fatPct: 16.3 },
-    { date: '2026-10-08', weight: 87.1, smm: 42.4, fatMass: 13.1, fatPct: 15.0,
-      waist: 90.5, waistToHipRatio: 0.89, visceralFatLevel: 5, trunkFat: 7.1 },
-  ],
+  inbody: [],
   goal: { fatPct: 13.5 },
   // 4-day split — chest, arms & glutes focus
   program: [
@@ -62,79 +48,30 @@ export const FITNESS = {
       { name: 'Cable / Dumbbell Front Raise', sets: '3×12–15' },
     ] },
   ],
-  injuries: [
-    ['Left shoulder', 'pain resolved — Smith/machine still preferred, but reintroduce free-weight presses & front raises gradually, light first, stop if discomfort'],
-    ['Lower back', 'hip thrust on the machine (not barbell floor loading); stop or reduce ROM if any lower-back loading'],
-  ],
+  injuries: [],
 }
 
-// Seed working weights (kg) for the main lifts — merged with the user's edits.
-export const DEFAULT_WEIGHTS = {
-  'Barbell Bench Press': 90,
-  'Barbell Squat': 120,
-  'Hip Thrust': 110,
-  'Overhead Press': 55,
-  'Lat Pulldown': 75,
-}
+export const DEFAULT_WEIGHTS = {}
 
 export const FINANCE = {
   version: 4,
-  properties: [
-    { id: 'beirut-apartment', name: 'Beirut apartment', location: 'Beirut, Lebanon', purchaseValue: null, currentValue: 420000 },
-  ],
-  msft: { shares: 552, price: 411.74, dayChangePct: -1.44, low52: 356.28, high52: 555.45, priceDate: 'Jun 9, 2026' },
-  sarwaTrade: {
-    lastUpdated: 'Screenshot (date not provided)',
-    holdings: [
-      { ticker: 'GOOGL', name: 'Alphabet', units: 41.21, recordedUnits: 41.21, value: 11968.58, price: 290.40 },
-      { ticker: 'NVDA', name: 'NVIDIA', units: 68.27, recordedUnits: 68.27, value: 12201.51, price: 178.72 },
-      { ticker: 'SPTE', name: 'SP Funds S&P Global Technology ETF', units: 348.30, recordedUnits: 348.30, value: 15255.58, price: 43.80 },
-    ],
-  },
-  sarwa: {
-    total: 30876.99,
-    lastUpdated: 'Aug 22, 2026',
-    // Exact unit counts from Sarwa, so value = units × live price tracks the daily quote.
-    // `cost` is the position's cost basis (total invested); perf is derived live from
-    // value vs. cost so it updates with the price instead of being a manual snapshot.
-    // Cash (USD) has no units/symbol — it falls back to its fixed value/perf.
-    holdings: [
-      { ticker: 'ISDW', name: 'Developed Markets Stocks (Halal)', alloc: 62.9, value: 19396.01, cost: 16709.17, perf: 16.08, units: 279.8039 },
-      { ticker: 'ISDU', name: 'US Stocks (Halal)',                alloc: 25.8, value: 7966.28,  cost: 6552.29,  perf: 21.58, units: 75.9272 },
-      { ticker: 'ISDE', name: 'Emerging Markets Stocks (Halal)',  alloc: 6.2,  value: 1913.25,  cost: 1524.99,  perf: 25.46, units: 52.6921 },
-      { ticker: 'IGLN', name: 'Gold',                             alloc: 4.1,  value: 1256.30,  cost: 1342.20,  perf: -6.40, units: 14.0569 },
-      { ticker: 'USD',  name: 'Cash (USD)',            alloc: 1.1,  value: 345.15,   perf: 0 },
-    ],
-  },
+  properties: [],
+  msft: { shares: 0, price: 0 },
+  sarwaTrade: { lastUpdated: null, holdings: [] },
+  sarwa: { total: 0, lastUpdated: null, holdings: [] },
 }
 
 export function reconcileFinance(finance) {
-  if (finance?.version === FINANCE.version) return finance
-  let migrated
-  if (finance?.version === 2 || finance?.version === 3) {
-    migrated = {
-      ...finance,
-      version: FINANCE.version,
-      sarwaTrade: finance.sarwaTrade ?? FINANCE.sarwaTrade,
-    }
-  } else {
-    const savedHoldings = new Map((finance?.sarwa?.holdings || []).map(holding => [holding.ticker, holding]))
-    const holdings = FINANCE.sarwa.holdings.map(holding => {
-      const savedUnits = savedHoldings.get(holding.ticker)?.units
-      return savedUnits == null ? holding : { ...holding, units: savedUnits }
-    })
-    migrated = {
-      ...FINANCE,
-      ...finance,
-      version: FINANCE.version,
-      sarwaTrade: finance?.sarwaTrade ?? FINANCE.sarwaTrade,
-      sarwa: { ...FINANCE.sarwa, ...finance?.sarwa, total: FINANCE.sarwa.total, lastUpdated: FINANCE.sarwa.lastUpdated, holdings },
-    }
-  }
-  const { property, ...portfolio } = migrated
+  if (!finance) return FINANCE
+  if (finance.version === FINANCE.version) return finance
+  const { property, ...portfolio } = finance
   return {
     ...portfolio,
-    properties: finance?.properties ?? (property ? [{
+    version: FINANCE.version,
+    msft: finance.msft ?? FINANCE.msft,
+    sarwa: finance.sarwa ?? FINANCE.sarwa,
+    sarwaTrade: finance.sarwaTrade ?? FINANCE.sarwaTrade,
+    properties: finance.properties ?? (property ? [{
       id: 'legacy-property',
       name: property.name || 'Property',
       location: property.location ?? '',

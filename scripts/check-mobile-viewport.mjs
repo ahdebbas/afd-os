@@ -7,6 +7,9 @@ const origin = process.env.PULSE_URL || 'http://127.0.0.1:5173'
 const browser = await playwright[engine].launch({ ...(engine === 'chromium' ? { channel: 'chrome' } : {}), headless: true })
 const errors = []
 const viewports = [
+  { width: 466, height: 678 },
+  { width: 956, height: 666 },
+  { width: 666, height: 956 },
   { width: 390, height: 844 },
   { width: 840, height: 760 },
   { width: 390, height: 844 },
@@ -61,6 +64,20 @@ try {
       await page.goto(origin)
       const dock = page.getByRole('navigation', { name: 'Modules' })
       await dock.waitFor()
+      const contrast = await page.evaluate(() => {
+        const style = getComputedStyle(document.body)
+        const luminance = token => {
+          const value = style.getPropertyValue(token).trim().replace('#', '')
+          const channels = [0, 2, 4].map(index => parseInt(value.slice(index, index + 2), 16) / 255)
+            .map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4)
+          return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722
+        }
+        return ['--ink', '--ink-2', '--ink-3', '--acc-fit'].flatMap(text => ['--bg', '--surface', '--chip', '--field'].map(background => {
+          const values = [luminance(text), luminance(background)].sort((a, b) => b - a)
+          return { text, background, ratio: (values[0] + .05) / (values[1] + .05) }
+        }))
+      })
+      assert.ok(contrast.every(item => item.ratio >= 4.5), JSON.stringify(contrast))
       if (standalone) {
         // Model WebKit resolving fixed edges against a shorter containing block.
         await page.addStyleTag({ content: '#root { height: calc(100dvh - 54px); transform: translateZ(0); }' })
@@ -68,12 +85,17 @@ try {
       const checkDock = async () => {
         await page.waitForFunction(() => {
           const shell = document.querySelector('.mobile-app')
-          const dock = document.querySelector('.mobile-dock-rail')
-          const bottom = dock && parseFloat(getComputedStyle(dock).bottom)
           const viewportBottom = (visualViewport?.height ?? innerHeight) + (visualViewport?.offsetTop ?? 0)
-          return shell && dock && Math.abs(shell.getBoundingClientRect().bottom - viewportBottom) < 1 &&
-            Math.abs(dock.getBoundingClientRect().bottom + bottom - viewportBottom) < 1
-        }, undefined, { timeout: 5000 })
+          return shell && Math.abs(shell.getBoundingClientRect().bottom - viewportBottom) < 1
+        }, undefined, { timeout: 5000 }).catch(async error => {
+          const geometry = await page.locator('.mobile-app').evaluate(element => ({
+            bounds: element.getBoundingClientRect().toJSON(),
+            height: getComputedStyle(element).height,
+            declaredHeight: element.style.getPropertyValue('--app-viewport-height'),
+            viewport: { height: visualViewport?.height, top: visualViewport?.offsetTop, width: innerWidth },
+          }))
+          throw new Error(`${error.message}: ${JSON.stringify(geometry)}`)
+        })
         const metrics = await page.evaluate(() => {
           const dock = document.querySelector('.mobile-dock-rail')
           const style = getComputedStyle(dock)
@@ -84,8 +106,7 @@ try {
           const active = dock.querySelector('[aria-current="page"]')
           return {
             padding: parseFloat(style.paddingBottom),
-            bottom: parseFloat(style.bottom),
-            gap: (visualViewport?.height ?? innerHeight) + (visualViewport?.offsetTop ?? 0) - bounds.bottom,
+            rail: innerWidth >= 800,
             height: bounds.height,
             radius: parseFloat(style.borderRadius),
             left: bounds.left,
@@ -98,6 +119,9 @@ try {
             activeBackground: getComputedStyle(active).backgroundColor,
             contentBottom: scroll.querySelector('.boot').getBoundingClientRect().bottom,
             dockTop: bounds.top,
+            dockRight: bounds.right,
+            workspace: document.querySelector('.app-workspace').getBoundingClientRect().toJSON(),
+            scrollBottom: scroll.getBoundingClientRect().bottom,
             viewport: visualViewport?.height ?? innerHeight,
             overflow: document.documentElement.scrollWidth > window.innerWidth,
             shellWidth: document.querySelector('.mobile-app').getBoundingClientRect().width,
@@ -108,33 +132,63 @@ try {
               .some(element => element.scrollWidth > element.clientWidth + 1),
           }
         })
-        assert.ok(Math.abs(metrics.gap - metrics.bottom) < 1, JSON.stringify(metrics))
-        assert.equal(metrics.height, 70)
-        assert.equal(metrics.padding, 5)
-        assert.ok(metrics.radius >= metrics.height / 2)
-        assert.ok(metrics.left >= 16 && metrics.right <= await page.evaluate(() => innerWidth - 16))
+        if (metrics.rail) {
+          assert.ok(metrics.left >= metrics.workspace.right - 1, JSON.stringify(metrics))
+        } else {
+          assert.ok(metrics.scrollBottom <= metrics.dockTop + 1, JSON.stringify(metrics))
+          assert.ok(metrics.height >= 70, JSON.stringify(metrics))
+        }
         assert.ok(metrics.targetSizes.every(size => size.width >= 44 && size.height >= 44), JSON.stringify(metrics))
         assert.equal(metrics.activeCount, 1)
         assert.notEqual(metrics.activeBackground, 'rgba(0, 0, 0, 0)')
-        assert.ok(metrics.contentBottom <= metrics.dockTop - 15, JSON.stringify(metrics))
+        assert.ok(metrics.contentBottom <= metrics.scrollBottom - 15, JSON.stringify(metrics))
         assert.equal(metrics.overflow, false)
         assert.deepEqual(metrics.clipped, [], JSON.stringify(metrics))
         assert.equal(metrics.headerOverflow, false, JSON.stringify(metrics))
-        assert.equal(metrics.shellWidth, Math.min(1120, await page.evaluate(() => innerWidth)))
+        assert.equal(metrics.shellWidth, await page.evaluate(() => innerWidth))
         assert.ok(metrics.viewport > 0)
-        assert.equal(metrics.bottom, standalone && engine === 'chromium' ? 34 : 12)
       }
       for (const viewport of viewports) {
         await page.setViewportSize(viewport)
         for (const name of ['Finance', 'Cash', 'Food', 'Fitness', homeView === 'trajectory' ? 'Home' : 'Today']) {
           await dock.getByRole('button', { name, exact: true }).click()
           await checkDock()
-          const layout = page.locator('.screen-scroll[aria-hidden="false"] .module-layout, .screen-scroll[aria-hidden="false"] .trajectory-home, .screen-scroll[aria-hidden="false"] .today-restored')
+          const layout = page.locator('.screen-scroll[aria-hidden="false"] :is(.finance-workspace, .cash-layout, .food-workspace, .fitness-workspace, .trajectory-home, .today-restored)')
           const layoutMetrics = await layout.evaluate(element => ({
-            columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+            columns: getComputedStyle(element).display === 'grid' ? getComputedStyle(element).gridTemplateColumns.split(' ').length : 1,
             available: element.closest('.screen-scroll').clientWidth - parseFloat(getComputedStyle(element.closest('.screen-scroll')).paddingLeft) - parseFloat(getComputedStyle(element.closest('.screen-scroll')).paddingRight),
           }))
-          assert.equal(layoutMetrics.columns, layoutMetrics.available >= 680 ? 2 : 1, `${name} ${JSON.stringify(viewport)}: ${JSON.stringify(layoutMetrics)}`)
+          const expanded = name === 'Home' ? viewport.width >= 800 : layoutMetrics.available >= 680
+          assert.equal(layoutMetrics.columns, expanded ? 2 : 1, `${name} ${JSON.stringify(viewport)}: ${JSON.stringify(layoutMetrics)}`)
+          if (name === 'Home' && homeView === 'trajectory') {
+            const homeMetrics = await layout.evaluate(element => {
+              const rect = selector => element.querySelector(selector).getBoundingClientRect()
+              const focus = rect('.trajectory-focus')
+              const action = rect('.trajectory-focus .trajectory-primary')
+              const overview = rect('.trajectory-overview')
+              const portfolio = rect('.trajectory-portfolio')
+              const scroll = element.closest('.screen-scroll')
+              const scrollBounds = scroll.getBoundingClientRect()
+              const capital = element.querySelector('.trajectory-capital-total')
+              const capitalStyle = getComputedStyle(capital)
+              const componentAmounts = [...element.querySelectorAll('.trajectory-capital-metric .trajectory-mini-number')]
+              return {
+                actionInsideFocus: action.left >= focus.left && action.right <= focus.right,
+                focusSeparateFromOverview: focus.right <= overview.left + 1,
+                capitalFits: capital.scrollWidth <= capital.clientWidth + 1 && capitalStyle.whiteSpace === 'nowrap',
+                componentAmountsFit: componentAmounts.every(amount => amount.scrollWidth <= amount.clientWidth + 1 && getComputedStyle(amount).whiteSpace === 'nowrap'),
+                portfolioRightInset: scrollBounds.right - Math.max(focus.right, overview.right, portfolio.right),
+                wide: innerWidth >= 800,
+              }
+            })
+            assert.ok(homeMetrics.actionInsideFocus, JSON.stringify(homeMetrics))
+            if (homeMetrics.wide) {
+              assert.ok(homeMetrics.focusSeparateFromOverview, JSON.stringify(homeMetrics))
+              assert.ok(homeMetrics.portfolioRightInset >= 22 && homeMetrics.portfolioRightInset <= 26, JSON.stringify(homeMetrics))
+            }
+            assert.ok(homeMetrics.capitalFits, JSON.stringify(homeMetrics))
+            assert.ok(homeMetrics.componentAmountsFit, JSON.stringify(homeMetrics))
+          }
         }
       }
       await page.setViewportSize({ width: 390, height: 844 })
@@ -178,7 +232,7 @@ try {
         window.visualViewport.dispatchEvent(new Event('resize'))
       })
       await dock.waitFor({ state: 'hidden' })
-      assert.equal(await page.locator('.screen-scroll[aria-hidden="false"]').evaluate(element => getComputedStyle(element).paddingBottom), '16px')
+      assert.equal(await page.locator('.screen-scroll[aria-hidden="false"]').evaluate(element => getComputedStyle(element).paddingBottom), '24px')
       await page.evaluate(() => {
         delete window.visualViewport.height
         window.visualViewport.dispatchEvent(new Event('resize'))
@@ -210,6 +264,31 @@ try {
         assert.equal(await meal.inputValue(), 'Unsaved meal draft')
         assert.equal(await meal.evaluate(element => element === document.activeElement), true)
       }
+      await page.setViewportSize({ width: 956, height: 666 })
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      const settings = page.getByRole('dialog', { name: 'Settings', exact: true })
+      await settings.waitFor()
+      const dialogBounds = await settings.locator('.sheet-panel').boundingBox()
+      assert.ok(dialogBounds.width <= 560 && dialogBounds.y >= 0 && dialogBounds.y + dialogBounds.height <= 666)
+      await page.keyboard.press('Escape')
+      await settings.waitFor({ state: 'hidden' })
+      assert.equal(await page.getByRole('button', { name: 'Settings', exact: true }).evaluate(element => element === document.activeElement), true)
+      await dock.getByRole('button', { name: 'Cash', exact: true }).click()
+      await page.getByRole('button', { name: 'Add planned payment', exact: true }).click()
+      const payment = page.getByRole('dialog', { name: 'Planned payment', exact: true })
+      const name = payment.getByLabel('Name', { exact: true })
+      await name.fill('Unsaved payment')
+      await payment.getByLabel('Amount (USD)', { exact: true }).fill('123.45')
+      for (const viewport of [{ width: 466, height: 678 }, { width: 956, height: 400 }]) {
+        await page.setViewportSize(viewport)
+        assert.equal(await name.inputValue(), 'Unsaved payment')
+        assert.equal(await payment.getByLabel('Amount (USD)', { exact: true }).inputValue(), '123.45')
+        const save = payment.getByRole('button', { name: 'Save payment', exact: true })
+        await save.scrollIntoViewIfNeeded()
+        const bounds = await save.boundingBox()
+        assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= viewport.height, JSON.stringify(bounds))
+      }
+      await page.keyboard.press('Escape')
       await dock.getByRole('button', { name: 'Fitness', exact: true }).click()
       await exercise.getByRole('button', { name: 'Edit weight, 77.5 kilograms' }).waitFor()
       await page.evaluate(async () => {

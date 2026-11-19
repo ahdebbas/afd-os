@@ -171,10 +171,12 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
   return (
     <Sheet open={open} onClose={onClose} title="Settings">
       <div className="space-y-3" style={{ '--acc': 'var(--acc-os)' }}>
+        <h3 className="settings-section-title">Account & sync</h3>
         <CloudStatus />
         <p className="text-[13px] t2 leading-relaxed">
           Your data is saved on this device and synced to your account. Export a backup before restoring or changing devices.
         </p>
+        <h3 className="settings-section-title">Appearance & navigation</h3>
         <div className="chip rounded-2xl px-4 py-3.5">
           <p className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">Shell mode</p>
           <p className="mono text-[9px] t3 mt-1.5">Current: {activeShellLabel} · Selected: {selectedShellLabel}</p>
@@ -201,6 +203,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
           </div>
           <p className="text-[11px] t3 mt-2">Switch layouts anytime. Your saved data and targets stay the same.</p>
         </div>}
+        <h3 className="settings-section-title">Food guidance</h3>
         <button onClick={() => setAdaptive(v => !v)} role="switch" aria-checked={adaptive}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Target size={16} strokeWidth={2.25} /></span>
@@ -213,6 +216,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
               style={{ background: adaptive ? 'var(--acc)' : 'var(--ink-3)' }} />
           </span>
         </button>
+        <h3 className="settings-section-title">Data & backup</h3>
         <button onClick={onExport}
           className="press w-full chip rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center acc-chip"><Download size={16} strokeWidth={2.25} /></span>
@@ -236,7 +240,7 @@ function SettingsSheet({ open, onClose, shellMode, setShellMode, effectiveShell 
   )
 }
 
-function Island({ dark, onTheme, onSettings }) {
+function Island({ dark, onTheme, onSettings, title }) {
   const { toast, timer, cancelTimer } = useOs()
   const now = useClock()
 
@@ -253,8 +257,10 @@ function Island({ dark, onTheme, onSettings }) {
       style={toast ? { '--toast-acc': toast.acc } : {}}>
       <div className="island-idle flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full" style={{ background: 'var(--acc-food)', boxShadow: '0 0 8px var(--acc-food)' }} aria-hidden="true" />
-          <span className="display text-[19px] font-bold tracking-[0.06em] t1">Baseline</span>
+          <div className="app-identity">
+            <span className="app-brand">Baseline / personal dashboard</span>
+            <h1 className="app-page-title">{title}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {timer && (
@@ -264,7 +270,7 @@ function Island({ dark, onTheme, onSettings }) {
             </button>
           )}
           {!timer && (
-            <span className="mono text-[10px] tracking-[0.1em] uppercase t3 mr-0.5 whitespace-nowrap">
+            <span className="app-header-date">
               {now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
             </span>
           )}
@@ -275,7 +281,7 @@ function Island({ dark, onTheme, onSettings }) {
           </button>
           <button onClick={onTheme}
             className="press w-9 h-9 rounded-xl chip t1 flex items-center justify-center border"
-            style={{ borderColor: 'var(--line)' }} aria-label="Toggle theme">
+            style={{ borderColor: 'var(--line)' }} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}>
             {dark ? <Sun size={16} strokeWidth={2.5} /> : <Moon size={16} strokeWidth={2.5} />}
           </button>
         </div>
@@ -320,14 +326,12 @@ function MobileShell({
 }) {
   return (
     <>
-      {tab !== 'today' && (
-        <header className="app-header flex-shrink-0 z-50 px-5 pb-2">
-          <Island dark={dark} onTheme={onToggleTheme} onSettings={onOpenSettings} />
+        <header className="app-header">
+          <Island title={tab === 'today' ? trajectoryHome ? 'Home' : 'Today' : activeTab.label} dark={dark} onTheme={onToggleTheme} onSettings={onOpenSettings} />
         </header>
-      )}
 
       {/* Module carousel */}
-      <div className="flex-1 min-h-0 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div className="app-workspace min-h-0 overflow-hidden relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className={`carousel ${dragging && drag !== 0 ? 'dragging' : ''}`}
           style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}>
           {TABS.map(t => (
@@ -342,7 +346,8 @@ function MobileShell({
       </div>
 
       {/* Dock */}
-      <nav className={`app-dock mobile-dock-rail z-50 ${kbOpen ? 'hidden' : ''}`} aria-label="Modules">
+      <nav className={`app-dock mobile-dock-rail ${kbOpen ? 'hidden' : ''}`} aria-label="Modules">
+        <span className="app-rail-brand" aria-hidden="true">B<span>.</span></span>
         <div className="dock dock-track" style={{ '--acc': activeTab.acc }}>
           {TABS.map(t => {
             const active = tab === t.id
@@ -440,8 +445,8 @@ function Shell() {
         window.innerHeight - visibleHeight > Math.max(100, window.innerHeight * 0.2)
       setKbOpen(keyboard)
       // Fit the visible viewport even when WebKit retains stale fixed-edge geometry.
-      shell.style.setProperty('--app-viewport-height', `${keyboard ? window.innerHeight : visibleHeight}px`)
-      shell.style.setProperty('--app-viewport-top', `${keyboard ? 0 : viewport?.offsetTop ?? 0}px`)
+      shell.style.setProperty('--app-viewport-height', `${visibleHeight}px`)
+      shell.style.setProperty('--app-viewport-top', `${viewport?.offsetTop ?? 0}px`)
     }
     const schedule = () => {
       if (frame != null) cancelAnimationFrame(frame)
@@ -513,7 +518,7 @@ function Shell() {
   const onTouchStart = e => {
     const target = e.target
     // Let nested horizontal controls (chips, rails) own the gesture.
-    if (shouldIgnoreSwipe(target)) {
+    if (shellRef.current?.clientWidth >= 800 || shouldIgnoreSwipe(target)) {
       ignoreSwipe.current = true
       touch.current = null
       setDragging(false)
@@ -555,7 +560,7 @@ function Shell() {
 
   return (
     <div ref={shellRef} data-standalone={!isDesktop && standalone ? '' : undefined}
-      className={isDesktop ? 'h-dvh w-full relative' : `mobile-app w-full mx-auto flex flex-col ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
+      className={isDesktop ? 'h-dvh w-full relative' : `mobile-app w-full mx-auto ${tab === 'today' && home.view === 'trajectory' ? 'trajectory-theme trajectory-shell' : ''}`}>
       <div className="ambient" style={{ '--ambient': isDesktop ? activeTab.ambient : 'var(--acc-fit)' }} aria-hidden="true" />
 
       {isDesktop ? (

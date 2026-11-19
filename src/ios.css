@@ -1,0 +1,558 @@
+body:has(.mobile-app) {
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-2: #e5e5ea;
+  --ink: #1c1c1e;
+  --ink-2: #48484a;
+  --ink-3: #636366;
+  --line: rgb(60 60 67 / 18%);
+  --control-line: #8e8e93;
+  --track: #d1d1d6;
+  --chip: #e5e5ea;
+  --field: #ffffff;
+  --acc-os: #0063ce;
+  --acc-fin: #1b7533;
+  --acc-cash: #8e5000;
+  --acc-food: #a34a00;
+  --acc-fit: #006878;
+  --acc: var(--acc-os);
+  --ring: var(--acc-os);
+  --up: #1b7533;
+  --down: #d70015;
+  --warn: #8e5000;
+  --panel-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  --panel-top: transparent;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Consolas, monospace;
+  --font-ui: var(--font-body);
+}
+.mobile-app {
+  --acc-os: #0063ce;
+  --acc-fin: #1b7533;
+  --acc-cash: #8e5000;
+  --acc-food: #a34a00;
+  --acc-fit: #006878;
+}
+html.dark body:has(.mobile-app) {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --ink: #ffffff;
+  --ink-2: #d1d1d6;
+  --ink-3: #aeaeb2;
+  --line: rgb(84 84 88 / 60%);
+  --control-line: #8e8e93;
+  --track: #48484a;
+  --chip: #2c2c2e;
+  --field: #1c1c1e;
+  --acc-os: #7db8ff;
+  --acc-fin: #30d158;
+  --acc-cash: #ff9f0a;
+  --acc-food: #ff9f0a;
+  --acc-fit: #64d2ff;
+  --up: #30d158;
+  --down: #ff453a;
+  --warn: #ff9f0a;
+  --panel-shadow: none;
+}
+html.dark .mobile-app {
+  --acc-os: #7db8ff;
+  --acc-fin: #30d158;
+  --acc-cash: #ff9f0a;
+  --acc-food: #ff9f0a;
+  --acc-fit: #64d2ff;
+}
+.mobile-app.trajectory-theme { --cp-accent: var(--acc-os); }
+
+.mobile-app .app-header {
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border-color: var(--line);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.mobile-app .app-brand {
+  color: var(--ink-2);
+  font: 400 12px/1.35 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mobile-app .app-page-title {
+  font: 650 34px/1.08 var(--font-body);
+  letter-spacing: -.035em;
+}
+.mobile-app .app-header-date { font-variant-numeric: tabular-nums; }
+.mobile-app .mobile-dock-rail {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-color: var(--line);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.mobile-app .mobile-dock-rail .dock-btn[aria-current="page"] {
+  background: color-mix(in srgb, var(--acc) 13%, var(--surface));
+  border-color: transparent;
+  color: var(--acc);
+}
+.mobile-app .app-rail-brand {
+  font: 650 32px/1 var(--font-body);
+  letter-spacing: -.08em;
+}
+.mobile-app .app-rail-brand span { color: var(--acc-os); }
+
+.mobile-app .trajectory-home.ios-home {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 0;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.ios-home .trajectory-header { width: 100%; }
+.ios-home .trajectory-wordmark {
+  color: var(--ink-2);
+  font: 600 13px/1.4 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ios-home .trajectory-icon-button { width: 44px; height: 44px; border-radius: 12px; }
+.trajectory-home-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: -10px;
+}
+.ios-home .trajectory-home-intro .trajectory-date {
+  margin: 0;
+  color: var(--ink-2);
+  font: 14px/1.45 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.trajectory-home-period { color: var(--ink-3); font-size: 13px; }
+.ios-home .trajectory-pinned {
+  --cp-text: var(--ink);
+  --cp-text-muted: var(--ink-2);
+  --cp-text-soft: var(--ink-3);
+  --cp-border: var(--line);
+  --cp-border-strong: var(--control-line);
+  --cp-surface: var(--surface);
+  --cp-accent: var(--acc-os);
+  --cp-accent-soft: color-mix(in srgb, var(--acc-os) 10%, transparent);
+  --cp-accent-fg: #ffffff;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc-os) 7%, var(--surface)), var(--surface) 70%);
+  box-shadow: var(--panel-shadow);
+}
+.ios-home .trajectory-focus {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--acc-os) 3%, var(--bg));
+}
+.ios-home .trajectory-focus .trajectory-pinned { padding: 18px; }
+html.dark .ios-home .trajectory-pinned { --cp-accent-fg: #071321; }
+.ios-home .trajectory-goal-title {
+  min-height: 0;
+  color: var(--ink);
+  font: 600 16px/1.35 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ios-home .trajectory-location {
+  min-height: 36px;
+  border-color: var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.ios-home .trajectory-goal-navigation { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+.ios-home .trajectory-goal-arrow {
+  border-color: var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--acc-os);
+}
+.ios-home .trajectory-orbit-wrap { width: min(250px, 100%); margin-top: 6px; }
+.ios-home .trajectory-orbit-value {
+  color: var(--ink);
+  font: 650 58px/1 var(--font-body);
+  letter-spacing: -.055em;
+}
+.ios-home .trajectory-orbit-value small,
+.ios-home .trajectory-orbit-target { color: var(--ink-2); }
+.ios-home .trajectory-orbit-target strong { color: var(--ink); }
+.ios-home .trajectory-currency { color: var(--ink-2); }
+.ios-home .trajectory-gap { color: var(--ink); font-size: 14px; }
+.ios-home .trajectory-goal-source { color: var(--ink-2); font-size: 12px; }
+.ios-home .trajectory-primary {
+  min-height: 52px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--acc-os);
+  color: #ffffff;
+  font: 600 16px/1.3 var(--font-body);
+}
+html.dark .ios-home .trajectory-primary { color: #071321; }
+.ios-home .trajectory-primary:hover { filter: brightness(.96); }
+.ios-home .trajectory-insight {
+  min-height: 44px;
+  margin: -8px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.trajectory-overview { display: grid; min-width: 0; gap: 12px; }
+.trajectory-overview-title {
+  padding-bottom: 8px;
+  color: var(--ink);
+  font: 600 20px/1.25 var(--font-body);
+  letter-spacing: -.02em;
+}
+.ios-home .trajectory-mini-goals {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.ios-home .trajectory-mini-goal {
+  display: flex;
+  min-height: 126px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+}
+.ios-home .trajectory-mini-heading {
+  justify-content: space-between;
+  gap: 5px;
+  margin: 0;
+  color: var(--ink-2);
+  font: 500 12px/1.35 var(--font-body);
+}
+.ios-home .trajectory-mini-heading svg { display: block; color: var(--acc-os); }
+.ios-home .trajectory-mini-number {
+  margin-top: 8px;
+  color: var(--ink);
+  font: 650 clamp(20px, 6cqi, 30px)/1.05 var(--font-body);
+  letter-spacing: -.035em;
+}
+.ios-home .trajectory-mini-number small { color: var(--ink-2); font: 500 13px/1.2 var(--font-body); }
+.ios-home .trajectory-financial-number { font-size: clamp(16px, 5cqi, 22px); }
+.ios-home .trajectory-mini-caption {
+  min-height: 0;
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ios-home .trajectory-bar,
+.ios-home .trajectory-segments { height: 4px; margin-top: 10px; background: var(--track); }
+.ios-home .trajectory-bar span,
+.ios-home .trajectory-segments span.done { background: var(--acc-os); }
+.ios-home .trajectory-portfolio {
+  margin: 4px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface);
+}
+.ios-home .trajectory-portfolio-kicker .trajectory-eyebrow {
+  color: var(--ink-2);
+  font: 600 12px/1.35 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ios-home .trajectory-source { color: var(--ink-2); font: 12px/1.45 var(--font-body); }
+.ios-home .trajectory-capital-link { margin-top: 6px; }
+.ios-home .trajectory-capital-total {
+  min-width: 0;
+  white-space: nowrap;
+  color: var(--ink);
+  font: 650 clamp(28px, 5cqi, 40px)/1.1 var(--font-body);
+  letter-spacing: -.04em;
+}
+.ios-home .trajectory-capital-breakdown { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ios-home .trajectory-capital-metric {
+  display: flex;
+  min-width: 0;
+  min-height: 100px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  text-align: left;
+}
+.ios-home .trajectory-capital-metric .trajectory-mini-number { white-space: nowrap; font-size: clamp(12px, 2cqi, 18px); }
+.ios-home .trajectory-capital-metric .trajectory-mini-caption { overflow-wrap: anywhere; }
+.ios-home .trajectory-energy { min-width: 0; margin: 0; }
+
+.ios-food { --fuel-protein: #8e5000; --fuel-carbs: #0063ce; --fuel-fat: #006878; }
+html.dark .ios-food { --fuel-protein: #ff9f0a; --fuel-carbs: #7db8ff; --fuel-fat: #64d2ff; }
+.ios-food .food-day-picker {
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.ios-food .date-navigator-heading { padding-bottom: 6px; }
+.ios-food .date-navigator-heading label { color: var(--ink-2); font: 500 13px/1.4 var(--font-body); }
+.ios-food .date-navigator-heading input { border-radius: 9px; background: var(--surface); }
+.ios-food .day-chip { border-radius: 12px; }
+.ios-food .day-chip-active {
+  background: color-mix(in srgb, var(--acc-food) 11%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc-food) 40%, transparent);
+}
+.ios-food .food-workspace { gap: 20px; }
+.ios-food .food-main,
+.ios-food .food-support { gap: 16px; }
+.ios-food .food-entry-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+}
+.ios-food .food-entry-head { align-items: center; }
+.ios-food #food-entry-title { color: var(--ink); font: 600 19px/1.3 var(--font-body); }
+.ios-food #food-entry-title p {
+  color: inherit;
+  font: inherit;
+  letter-spacing: -.02em;
+  text-transform: none;
+}
+.ios-food .food-entry-hint { color: var(--ink-2); font-size: 14px; }
+.ios-food .food-entry-upload {
+  min-height: 44px;
+  padding-inline: 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.ios-food .food-composer {
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ios-food .food-composer-field {
+  height: 48px;
+  padding-inline: 14px;
+  border: 1px solid var(--control-line);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.ios-food .food-composer-plus,
+.ios-food .food-composer-send { border-radius: 12px; }
+.ios-food .food-composer-plus { background: var(--surface-2); color: var(--acc-food); }
+.ios-food .food-composer-send:not(:disabled) { background: var(--acc-food); color: #ffffff; }
+html.dark .ios-food .food-composer-send:not(:disabled) { color: #1c1c1e; }
+.ios-food .food-logbook,
+.ios-food .food-presets {
+  min-width: 0;
+  max-width: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+}
+.ios-food .food-logbook { min-height: 0; }
+.ios-food .food-journal-head { align-items: baseline; }
+.ios-food .food-journal-head > :first-child,
+.ios-food .food-presets > div:first-child > :first-child {
+  color: var(--ink);
+  font: 600 18px/1.3 var(--font-body);
+  letter-spacing: -.02em;
+  text-transform: none;
+}
+.ios-food .food-empty {
+  padding: 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.ios-food .food-journal-entry { padding-block: 13px; border-bottom: 1px solid var(--line); }
+.ios-food .food-hero {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--acc-food) 5%, var(--surface));
+  color: var(--ink);
+  box-shadow: var(--panel-shadow);
+}
+.ios-food .food-fuel-kicker,
+.ios-food .food-fuel-macro-value,
+.ios-food .food-fuel-label { color: var(--ink-2); }
+.ios-food .food-fuel-kicker { font: 600 12px/1.4 var(--font-body); letter-spacing: 0; text-transform: none; }
+.ios-food .food-fuel-body { grid-template-columns: minmax(126px, 144px) minmax(0, 1fr); gap: 12px; }
+.ios-food .food-fuel-kcal { color: var(--ink); font: 650 32px/1 var(--font-body); }
+.ios-food .food-fuel-macros { gap: 16px; }
+.ios-food .food-fuel-macro-id { font-size: 12px; }
+.ios-food .food-fuel-macro-value { font-size: 11px; }
+.ios-food .food-presets .food-link { color: var(--acc-food); font-size: 13px; font-weight: 600; }
+.ios-food .food-plates-rail { gap: 10px; margin-inline: 0; }
+.ios-food .food-preset-card {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+}
+.ios-food .food-preset-card > button:first-of-type > div:last-child { font: 600 14px/1.3 var(--font-body); }
+.ios-food .food-preset-foot { font: 12px/1.4 var(--font-body); }
+
+.mobile-app .screen-scroll { background: var(--bg); }
+.mobile-app .mono {
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+.mobile-app .uppercase { text-transform: none; }
+.mobile-app :is(.panel, .today-card, .food-day-picker, .food-entry-panel, .food-hero, .food-presets, .food-logbook) {
+  border-color: var(--line);
+  border-radius: 16px;
+  background-color: var(--surface);
+  background-image: none;
+  box-shadow: var(--panel-shadow);
+}
+.mobile-app :is(.panel-2, .chip) { background-color: var(--surface-2); }
+.mobile-app :is(.hairline-t, .hairline-b) { border-color: var(--line); }
+.mobile-app button:is(.chip, .acc-chip),
+body:has(.mobile-app) .sheet-viewport button:is(.chip, .acc-chip) {
+  border-radius: 11px;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mobile-app button.acc-chip,
+body:has(.mobile-app) .sheet-viewport button.acc-chip {
+  border-color: color-mix(in srgb, var(--acc) 22%, transparent);
+  background: color-mix(in srgb, var(--acc) 12%, var(--surface));
+  color: var(--acc);
+}
+.mobile-app :is(.fitness-next-exercise, .cash-forecast, .cash-month-card) {
+  border-radius: 14px;
+}
+.mobile-app .fitness-next-exercise {
+  background: color-mix(in srgb, var(--acc-fit) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--acc-fit) 18%, var(--line));
+}
+.mobile-app .cash-balance,
+.mobile-app .finance-total { font-variant-numeric: tabular-nums; }
+.mobile-app .cash-overview { background: linear-gradient(180deg, color-mix(in srgb, var(--acc-cash) 5%, var(--surface)), var(--surface) 44%); }
+.mobile-app .finance-overview { background: linear-gradient(180deg, color-mix(in srgb, var(--acc-fin) 5%, var(--surface)), var(--surface) 44%); }
+.mobile-app .food-journal-entry,
+.mobile-app .workout-exercise-row { border-color: var(--line); }
+.mobile-app .today-flagship { padding: 0; }
+.mobile-app .today-head { padding: 0 0 16px; }
+.mobile-app .today-eyebrow { font: 650 30px/1.1 var(--font-body); letter-spacing: -.035em; }
+.mobile-app .today-date { color: var(--ink-2); font: 13px/1.4 var(--font-body); letter-spacing: 0; }
+body:has(.mobile-app) .sheet-viewport .sheet-panel {
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--panel-shadow);
+}
+
+@container shell (min-width: 800px) {
+  .mobile-app .trajectory-home.ios-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 18px 20px;
+    align-items: stretch;
+  }
+  .ios-home .trajectory-header,
+  .trajectory-home-intro { grid-column: 1 / -1; }
+  .ios-home .trajectory-focus { grid-column: 1; grid-row: 3 / span 2; }
+  .ios-home .trajectory-focus > * { grid-column: auto; grid-row: auto; }
+  .ios-home .trajectory-overview {
+    grid-column: 2;
+    grid-row: 3;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+  .ios-home .trajectory-overview > * { grid-column: auto; grid-row: auto; }
+  .ios-home .trajectory-mini-goals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ios-home .trajectory-portfolio { grid-column: 2; grid-row: 4; }
+  .ios-home .trajectory-energy { grid-column: 1 / -1; grid-row: 5; }
+  .ios-home .trajectory-orbit-wrap { width: min(250px, 100%); }
+  .ios-home .trajectory-capital-metric .trajectory-mini-number { font-size: clamp(12px, 1.8cqi, 17px); }
+  .ios-food .food-workspace {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  }
+  .ios-food .food-fuel-body { grid-template-columns: minmax(126px, 144px) minmax(0, 1fr); }
+  .mobile-app .app-header { grid-area: 1 / 1; padding-inline: max(24px, env(safe-area-inset-left)) 24px; }
+  .mobile-app .app-workspace { grid-area: 2 / 1; }
+  .mobile-app .mobile-dock-rail {
+    grid-area: 1 / 2 / 4 / 3;
+    width: 100%;
+    padding: max(20px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) 8px;
+    border: 0;
+    border-left: 1px solid var(--line);
+  }
+  .mobile-app .mobile-dock-rail .dock-track { flex-direction: column; gap: 12px; align-items: stretch; justify-content: start; }
+  .mobile-app .mobile-dock-rail .dock-btn { flex: none; min-height: 64px; }
+}
+
+@container shell (max-width: 799px) {
+  .mobile-app .trajectory-home.ios-home { gap: 14px; }
+  .ios-home .trajectory-focus .trajectory-pinned { padding: 18px; }
+  .ios-home .trajectory-orbit-wrap { width: min(230px, 100%); margin-top: 2px; }
+  .ios-home .trajectory-mini-goals,
+  .ios-home .trajectory-focus,
+  .ios-home .trajectory-portfolio,
+  .ios-home .trajectory-energy { grid-column: auto; grid-row: auto; }
+  .ios-home .trajectory-portfolio { grid-template-columns: minmax(0, 1fr); }
+  .ios-home .trajectory-capital-primary { min-width: 0; }
+  .ios-home .trajectory-capital-total { font-size: clamp(26px, 6cqi, 38px); }
+  .ios-food .food-workspace { display: flex; flex-direction: column; }
+  .ios-food .food-main,
+  .ios-food .food-support { display: contents; }
+  .ios-food .food-entry-panel { order: 0; }
+  .ios-food .food-hero { order: 1; }
+  .ios-food .food-recent { order: 2; }
+  .ios-food .food-logbook { order: 3; }
+  .ios-food .food-presets { order: 4; }
+  .ios-food .food-workspace .food-support > :last-child { order: 5; }
+}
+@container shell (max-width: 400px) {
+  .ios-home .trajectory-capital-breakdown { grid-template-columns: minmax(0, 1fr); }
+}
+@container shell (max-width: 799px) {
+  @container module (min-width: 680px) {
+    .ios-food .food-workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+    }
+    .ios-food .food-main,
+    .ios-food .food-support { display: grid; }
+  }
+}
+@media (max-width: 540px) {
+  .mobile-app .app-page-title { font-size: 30px; }
+  .ios-food .food-entry-panel { padding: 18px; }
+  .ios-food .food-fuel-body { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .ios-food .food-fuel-macros { width: 100%; }
+}
+@media (min-width: 800px) {
+  .mobile-app { grid-template-columns: minmax(0, 1fr) calc(96px + max(8px, env(safe-area-inset-right, 0px))); }
+}

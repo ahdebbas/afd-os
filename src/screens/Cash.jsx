@@ -154,11 +154,12 @@ export default function Cash() {
 
   return (
     <div className="module-layout cash-layout space-y-4 cash-page" style={{ '--acc': 'var(--acc-cash)' }}>
+      <div className="cash-support">
       <section className="panel p-5 cash-overview">
         <div className="flex items-center justify-between mb-3">
           <Label>Cash pulse</Label>
           <button onClick={openBalance} className="cash-icon-button press chip rounded-lg flex items-center justify-center" aria-label="Edit current cash">
-            <Settings2 size={14} />
+            <Settings2 size={14} /> <span>Update cash</span>
           </button>
         </div>
         <p className="mono text-[10px] uppercase tracking-[0.12em] t3">Current cash</p>
@@ -170,13 +171,15 @@ export default function Cash() {
       </section>
 
       <CashAlerts projection={projection} onCover={toggleItem} onEditBalance={openBalance} />
+      </div>
+      <div className="cash-main">
       <CashMonths projection={projection} onToggle={toggleItem} />
 
       <section className="panel p-5">
         <div className="flex items-center justify-between mb-2">
           <Label><CalendarClock size={12} /> Planned one-offs</Label>
           <button onClick={() => setEditor({ kind: 'one-off', item: null })} className="cash-icon-button press acc-chip rounded-lg flex items-center justify-center" aria-label="Add planned payment">
-            <Plus size={15} />
+            <Plus size={15} /> <span>Add payment</span>
           </button>
         </div>
         {state.oneOffs.length === 0 ? (
@@ -222,6 +225,7 @@ export default function Cash() {
           ))}
         </div>
       </details>
+      </div>
 
       {createPortal(<div style={{ '--acc': 'var(--acc-cash)' }}><Sheet open={balanceOpen} onClose={() => setBalanceOpen(false)} title="Current cash">
         <form onSubmit={saveBalance} className="space-y-3">

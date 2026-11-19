@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Cloud, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
+import { Check, Cloud, Eye, EyeOff, LogOut, Mail, Shield, TriangleAlert } from 'lucide-react'
 import { applyCloudState, CLOUD_STATE_KEYS, clearCloudSyncSink, confirmCloudStateSynced, discardCloudStateDirty, hasUnsyncedCloudState, isCloudStateDirty, queueCloudState, setCloudSyncSink, shouldPreserveHydrationChange } from './cloudSync'
 import { hasSupabaseConfig, supabase } from './supabase'
 
@@ -80,6 +80,7 @@ function AuthScreen() {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaReset, setCaptchaReset] = useState(0)
 
@@ -93,13 +94,13 @@ function AuthScreen() {
   const captchaRequired = Boolean(turnstileSiteKey)
 
   return (
-    <div className="min-h-dvh w-full max-w-md mx-auto flex items-center justify-center px-6">
+    <div className="auth-screen min-h-dvh w-full mx-auto flex items-center justify-center px-6">
       <section className="panel p-6 w-full" style={{ '--acc': 'var(--acc-os)' }}>
         <div className="w-12 h-12 rounded-2xl acc-chip flex items-center justify-center mb-5">
           <Shield size={22} strokeWidth={2.5} />
         </div>
         <h1 className="display text-[42px] leading-none font-bold t1">Baseline</h1>
-        <p className="text-sm t2 mt-2 leading-relaxed">Sign in to sync food, training, finance, and settings with Supabase.</p>
+        <p className="text-sm t2 mt-2 leading-relaxed">Your food, training and finances. Together, on every device.</p>
 
         <form onSubmit={submit} className="mt-6 space-y-3">
           <label className="block">
@@ -112,9 +113,13 @@ function AuthScreen() {
           </label>
           <label className="block">
             <span className="mono text-[10px] tracking-[0.14em] uppercase t2 font-semibold">Password</span>
-            <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6}
+            <input id="auth-password" value={password} onChange={e => setPassword(e.target.value)} type={passwordVisible ? 'text' : 'password'} required minLength={6}
               className="field mt-1.5 rounded-xl px-3 py-2.5 w-full text-sm outline-none" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
           </label>
+          <button type="button" className="auth-password-toggle" aria-controls="auth-password" aria-pressed={passwordVisible} onClick={() => setPasswordVisible(value => !value)}>
+            {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            {passwordVisible ? 'Hide password' : 'Show password'}
+          </button>
           <TurnstileCaptcha onToken={setCaptchaToken} resetSignal={captchaReset} />
           {!turnstileSiteKey && authError?.includes('captcha') && (
             <p className="text-[12px] down leading-relaxed" role="alert">

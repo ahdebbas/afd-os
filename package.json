@@ -10,8 +10,7 @@
     "ios:sync": "npm run build:native && cap sync ios",
     "ios:open": "cap open ios",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "sync-food": "node scripts/sync-food.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.0",

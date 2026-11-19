@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
-import { dateKey } from './dates'
+import { dateKey, isDateKey } from './dates'
 import { useClock } from './hooks'
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -85,7 +85,7 @@ export function SegBar({ pct, color = 'var(--acc)', cells = 14 }) {
  * opens scrolled to today (rightmost). The active day is a filled accent disc; days with
  * a logged win/miss show a small status badge. Future days are dimmed and non-interactive.
  */
-export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
+export function DayStrip({ value, onChange, status, days: dayCount = 7 }) {
   const scrollRef = useRef(null)
   const now = useClock()
   const todayKey = dateKey(now)
@@ -116,6 +116,16 @@ export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
   }, [todayKey, value])
 
   return (
+    <div className="date-navigator" data-no-carousel-swipe="true">
+      <div className="date-navigator-heading">
+        <label>Selected date
+          <input type="date" aria-label="Selected date" value={value} max={todayKey} onChange={event => {
+            const next = event.target.value
+            if (isDateKey(next) && next <= todayKey) onChange(next)
+          }} />
+        </label>
+        {value !== todayKey && <button type="button" className="date-today" onClick={() => onChange(todayKey)}>Today</button>}
+      </div>
     <div className="day-strip" ref={scrollRef} role="group" aria-label="Select day">
       {days.map(d => {
         const selected = d.key === value
@@ -123,7 +133,7 @@ export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
         return (
           <button key={d.key} data-date={d.key} onClick={() => !d.isFuture && onChange(d.key)}
             disabled={d.isFuture} aria-pressed={selected}
-            aria-label={`${d.wd} ${d.num}${d.state === 'win' ? ', complete' : d.state === 'miss' ? ', missed' : ''}`}
+            aria-label={`${new Date(`${d.key}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${d.state === 'win' ? ', complete' : d.state === 'miss' ? ', missed' : ''}`}
             className={`day-chip press ${selected ? 'day-chip-active' : ''} ${d.isToday ? 'day-chip-today' : ''} ${d.isFuture ? 'day-chip-disabled' : ''}`}>
             <span className="day-wd">{d.wd.slice(0, 3)}</span>
             <span className="day-disc">
@@ -137,6 +147,7 @@ export function DayStrip({ value, onChange, status, days: dayCount = 14 }) {
           </button>
         )
       })}
+    </div>
     </div>
   )
 }
@@ -286,7 +297,7 @@ export function Sheet({ open, onClose, title, children }) {
       onTouchStart={event => event.stopPropagation()} onTouchMove={event => event.stopPropagation()} onTouchEnd={event => event.stopPropagation()}>
       <button className="absolute inset-0 w-full backdrop cursor-default" onClick={onClose} aria-label="Close" tabIndex={-1} />
       {/* centering transform lives in the sheet-in keyframes; Tailwind's translate utility would double-apply (v4 uses the `translate` property) */}
-      <div className="absolute bottom-0 left-1/2 w-full max-w-md sheet-in">
+      <div className="sheet-frame absolute bottom-0 left-1/2 w-full max-w-md sheet-in">
         <div ref={panelRef} tabIndex={-1} className="sheet-panel panel rounded-t-3xl rounded-b-none border-b-0 px-5 pt-3 pb-8 overflow-y-auto outline-none">
           <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'var(--track)' }} />
           <div className="flex items-center justify-between mb-4">

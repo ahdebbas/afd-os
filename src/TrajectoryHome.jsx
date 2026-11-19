@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, Beef, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Dumbbell, Landmark, MapPin, Moon, Settings, SlidersHorizontal, Sun, Wallet } from 'lucide-react'
+import { ArrowRight, Beef, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Dumbbell, Landmark, MapPin, SlidersHorizontal, Wallet } from 'lucide-react'
 import { FINANCE, reconcileFinance } from './data'
 import { useInbodyReadings } from './useInbodyReadings'
 import { DEFAULT_CASH_PULSE } from './cashPulse'
@@ -146,7 +146,7 @@ function CapitalDetails({ capital, cash, portfolio, onNavigate }) {
   )
 }
 
-export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleTheme, whoop }) {
+export default function TrajectoryHome({ goTo, whoop }) {
   const now = useClock()
   const today = dateKey(now)
   const [home, setHome] = useHomeGoals()
@@ -204,83 +204,93 @@ export default function TrajectoryHome({ goTo, onOpenSettings, dark, onToggleThe
     : sheet === 'capital' ? 'Liquid capital' : sheet === 'gym' ? 'Workout gym' : 'About this goal'
 
   return (
-    <div className="trajectory-home">
+    <div className="trajectory-home ios-home">
       <header className="trajectory-header">
-        <h1 className="trajectory-wordmark"><Crosshair size={20} strokeWidth={1.4} aria-hidden="true" />Baseline</h1>
+        <h2 className="trajectory-wordmark">Today</h2>
         <div className="trajectory-header-actions">
           <button type="button" className="trajectory-icon-button" onClick={() => setSheet('settings')} aria-label="Edit goals" title="Edit goals"><SlidersHorizontal size={17} /></button>
-          <button type="button" className="trajectory-icon-button" onClick={onToggleTheme} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
-          <button type="button" className="trajectory-icon-button" onClick={onOpenSettings} aria-label="Settings"><Settings size={17} /></button>
         </div>
       </header>
-      <div className="trajectory-date">{now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
-      <section className="trajectory-portfolio" aria-label="Liquid capital">
-        <div className="trajectory-portfolio-kicker"><h2 className="trajectory-eyebrow">Liquid capital</h2><span className="trajectory-source">Cash + stocks / ETFs</span></div>
-        <button type="button" onClick={() => setSheet('capital')} aria-label="View liquid capital breakdown" aria-haspopup="dialog" aria-expanded={sheet === 'capital'} className="trajectory-capital-link">
-          <span className="trajectory-capital-total">{capital.available ? cashAmount(capital.total) : dash}</span><ArrowRight size={17} aria-hidden="true" />
-        </button>
-        <p className="trajectory-source trajectory-capital-source">
-          {cash.available ? `Cash ${shortDate(cash.asOf)}${cash.stale ? ' (stale)' : ''}` : 'Add a cash snapshot'}
-          {' \u00b7 '}{portfolio.missingCount ? 'Update investment values' : portfolio.source}
-        </p>
-      </section>
-      <section className="trajectory-pinned" aria-label="Pinned goal">
-        <div className="trajectory-goal-row">
-          <h2 id="home-main-kpi" className="trajectory-eyebrow trajectory-goal-title" aria-live="polite">{label}</h2>
-          {mainGoal !== 'cash' && <button type="button" className="trajectory-location" onClick={() => setSheet('gym')} aria-label={`Change workout gym, ${gym.label}`} aria-haspopup="dialog">
-            <MapPin size={12} aria-hidden="true" />{gym.label}
-          </button>}
-        </div>
-        <div className="trajectory-goal-navigation">
-          <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(-1)} aria-label="Previous KPI" aria-controls="home-main-kpi"><ChevronLeft size={22} aria-hidden="true" /></button>
-          <GoalOrbit mainGoal={mainGoal} label={label} goal={goal} />
-          <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(1)} aria-label="Next KPI" aria-controls="home-main-kpi"><ChevronRight size={22} aria-hidden="true" /></button>
-        </div>
-        <p className="trajectory-gap">{gap}</p>
-        {mainGoal === 'body' && <button type="button" className="trajectory-goal-source" onClick={() => navigate('fitness', 'inbody')}>
-          {body.available ? `InBody ${shortDate(body.latestDate)} \u00b7 ${body.ageDays === 0 ? 'today' : `${body.ageDays}d ago`}` : 'Add an InBody result'} <ArrowRight size={12} aria-hidden="true" />
-        </button>}
-        {mainGoal === 'training' && <p className="trajectory-goal-source">Since Mon {shortDate(training.weekStart)} &middot; both gyms</p>}
-        {mainGoal === 'cash' && <p className="trajectory-goal-source">{cash.available ? `Saved ${shortDate(cash.asOf)}${cash.stale ? ' \u00b7 needs updating' : ''}` : 'Manual balance \u00b7 no snapshot saved'}</p>}
-      </section>
-      <div className="trajectory-mini-goals">
-        {mainGoal === 'training' ? (
-          <button type="button" className="trajectory-mini-goal" onClick={() => navigate('fitness', 'inbody')}>
-            <span className="trajectory-mini-heading"><span>Body fat</span><Crosshair size={14} aria-hidden="true" /></span>
-            <span className="trajectory-mini-number">{body.available ? body.current.toFixed(1) : dash}<small>{body.available ? '%' : ''}</small></span>
-            <span className="trajectory-mini-caption">{body.available ? shortDate(body.latestDate) : 'No body-fat reading'}</span>
-            <ProgressBar progress={body.progress} />
-          </button>
-        ) : (
-          <button type="button" className="trajectory-mini-goal" onClick={() => navigate('fitness')}>
-            <span className="trajectory-mini-heading"><span>Training</span><Dumbbell size={14} aria-hidden="true" /></span>
-            <span className="trajectory-mini-number">{training.current}<small> / {training.target}</small></span>
-            <span className="trajectory-mini-caption">sessions this week</span>
-            <span className="trajectory-segments" aria-hidden="true">{Array.from({ length: training.target }, (_, index) => <span key={index} className={index < training.current ? 'done' : ''} />)}</span>
-          </button>
-        )}
-        <button type="button" className="trajectory-mini-goal" onClick={() => navigate('food')}>
-          <span className="trajectory-mini-heading"><span>Protein</span><Beef size={14} aria-hidden="true" /></span>
-          <span className="trajectory-mini-number">{protein.available ? protein.remaining : dash}<small>{protein.available ? 'g' : ''}</small></span>
-          <span className="trajectory-mini-caption">{protein.invalid ? 'Review food values' : !protein.available ? 'No food logged today' : protein.complete ? 'target met in logged food' : 'left in logged food today'}</span>
-          <ProgressBar progress={protein.progress} />
-        </button>
-        <button type="button" className="trajectory-mini-goal" onClick={() => navigate('cash')}>
-          <span className="trajectory-mini-heading"><span>Cash</span><Wallet size={14} aria-hidden="true" /></span>
-          <span className="trajectory-mini-number trajectory-financial-number">{capital.cash != null ? cashAmount(capital.cash) : dash}</span>
-          <span className="trajectory-mini-caption">{cash.available ? `Saved ${shortDate(cash.asOf)}${cash.stale ? ' \u00b7 update needed' : ''}` : 'Add a dated cash balance'}</span>
-        </button>
-        <button type="button" className="trajectory-mini-goal" onClick={() => navigate('finance')}>
-          <span className="trajectory-mini-heading"><span>Invested assets</span><Landmark size={14} aria-hidden="true" /></span>
-          <span className="trajectory-mini-number trajectory-financial-number">{capital.invested != null ? cashAmount(capital.invested) : dash}</span>
-          <span className="trajectory-mini-caption">{portfolio.missingCount ? 'Update unpriced holdings' : 'Stocks / ETFs, excluding property'}</span>
-        </button>
+      <div className="trajectory-home-intro">
+        <span className="trajectory-date">{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span className="trajectory-home-period">Daily overview</span>
       </div>
+      <section className="trajectory-focus" aria-label="Your focus">
+        <section className="trajectory-pinned" aria-label="Pinned goal">
+          <div className="trajectory-goal-row">
+            <h2 id="home-main-kpi" className="trajectory-eyebrow trajectory-goal-title" aria-live="polite">{label}</h2>
+            {mainGoal !== 'cash' && <button type="button" className="trajectory-location" onClick={() => setSheet('gym')} aria-label={`Change workout gym, ${gym.label}`} aria-haspopup="dialog">
+              <MapPin size={12} aria-hidden="true" />{gym.label}
+            </button>}
+          </div>
+          <div className="trajectory-goal-navigation">
+            <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(-1)} aria-label="Previous KPI" aria-controls="home-main-kpi"><ChevronLeft size={22} aria-hidden="true" /></button>
+            <GoalOrbit mainGoal={mainGoal} label={label} goal={goal} />
+            <button type="button" className="trajectory-goal-arrow" onClick={() => changeGoal(1)} aria-label="Next KPI" aria-controls="home-main-kpi"><ChevronRight size={22} aria-hidden="true" /></button>
+          </div>
+          <p className="trajectory-gap">{gap}</p>
+          {mainGoal === 'body' && <button type="button" className="trajectory-goal-source" onClick={() => navigate('fitness', 'inbody')}>
+            {body.available ? `InBody ${shortDate(body.latestDate)} \u00b7 ${body.ageDays === 0 ? 'today' : `${body.ageDays}d ago`}` : 'Add an InBody result'} <ArrowRight size={12} aria-hidden="true" />
+          </button>}
+          {mainGoal === 'training' && <p className="trajectory-goal-source">Since Mon {shortDate(training.weekStart)} &middot; both gyms</p>}
+          {mainGoal === 'cash' && <p className="trajectory-goal-source">{cash.available ? `Saved ${shortDate(cash.asOf)}${cash.stale ? ' \u00b7 needs updating' : ''}` : 'Manual balance \u00b7 no snapshot saved'}</p>}
+        </section>
+        <button type="button" className="trajectory-primary" onClick={next}><span>{action.label}</span><ArrowRight size={17} aria-hidden="true" /></button>
+        <button type="button" className="trajectory-insight" onClick={() => setSheet('why')} aria-haspopup="dialog">
+          <CircleHelp size={15} aria-hidden="true" /><span>{insight}</span>
+        </button>
+      </section>
+      <section className="trajectory-overview" aria-label="Today at a glance">
+        <h2 className="trajectory-overview-title">Today, in brief</h2>
+        <div className="trajectory-mini-goals">
+          {mainGoal === 'training' ? (
+            <button type="button" className="trajectory-mini-goal" onClick={() => navigate('fitness', 'inbody')}>
+              <span className="trajectory-mini-heading"><span>Body fat</span><Crosshair size={14} aria-hidden="true" /></span>
+              <span className="trajectory-mini-number">{body.available ? body.current.toFixed(1) : dash}<small>{body.available ? '%' : ''}</small></span>
+              <span className="trajectory-mini-caption">{body.available ? shortDate(body.latestDate) : 'No body-fat reading'}</span>
+              <ProgressBar progress={body.progress} />
+            </button>
+          ) : (
+            <button type="button" className="trajectory-mini-goal" onClick={() => navigate('fitness')}>
+              <span className="trajectory-mini-heading"><span>Training</span><Dumbbell size={14} aria-hidden="true" /></span>
+              <span className="trajectory-mini-number">{training.current}<small> / {training.target}</small></span>
+              <span className="trajectory-mini-caption">sessions this week</span>
+              <span className="trajectory-segments" aria-hidden="true">{Array.from({ length: training.target }, (_, index) => <span key={index} className={index < training.current ? 'done' : ''} />)}</span>
+            </button>
+          )}
+          <button type="button" className="trajectory-mini-goal" onClick={() => navigate('food')}>
+            <span className="trajectory-mini-heading"><span>Protein</span><Beef size={14} aria-hidden="true" /></span>
+            <span className="trajectory-mini-number">{protein.available ? protein.remaining : dash}<small>{protein.available ? 'g' : ''}</small></span>
+            <span className="trajectory-mini-caption">{protein.invalid ? 'Review food values' : !protein.available ? 'No food logged today' : protein.complete ? 'target met in logged food' : 'left in logged food today'}</span>
+            <ProgressBar progress={protein.progress} />
+          </button>
+        </div>
+      </section>
+      <section className="trajectory-portfolio" aria-label="Financial snapshot">
+        <div className="trajectory-capital-primary">
+          <div className="trajectory-portfolio-kicker"><h2 className="trajectory-eyebrow">Financial snapshot</h2><span className="trajectory-source">Cash + stocks / ETFs</span></div>
+          <button type="button" onClick={() => setSheet('capital')} aria-label="View liquid capital breakdown" aria-haspopup="dialog" aria-expanded={sheet === 'capital'} className="trajectory-capital-link">
+            <span className="trajectory-capital-total">{capital.available ? cashAmount(capital.total) : dash}</span><ArrowRight size={17} aria-hidden="true" />
+          </button>
+          <p className="trajectory-source trajectory-capital-source">
+            {cash.available ? `Cash ${shortDate(cash.asOf)}${cash.stale ? ' (stale)' : ''}` : 'Add a cash snapshot'}
+            {' \u00b7 '}{portfolio.missingCount ? 'Update investment values' : portfolio.source}
+          </p>
+        </div>
+        <div className="trajectory-capital-breakdown" aria-label="Capital components">
+          <button type="button" className="trajectory-capital-metric" onClick={() => navigate('cash')}>
+            <span className="trajectory-mini-heading"><span>Cash</span><Wallet size={14} aria-hidden="true" /></span>
+            <span className="trajectory-mini-number trajectory-financial-number">{capital.cash != null ? cashAmount(capital.cash) : dash}</span>
+            <span className="trajectory-mini-caption">{cash.available ? `Saved ${shortDate(cash.asOf)}${cash.stale ? ' \u00b7 update needed' : ''}` : 'Add a dated cash balance'}</span>
+          </button>
+          <button type="button" className="trajectory-capital-metric" onClick={() => navigate('finance')}>
+            <span className="trajectory-mini-heading"><span>Invested assets</span><Landmark size={14} aria-hidden="true" /></span>
+            <span className="trajectory-mini-number trajectory-financial-number">{capital.invested != null ? cashAmount(capital.invested) : dash}</span>
+            <span className="trajectory-mini-caption">{portfolio.missingCount ? 'Update unpriced holdings' : 'Stocks / ETFs, excluding property'}</span>
+          </button>
+        </div>
+      </section>
       <div className="trajectory-energy"><WhoopEnergyPanel whoop={whoop} eaten={totals.kcal} protein={totals.protein} compact /></div>
-      <button type="button" className="trajectory-insight" onClick={() => setSheet('why')} aria-haspopup="dialog">
-        <CircleHelp size={15} aria-hidden="true" /><span>{insight}</span>
-      </button>
-      <button type="button" className="trajectory-primary" onClick={next}><span>{action.label}</span><ArrowRight size={17} aria-hidden="true" /></button>
       <span className="sr-only" role="status">{notice}</span>
       {sheet && createPortal(
         <div className="trajectory-theme trajectory-dialog">
